@@ -1,15 +1,47 @@
-import { computed, linkedSignal, resource } from '@angular/core'
+import { computed, effect, linkedSignal, resource } from '@angular/core'
 import { firstValueFrom, isObservable } from 'rxjs'
-import type { CachedResourceOptions, CachedResourceRef } from './types'
+import type { CachedResourceOptions, CachedResourceRef, RetryConfig } from './types'
+
+function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  config: Required<RetryConfig>,
+  abortSignal: AbortSignal,
+): Promise<T> {
+  const attempt = (n: number): Promise<T> =>
+    fn().catch(error => {
+      if (n >= config.maxRetries || !config.retryIf(error) || abortSignal.aborted) {
+        throw error
+      }
+      const delay = Math.random() * Math.min(config.maxDelay, config.baseDelay * 2 ** n)
+      return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => resolve(attempt(n + 1)), delay)
+        abortSignal.addEventListener('abort', () => {
+          clearTimeout(timer)
+          reject(error)
+        })
+      })
+    })
+  return attempt(0)
+}
+
+function normalizeRetryConfig(retry: number | RetryConfig): Required<RetryConfig> {
+  const config = typeof retry === 'number' ? { maxRetries: retry } : retry
+  return {
+    maxRetries: config.maxRetries,
+    baseDelay: config.baseDelay ?? 1000,
+    maxDelay: config.maxDelay ?? 30_000,
+    retryIf: config.retryIf ?? (() => true),
+  }
+}
 
 export function cachedResource<T, P extends object>(
   options: CachedResourceOptions<T, P>,
 ): CachedResourceRef<T> {
-  const { cache, key, params, loader, staleTime, gcTime } = options
+  const { cache, cacheKey, params, loader, staleTime, expireTime, retry, refetchInterval } = options
 
-  const resolveKey = (p: P): string[] => (typeof key === 'function' ? key(p) : key)
+  const resolveKey = (p: P): string[] => (typeof cacheKey === 'function' ? cacheKey(p) : cacheKey)
 
-  const cacheGetOptions = staleTime || gcTime ? { staleTime, gcTime } : undefined
+  const cacheGetOptions = staleTime || expireTime ? { staleTime, expireTime } : undefined
 
   // Captures cached data whenever params or cache version change.
   // Used to display stale data during background revalidation.
@@ -27,6 +59,8 @@ export function cachedResource<T, P extends object>(
     },
   })
 
+  const retryConfig = retry !== undefined ? normalizeRetryConfig(retry) : undefined
+
   const res = resource<T, P | undefined>({
     params: () => {
       const p = params?.()
@@ -42,15 +76,28 @@ export function cachedResource<T, P extends object>(
       const entry = cache.get(k, cacheGetOptions)
       if (entry?.fresh) return entry.data
 
-      const data = await cache.deduplicate(k, async () => {
-        const result = loader({ params: p, abortSignal })
-        return isObservable(result) ? firstValueFrom(result) : result
+      const data = await cache.deduplicate(k, () => {
+        const invoke = () => {
+          const result = loader({ params: p, abortSignal })
+          return isObservable(result) ? firstValueFrom(result) : result
+        }
+        return retryConfig ? retryWithBackoff(invoke, retryConfig, abortSignal) : invoke()
       })
 
       cache.set(k, data)
       return data
     },
   })
+
+  // Background polling
+  if (refetchInterval !== undefined) {
+    effect(onCleanup => {
+      const interval = typeof refetchInterval === 'function' ? refetchInterval() : refetchInterval
+      if (!interval || interval <= 0) return
+      const id = setInterval(() => res.reload(), interval)
+      onCleanup(() => clearInterval(id))
+    })
+  }
 
   // SWR value: stale data during loading, otherwise resource value.
   const value = computed(() => {

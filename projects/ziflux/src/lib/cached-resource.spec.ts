@@ -39,7 +39,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => {
           loaderCalled = true
@@ -57,7 +57,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => Promise.resolve('data'),
       }),
@@ -76,7 +76,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => loaderPromise,
       }),
@@ -101,7 +101,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => {
           loaderCalled = true
@@ -129,7 +129,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => loaderPromise,
       }),
@@ -152,13 +152,13 @@ describe('cachedResource', () => {
 
   // --- Dynamic keys ---
 
-  it('uses key function to derive cache key from params', async () => {
+  it('uses cacheKey function to derive cache key from params', async () => {
     cache.set(['order', 'details', '42'], 'order-42')
 
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, { id: string }>({
         cache,
-        key: p => ['order', 'details', p.id],
+        cacheKey: p => ['order', 'details', p.id],
         params: () => ({ id: '42' }),
         loader: () => Promise.resolve('fetched-42'),
       }),
@@ -176,7 +176,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, { id: string }>({
         cache,
-        key: p => ['item', p.id],
+        cacheKey: p => ['item', p.id],
         params: () => undefined,
         loader: () => {
           loaderCalled = true
@@ -199,7 +199,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => of('from-observable'),
       }),
@@ -217,7 +217,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => {
           fetchCount++
@@ -243,7 +243,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => Promise.resolve('original'),
       }),
@@ -259,7 +259,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => Promise.resolve('hello'),
       }),
@@ -277,7 +277,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => Promise.resolve('data'),
       }),
@@ -301,7 +301,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => {
           loaderCalled = true
@@ -321,7 +321,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => Promise.reject(new Error('network error')),
       }),
@@ -338,7 +338,7 @@ describe('cachedResource', () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, Record<string, never>>({
         cache,
-        key: ['test'],
+        cacheKey: ['test'],
         params: () => ({}),
         loader: () => Promise.resolve('data'),
       }),
@@ -348,5 +348,211 @@ describe('cachedResource', () => {
     await flushMicrotasks()
     TestBed.flushEffects()
     expect(ref.status()).toBe('idle')
+  })
+
+  // --- Retry ---
+
+  describe('retry', () => {
+    it.each([1, 2, 3])('retries %i times then succeeds', async retries => {
+      let attempt = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: [`retry-${retries}`],
+          params: () => ({}),
+          loader: () => {
+            attempt++
+            if (attempt <= retries) return Promise.reject(new Error(`fail-${attempt}`))
+            return Promise.resolve('success')
+          },
+          retry: { maxRetries: retries, baseDelay: 1, maxDelay: 1 },
+        }),
+      )
+
+      await waitForStatus(ref, 'resolved')
+      expect(ref.value()).toBe('success')
+      expect(attempt).toBe(retries + 1)
+    })
+
+    it('exceeds maxRetries and errors', async () => {
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['retry-fail'],
+          params: () => ({}),
+          loader: () => Promise.reject(new Error('persistent-error')),
+          retry: { maxRetries: 2, baseDelay: 1, maxDelay: 1 },
+        }),
+      )
+
+      await waitForStatus(ref, 'error')
+      expect((ref.error() as Error).message).toBe('persistent-error')
+    })
+
+    it('retryIf returning false stops retries immediately', async () => {
+      let attempt = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['retry-if'],
+          params: () => ({}),
+          loader: () => {
+            attempt++
+            return Promise.reject(new Error('nope'))
+          },
+          retry: {
+            maxRetries: 5,
+            baseDelay: 1,
+            retryIf: () => false,
+          },
+        }),
+      )
+
+      await waitForStatus(ref, 'error')
+      expect(attempt).toBe(1) // no retries
+    })
+
+    it('retry: 3 shorthand works with default delays', async () => {
+      let attempt = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['retry-shorthand'],
+          params: () => ({}),
+          loader: () => {
+            attempt++
+            if (attempt <= 1) return Promise.reject(new Error('fail'))
+            return Promise.resolve('ok')
+          },
+          retry: 3, // shorthand: { maxRetries: 3, baseDelay: 1000, maxDelay: 30000 }
+        }),
+      )
+
+      // Default delays: attempt 0 jitter ~0-1000ms. Wait up to 4s.
+      await waitForStatus(ref, 'resolved', 2000)
+      expect(ref.value()).toBe('ok')
+      expect(attempt).toBe(2) // 1 fail + 1 success
+    }, 10_000)
+
+    it('AbortSignal cancels during retry delay', async () => {
+      let attempt = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['retry-abort'],
+          params: () => ({}),
+          loader: () => {
+            attempt++
+            return Promise.reject(new Error('fail'))
+          },
+          retry: { maxRetries: 10, baseDelay: 50_000, maxDelay: 50_000 },
+        }),
+      )
+
+      // Let first attempt fail and enter retry delay
+      await flushMicrotasks()
+      TestBed.flushEffects()
+      await flushMicrotasks()
+
+      // Destroy triggers abort
+      ref.destroy()
+      await flushMicrotasks()
+      TestBed.flushEffects()
+
+      // Should have only attempted once before abort stopped it
+      expect(attempt).toBe(1)
+    })
+  })
+
+  // --- Background polling ---
+
+  describe('refetchInterval', () => {
+    it('static interval triggers reload periodically', async () => {
+      let loadCount = 0
+
+      // Short staleTime so data goes stale before poll fires
+      const pollCache = TestBed.runInInjectionContext(
+        () => new DataCache<string>({ staleTime: 10, expireTime: 300_000 }),
+      )
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache: pollCache,
+          cacheKey: ['poll-test'],
+          params: () => ({}),
+          loader: () => {
+            loadCount++
+            return Promise.resolve(`data-${loadCount}`)
+          },
+          refetchInterval: 50,
+          staleTime: 10,
+        }),
+      )
+
+      await waitForStatus(ref, 'resolved')
+      const afterInitial = loadCount
+
+      // Wait for data to go stale (10ms) + at least one poll cycle (50ms)
+      await new Promise(r => setTimeout(r, 150))
+      await flushMicrotasks()
+      TestBed.flushEffects()
+
+      expect(loadCount).toBeGreaterThan(afterInitial)
+    })
+
+    it('no polling when option absent', async () => {
+      let loadCount = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['no-poll'],
+          params: () => ({}),
+          loader: () => {
+            loadCount++
+            return Promise.resolve('data')
+          },
+        }),
+      )
+
+      await waitForStatus(ref, 'resolved')
+      const afterInitial = loadCount
+
+      await new Promise(r => setTimeout(r, 120))
+      await flushMicrotasks()
+      TestBed.flushEffects()
+
+      expect(loadCount).toBe(afterInitial)
+    })
+
+    it('false return from function stops polling', async () => {
+      let loadCount = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['poll-false'],
+          params: () => ({}),
+          loader: () => {
+            loadCount++
+            return Promise.resolve('data')
+          },
+          refetchInterval: () => false,
+        }),
+      )
+
+      await waitForStatus(ref, 'resolved')
+      const afterInitial = loadCount
+
+      await new Promise(r => setTimeout(r, 120))
+      await flushMicrotasks()
+      TestBed.flushEffects()
+
+      expect(loadCount).toBe(afterInitial)
+    })
   })
 })

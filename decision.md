@@ -55,11 +55,11 @@ readonly cache = new DataCache<Order[]>()
 
 ## D-04 — `cachedResource()` mirrors `resource()` signature exactly
 
-**Decision:** `cachedResource()` options follow the same shape as Angular's `resource()` — `params`, `loader`, with `cache` and `key` added.
+**Decision:** `cachedResource()` options follow the same shape as Angular's `resource()` — `params`, `loader`, with `cache` and `cacheKey` added.
 
 **Rationale:** If you know `resource()`, you already know `cachedResource()`. No new mental model. The library feels like an Angular extension, not a separate framework.
 
-**Key addition:** `key` — a static `string[]` or a function `(params) => string[]` that derives the cache key from params. This enables dynamic keys (e.g. per-filter, per-id) without any extra setup.
+**Key addition:** `cacheKey` — a static `string[]` or a function `(params) => string[]` that derives the cache key from params. This enables dynamic keys (e.g. per-filter, per-id) without any extra setup.
 
 ---
 
@@ -239,6 +239,46 @@ params: () => {
 **Rationale:** Maximally generic. Works with `CachedResourceRef.isLoading`, `CachedMutationRef.isPending`, or any user-created `Signal<boolean>`. Three lines of implementation, zero coupling.
 
 **Rejected alternative:** `anyLoading(...refs: CachedResourceRef[])` → too narrow, can't mix resources and mutations.
+
+---
+
+## D-18 — Retry with exponential backoff is opt-in on `cachedResource`, not on `cachedMutation`
+
+**Decision:** `retry` option is available on `cachedResource` only. `cachedMutation` does not support retry.
+
+**Rationale:** Mutations have side effects (POST/PUT/DELETE). Silent retry is dangerous (double charge, double create). Retry on reads is safe — the server is idempotent. If users want mutation retry, they compose manually.
+
+---
+
+## D-19 — Polling uses `effect()` with `onCleanup`, not raw `setInterval`
+
+**Decision:** `refetchInterval` is implemented via Angular's `effect()` with `onCleanup`.
+
+**Rationale:** `effect()` ties the timer to the injection context lifecycle. Auto-cleans on destroy. For reactive intervals (signal-driven), `effect()` re-runs when the signal changes — no manual subscription management.
+
+---
+
+## D-20 — `cleanup()` does not bump cache version
+
+**Decision:** `cleanup()` evicts expired entries but does not increment `#version`.
+
+**Rationale:** GC evicts entries where `age > expireTime`. No active `cachedResource` should depend on expired data. Bumping version on GC would cause unnecessary reloads across all resources watching that cache.
+
+---
+
+## D-21 — `inspect()` is always available, not gated by `ngDevMode`
+
+**Decision:** `inspect()` is a public method on `DataCache`, always available in production.
+
+**Rationale:** It's an explicit method call, not automatic overhead. Devtools, console debugging, and custom monitoring all benefit from always-available introspection. Tree-shaking removes it if unused.
+
+---
+
+## D-22 — Auto-cleanup uses `DestroyRef` for cleanup
+
+**Decision:** When `cleanupInterval` is set, `DataCache` uses `inject(DestroyRef)` + `setInterval` + `destroyRef.onDestroy()`.
+
+**Rationale:** `DataCache` already runs in injection context (`inject(ZIFLUX_CONFIG)` in constructor). Adding `inject(DestroyRef)` with `onDestroy()` is the Angular-idiomatic way to manage timer lifecycle. Root-scoped caches live forever (no early cleanup). Test-scoped caches clean up when `TestBed` destroys the injector.
 
 ---
 

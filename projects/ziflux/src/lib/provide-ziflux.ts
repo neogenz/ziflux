@@ -3,7 +3,7 @@ import type { ZifluxConfig } from './types'
 
 const ZIFLUX_DEFAULTS: ZifluxConfig = {
   staleTime: 30_000,
-  gcTime: 300_000,
+  expireTime: 300_000,
 }
 
 export const ZIFLUX_CONFIG = new InjectionToken<ZifluxConfig>('ZIFLUX_CONFIG')

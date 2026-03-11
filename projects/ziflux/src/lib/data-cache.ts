@@ -1,7 +1,7 @@
-import { inject, signal } from '@angular/core'
+import { DestroyRef, inject, signal } from '@angular/core'
 import { type Observable, tap } from 'rxjs'
 import { ZIFLUX_CONFIG } from './provide-ziflux'
-import type { CacheEntry, ZifluxConfig } from './types'
+import type { CacheEntry, CacheInspection, ZifluxConfig } from './types'
 
 export class DataCache<T> {
   readonly #entries = new Map<string, CacheEntry<T>>()
@@ -13,31 +13,37 @@ export class DataCache<T> {
 
   constructor(config?: Partial<ZifluxConfig>) {
     const globalConfig = inject(ZIFLUX_CONFIG, { optional: true })
-    const defaults: ZifluxConfig = { staleTime: 30_000, gcTime: 300_000 }
+    const defaults: ZifluxConfig = { staleTime: 30_000, expireTime: 300_000 }
     this.#config = { ...defaults, ...globalConfig, ...config }
+
+    if (this.#config.cleanupInterval) {
+      const destroyRef = inject(DestroyRef)
+      const id = setInterval(() => this.cleanup(), this.#config.cleanupInterval)
+      destroyRef.onDestroy(() => clearInterval(id))
+    }
   }
 
   get staleTime(): number {
     return this.#config.staleTime
   }
 
-  get gcTime(): number {
-    return this.#config.gcTime
+  get expireTime(): number {
+    return this.#config.expireTime
   }
 
   get(
     key: string[],
-    options?: { staleTime?: number; gcTime?: number },
+    options?: { staleTime?: number; expireTime?: number },
   ): { data: T; fresh: boolean } | null {
     const serialized = this.#serialize(key)
     const entry = this.#entries.get(serialized)
     if (!entry) return null
 
-    const gcTime = options?.gcTime ?? this.#config.gcTime
+    const expireTime = options?.expireTime ?? this.#config.expireTime
     const staleTime = options?.staleTime ?? this.#config.staleTime
     const age = Date.now() - entry.createdAt
 
-    if (age > gcTime) {
+    if (age > expireTime) {
       this.#entries.delete(serialized)
       return null
     }
@@ -81,6 +87,42 @@ export class DataCache<T> {
   clear(): void {
     this.#entries.clear()
     this.#inFlight.clear()
+    this.#version.update(v => v + 1)
+  }
+
+  inspect(): CacheInspection<T> {
+    const now = Date.now()
+    const entries = [...this.#entries].map(([serialized, entry]) => {
+      const age = now - entry.createdAt
+      return {
+        key: JSON.parse(serialized) as string[],
+        data: entry.data,
+        createdAt: entry.createdAt,
+        age,
+        fresh: age <= this.#config.staleTime,
+        expired: age > this.#config.expireTime,
+      }
+    })
+
+    return {
+      size: this.#entries.size,
+      entries,
+      inFlightKeys: [...this.#inFlight.keys()].map(k => JSON.parse(k) as string[]),
+      version: this.#version(),
+      config: { ...this.#config },
+    }
+  }
+
+  cleanup(): number {
+    const now = Date.now()
+    let evicted = 0
+    for (const [key, entry] of this.#entries) {
+      if (now - entry.createdAt > this.#config.expireTime) {
+        this.#entries.delete(key)
+        evicted++
+      }
+    }
+    return evicted
   }
 
   #serialize(key: string[]): string {

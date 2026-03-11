@@ -53,7 +53,7 @@ npm install ziflux
 ```typescript
 // app.config.ts
 export const appConfig: ApplicationConfig = {
-  providers: [provideZiflux({ staleTime: 30_000, gcTime: 300_000 })],
+  providers: [provideZiflux({ staleTime: 30_000, expireTime: 300_000 })],
 }
 ```
 
@@ -73,9 +73,11 @@ Own one per domain, in your API service (singleton).
 class DataCache<T> {
   readonly version: Signal<number> // auto-increments on invalidate()
 
+  constructor(config?: Partial<ZifluxConfig>) // priority: arg > provider > defaults
+
   get(
     key: string[],
-    options?: { staleTime?: number; gcTime?: number },
+    options?: { staleTime?: number; expireTime?: number },
   ): { data: T; fresh: boolean } | null
   set(key: string[], data: T): void
   invalidate(prefix: string[]): void // marks stale + bumps version
@@ -93,11 +95,11 @@ class DataCache<T> {
 ```typescript
 function cachedResource<T, P extends object>(options: {
   cache: DataCache<T>
-  key: string[] | ((params: NoInfer<P>) => string[])
+  cacheKey: string[] | ((params: NoInfer<P>) => string[])
   params?: () => P | undefined
   loader: (context: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
   staleTime?: number // override global
-  gcTime?: number // override global
+  expireTime?: number // override global
 }): CachedResourceRef<T>
 ```
 
@@ -144,7 +146,7 @@ Must be called in an injection context (field initializer of an `@Injectable()`)
 ```typescript
 provideZiflux({
   staleTime: 30_000, // ms before fresh → stale (default: 30s)
-  gcTime: 300_000, // ms before stale → evicted (default: 5min)
+  expireTime: 300_000, // ms before stale → evicted (default: 5min)
 })
 ```
 
@@ -256,7 +258,7 @@ export class OrderListStore {
 
   readonly orders = cachedResource({
     cache: this.#api.cache,
-    key: p => ['order', 'list', p.status, p.search],
+    cacheKey: params => ['order', 'list', params.status, params.search],
     params: () => this.filters(),
     loader: ({ params }) => this.#api.getAll$(params),
   })
@@ -280,7 +282,7 @@ export class OrderDetailStore {
 
   readonly order = cachedResource({
     cache: this.#api.cache,
-    key: p => ['order', 'details', p.id],
+    cacheKey: params => ['order', 'details', params.id],
     params: () => {
       const id = this.#id()
       return id ? { id } : undefined // undefined = idle, loader doesn't run
@@ -298,11 +300,14 @@ export class OrderDetailStore {
 
 ```html
 @if (store.orders.isInitialLoading()) {
-<app-spinner />
-} @else if (store.orders.value(); as list) {
-<app-order-list [orders]="list" [stale]="store.orders.isStale()" />
+  <app-spinner />
 } @else {
-<app-empty-state />
+  @let list = store.orders.value();
+  @if (list) {
+    <app-order-list [orders]="list" [stale]="store.orders.isStale()" />
+  } @else {
+    <app-empty-state />
+  }
 }
 ```
 
@@ -366,7 +371,7 @@ readonly isAnythingLoading = anyLoading(
 ## Freshness model
 
 ```
-  write        staleTime          gcTime
+  write        staleTime          expireTime
     │              │                 │
     ▼              ▼                 ▼
     ├── FRESH ─────┤──── STALE ──────┤── EVICTED ──▶
@@ -384,7 +389,9 @@ Users always see data instantly — even stale — while fresh data loads.
 Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation.
 
 ```typescript
-;['order', 'list', 'pending'][('order', 'details', '42')]['order'] // filtered list // single entity // matches all of the above → invalidate(['order'])
+['order', 'list', 'pending']  // filtered list
+['order', 'details', '42']   // single entity
+['order']                     // invalidate(['order']) → matches both above
 ```
 
 ---
@@ -450,7 +457,7 @@ export class ProductListStore {
 
   readonly products = cachedResource({
     cache: this.#api.cache,
-    key: () => ['product', 'list'],
+    cacheKey: () => ['product', 'list'],
     params: () => ({}),
     loader: () => this.#api.getAll$(),
   })

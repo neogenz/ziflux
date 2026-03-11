@@ -12,7 +12,36 @@ export interface CacheEntry<T> {
 
 export interface ZifluxConfig {
   staleTime: number // ms before fresh → stale (default: 30s)
-  gcTime: number // ms before stale → evicted (default: 5min)
+  expireTime: number // ms before stale → evicted (default: 5min)
+  cleanupInterval?: number // ms between auto-cleanup sweeps (undefined = disabled)
+}
+
+// --- Cache inspection ---
+
+export interface CacheEntryInfo<T> {
+  key: string[]
+  data: T
+  createdAt: number
+  age: number
+  fresh: boolean
+  expired: boolean
+}
+
+export interface CacheInspection<T> {
+  size: number
+  entries: CacheEntryInfo<T>[]
+  inFlightKeys: string[][]
+  version: number
+  config: ZifluxConfig
+}
+
+// --- Retry ---
+
+export interface RetryConfig {
+  maxRetries: number
+  baseDelay?: number // default: 1000ms
+  maxDelay?: number // default: 30_000ms
+  retryIf?: (error: unknown) => boolean // default: () => true
 }
 
 // --- cachedResource ---
@@ -39,11 +68,13 @@ export interface CachedResourceRef<T> {
 
 export interface CachedResourceOptions<T, P extends object> {
   cache: DataCache<T>
-  key: string[] | ((params: NoInfer<P>) => string[])
+  cacheKey: string[] | ((params: NoInfer<P>) => string[])
   params?: () => P | undefined
   loader: (context: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
   staleTime?: number
-  gcTime?: number
+  expireTime?: number
+  retry?: number | RetryConfig
+  refetchInterval?: number | (() => number | false)
 }
 
 // --- cachedMutation ---

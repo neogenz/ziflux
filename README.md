@@ -1,59 +1,409 @@
-# Ziflux
+# ziflux
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.4.
+A zero-dependency, signal-native caching layer for Angular 21+.
+Stale-while-revalidate semantics for `resource()` — instant navigations, background refreshes, no spinners on return visits.
 
-## Development server
+---
 
-To start a local development server, run:
+## Architecture
 
-```bash
-ng serve
+```
+Component  →  Store  →  API Service  →  DataCache  →  Server
+view scope    route      root             root          remote
+              scope      singleton        singleton
+
+              cachedResource()  cache.set()   SWR + dedup
+              mutations         invalidate()  version signal
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+**You write** Component, Store, API Service — plain Angular `@Injectable()` classes.
+**Library provides** `DataCache`, `cachedResource()`, `injectCachedHttp()`, and `provideZiflux()` — the cache layer only.
 
-## Code scaffolding
+Signals flow back from Store to Component. The cache is transparent to the Store.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+---
 
-```bash
-ng generate component component-name
+## What it is
+
+A **cache layer** that fills the gap Angular's `resource()` leaves open: the data lifecycle.
+
+```
+resource()  → fetch lifecycle  → loading  | resolved | error
+DataCache   → data lifecycle   → fresh    | stale    | expired
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+`resource()` knows **how** to fetch. `ziflux` knows **when** to re-fetch and **what** to keep.
+
+## What it is NOT
+
+- Not a state manager — Angular signals are your state manager
+- Not a store abstraction — you write plain injectable services
+- Not another NgRx, not a TanStack port
+
+---
+
+## Installation
 
 ```bash
-ng generate --help
+npm install ziflux
 ```
 
-## Building
+## Setup
 
-To build the project run:
-
-```bash
-ng build
+```typescript
+// app.config.ts
+export const appConfig: ApplicationConfig = {
+  providers: [provideZiflux({ staleTime: 30_000, gcTime: 300_000 })],
+}
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+One line. All `DataCache` instances in your app inherit these defaults.
 
-## Running unit tests
+---
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## API
 
-```bash
-ng test
+Four exports.
+
+### `DataCache<T>`
+
+Own one per domain, in your API service (singleton).
+
+```typescript
+class DataCache<T> {
+  readonly version: Signal<number> // auto-increments on invalidate()
+
+  get(
+    key: string[],
+    options?: { staleTime?: number; gcTime?: number },
+  ): { data: T; fresh: boolean } | null
+  set(key: string[], data: T): void
+  invalidate(prefix: string[]): void // marks stale + bumps version
+  wrap(key: string[], obs$: Observable<T>): Observable<T>
+  deduplicate(key: string[], fn: () => Promise<T>): Promise<T>
+  prefetch(key: string[], fn: () => Promise<T>): Promise<void>
+  clear(): void
+}
 ```
 
-## Running end-to-end tests
+### `cachedResource<T, P>()`
 
-For end-to-end (e2e) testing, run:
+`resource()` extended with cache awareness. Same mental model.
 
-```bash
-ng e2e
+```typescript
+function cachedResource<T, P extends object>(options: {
+  cache: DataCache<T>
+  key: string[] | ((params: NoInfer<P>) => string[])
+  params?: () => P | undefined
+  loader: (context: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
+  staleTime?: number // override global
+  gcTime?: number // override global
+}): CachedResourceRef<T>
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+```typescript
+interface CachedResourceRef<T> {
+  readonly value: Signal<T | undefined>
+  readonly status: Signal<ResourceStatus>
+  readonly error: Signal<unknown>
+  readonly isLoading: Signal<boolean>
+  readonly isStale: Signal<boolean>
+  readonly isInitialLoading: Signal<boolean> // true only on cold cache
+  hasValue(): boolean
+  reload(): boolean
+  destroy(): void
+  set(value: T): void
+  update(updater: (value: T | undefined) => T): void
+}
+```
 
-## Additional Resources
+Everything else (`status()`, `error()`, `reload()`, `set()`, `update()`) behaves exactly like Angular's `ResourceRef<T>`.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+### `injectCachedHttp(cache)`
+
+HTTP client that auto-populates a `DataCache` on GET responses.
+
+```typescript
+function injectCachedHttp<T>(cache: DataCache<T>): CachedHttpClient<T>
+```
+
+```typescript
+interface CachedHttpClient<T> {
+  get(url: string, key: string[], options?): Observable<T> // fetches + caches
+  post(url: string, body: unknown, options?): Observable<T> // pass-through
+  put(url: string, body: unknown, options?): Observable<T> // pass-through
+  patch(url: string, body: unknown, options?): Observable<T> // pass-through
+  delete(url: string, options?): Observable<T> // pass-through
+}
+```
+
+Must be called in an injection context (field initializer of an `@Injectable()`).
+
+### `provideZiflux(config?)`
+
+```typescript
+provideZiflux({
+  staleTime: 30_000, // ms before fresh → stale (default: 30s)
+  gcTime: 300_000, // ms before stale → evicted (default: 5min)
+})
+```
+
+---
+
+## Architecture — Domain Pattern
+
+Every feature follows the same 3-file pattern. Always. No exceptions.
+
+```
+1. order.api.ts          ← HTTP + cache (singleton, providedIn: 'root')
+2. order-list.store.ts   ← cachedResource + mutations (route-scoped)
+3. order-list.component  ← inject(Store), read signals
+```
+
+### Rules
+
+1. A component **never** injects an API service directly
+2. HTTP logic is in the API service, **never** in the store
+3. The store **never** instantiates a `DataCache` — it reads `this.#api.cache`
+4. Mutations in the store call the API → the API invalidates the cache
+
+### Naming conventions
+
+| Concept      | Class name         | File name               |
+| ------------ | ------------------ | ----------------------- |
+| API service  | `OrderApi`         | `order.api.ts`          |
+| List store   | `OrderListStore`   | `order-list.store.ts`   |
+| Detail store | `OrderDetailStore` | `order-detail.store.ts` |
+
+---
+
+## Usage
+
+### 1. API service
+
+The cache lives here — it's a singleton that survives route navigations.
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class OrderApi {
+  readonly cache = new DataCache<Order>()
+  readonly #http = injectCachedHttp(this.cache)
+
+  getAll$(filters: OrderFilters): Observable<Order[]> {
+    return this.#http.get('/orders', ['order', 'list', filters.status], {
+      params: { ...filters },
+    })
+  }
+
+  getById$(id: string): Observable<Order> {
+    return this.#http.get(`/orders/${id}`, ['order', 'details', id])
+  }
+
+  delete$(id: string): Observable<void> {
+    return this.#http
+      .delete<void>(`/orders/${id}`)
+      .pipe(tap(() => this.cache.invalidate(['order'])))
+  }
+}
+```
+
+### 2. Store — list with filters
+
+```typescript
+@Injectable()
+export class OrderListStore {
+  readonly #api = inject(OrderApi)
+
+  readonly filters = signal<OrderFilters>({ status: 'all', search: '' })
+
+  readonly orders = cachedResource({
+    cache: this.#api.cache,
+    key: p => ['order', 'list', p.status, p.search],
+    params: () => this.filters(),
+    loader: ({ params }) => this.#api.getAll$(params),
+  })
+
+  setFilters(filters: Partial<OrderFilters>) {
+    this.filters.update(f => ({ ...f, ...filters }))
+  }
+}
+```
+
+`orders.reload()`, `orders.isInitialLoading()`, `orders.isStale()` — already there.
+
+### 3. Store — detail by id
+
+```typescript
+@Injectable()
+export class OrderDetailStore {
+  readonly #api = inject(OrderApi)
+
+  readonly #id = signal<string | null>(null)
+
+  readonly order = cachedResource({
+    cache: this.#api.cache,
+    key: p => ['order', 'details', p.id],
+    params: () => {
+      const id = this.#id()
+      return id ? { id } : undefined // undefined = idle, loader doesn't run
+    },
+    loader: ({ params }) => this.#api.getById$(params.id),
+  })
+
+  load(id: string) {
+    this.#id.set(id)
+  }
+}
+```
+
+### 4. Template
+
+```html
+@if (store.orders.isInitialLoading()) {
+<app-spinner />
+} @else if (store.orders.value(); as list) {
+<app-order-list [orders]="list" [stale]="store.orders.isStale()" />
+} @else {
+<app-empty-state />
+}
+```
+
+### 5. Optimistic updates
+
+No new API. Angular's `resource.set()` / `resource.update()` handle it natively.
+
+```typescript
+async delete(id: string) {
+  const snapshot = this.orders.value()
+  this.orders.update(list => list?.filter(o => o.id !== id))  // optimistic
+  try {
+    await firstValueFrom(this.#api.delete$(id))
+  } catch {
+    this.orders.set(snapshot)  // rollback
+  }
+}
+```
+
+---
+
+## Freshness model
+
+```
+  write        staleTime          gcTime
+    │              │                 │
+    ▼              ▼                 ▼
+    ├── FRESH ─────┤──── STALE ──────┤── EVICTED ──▶
+         return          return +        fetch from
+         directly     background fetch    server
+```
+
+**Golden rule: `invalidate()` marks entries stale. It never deletes them.**
+Users always see data instantly — even stale — while fresh data loads.
+
+---
+
+## Cache keys
+
+Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation.
+
+```typescript
+;['order', 'list', 'pending'][('order', 'details', '42')]['order'] // filtered list // single entity // matches all of the above → invalidate(['order'])
+```
+
+---
+
+## Loading states
+
+| Situation                 | Cache | Resource status        | isInitialLoading | Display               |
+| ------------------------- | ----- | ---------------------- | ---------------- | --------------------- |
+| First visit, cold cache   | MISS  | `'loading'`                | `true`           | Spinner               |
+| First visit, prefetched   | FRESH | `'resolved'`               | `false`          | Data                  |
+| Return visit              | STALE | `'loading'` → `'resolved'` | `false`          | Stale data → fresh    |
+| After mutation            | STALE | `'reloading'`              | `false`          | Data + silent refresh |
+| Network error, had cache  | STALE | `'error'`                  | `false`          | Stale data, no crash  |
+| Network error, cold cache | MISS  | `'error'`                  | `true`           | Error state           |
+
+---
+
+## When to cache / when not to
+
+| Cache                                             | Don't cache                                |
+| ------------------------------------------------- | ------------------------------------------ |
+| GET — entity lists                                | POST / PUT / DELETE                        |
+| GET — entity details                              | Search results with unique volatile params |
+| Data shared across multiple screens               | Real-time data (WebSocket, SSE)            |
+| Predictable access patterns (tabs, next/prev nav) | Large binaries                             |
+
+---
+
+## For AI agents
+
+When generating code for a ziflux project, follow this pattern exactly:
+
+### Creating a new domain (e.g. "product")
+
+**Step 1** — Create `product.api.ts`:
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class ProductApi {
+  readonly cache = new DataCache<Product>()
+  readonly #http = injectCachedHttp(this.cache)
+
+  getAll$(): Observable<Product[]> {
+    return this.#http.get('/products', ['product', 'list'])
+  }
+
+  getById$(id: string): Observable<Product> {
+    return this.#http.get(`/products/${id}`, ['product', 'details', id])
+  }
+
+  create$(body: CreateProduct): Observable<Product> {
+    return this.#http.post('/products', body).pipe(tap(() => this.cache.invalidate(['product'])))
+  }
+}
+```
+
+**Step 2** — Create `product-list.store.ts`:
+
+```typescript
+@Injectable()
+export class ProductListStore {
+  readonly #api = inject(ProductApi)
+
+  readonly products = cachedResource({
+    cache: this.#api.cache,
+    key: () => ['product', 'list'],
+    params: () => ({}),
+    loader: () => this.#api.getAll$(),
+  })
+}
+```
+
+**Step 3** — Use in component:
+
+```typescript
+@Component({ providers: [ProductListStore] })
+export class ProductListComponent {
+  readonly store = inject(ProductListStore)
+}
+```
+
+### What an agent must NOT do
+
+- Inject `HttpClient` or an API service directly in a component
+- Put `DataCache` inside a store
+- Call HTTP methods from a store
+- Skip the API layer and fetch directly in `cachedResource`'s loader
+- Create a new `DataCache` per store (use the one from the API service)
+
+---
+
+## Prior art
+
+- **RFC 5861** — stale-while-revalidate HTTP cache-control extension
+- **TanStack Query** — `staleTime`, `gcTime`, structured query keys
+- **SWR by Vercel** — popularized SWR in the frontend ecosystem
+- **Angular `resource()`** — the foundation this library builds on
+
+Zero external dependencies. 100% Angular signals + `resource()` + in-memory `Map`.

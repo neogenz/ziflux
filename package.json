@@ -3,38 +3,40 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "build": "ng build ziflux",
+    "test": "ng test ziflux --no-watch",
+    "test:watch": "ng test ziflux",
+    "typecheck": "tsc --noEmit -p projects/ziflux/tsconfig.lib.json",
+    "lint": "ng lint",
+    "lint:fix": "ng lint --fix",
+    "format": "prettier --write \"projects/**/*.ts\"",
+    "format:check": "prettier --check \"projects/**/*.ts\""
   },
-  "prettier": {
-    "printWidth": 100,
-    "singleQuote": true,
-    "overrides": [
-      {
-        "files": "*.html",
-        "options": {
-          "parser": "angular"
-        }
-      }
-    ]
-  },
+  "type": "module",
   "private": true,
   "packageManager": "pnpm@10.26.1",
   "dependencies": {
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",
     "@angular/core": "^21.0.0",
-    "@angular/forms": "^21.0.0",
     "@angular/platform-browser": "^21.0.0",
-    "@angular/router": "^21.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@angular-eslint/builder": "^21.3.0",
+    "@angular/build": "^21.2.1",
     "@angular/cli": "^21.0.4",
     "@angular/compiler-cli": "^21.0.0",
-    "typescript": "~5.9.2"
+    "@eslint/js": "^10.0.1",
+    "angular-eslint": "^21.3.0",
+    "eslint": "^10.0.3",
+    "jsdom": "^28.0.0",
+    "lefthook": "^2.1.3",
+    "ng-packagr": "^21.2.0",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^4.0.8"
   }
 }

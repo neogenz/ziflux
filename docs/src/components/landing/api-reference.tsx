@@ -156,7 +156,7 @@ export function ApiReference() {
   return (
     <section id="api" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">API Reference</h2>
-      <p className="mt-2 text-muted-foreground">Six exports. Nothing else.</p>
+      <p className="mt-2 text-muted-foreground">Seven exports.</p>
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2">

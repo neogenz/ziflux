@@ -81,24 +81,17 @@ export function QuickStart() {
         Three files to add SWR caching to any feature.
       </p>
 
-      {/* Architecture diagram — visual boxes */}
-      <div id="architecture" className="mt-8 overflow-x-auto rounded-xl border border-border bg-muted/50 p-6">
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-          {ARCH_BOXES.map((box, i) => (
-            <div key={box.label} className="flex items-center gap-2 sm:gap-3">
-              <div className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-background px-4 py-3">
-                <span className="text-sm font-bold whitespace-nowrap">{box.label}</span>
-                <span className={`text-[11px] font-mono whitespace-nowrap ${box.ziflux ? "text-accent font-medium" : "text-muted-foreground"}`}>
-                  {box.scope}
-                </span>
-              </div>
-              {i < ARCH_BOXES.length - 1 && (
-                <span className="text-muted-foreground text-lg">&rarr;</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Architecture diagram — inline text flow */}
+      <p id="architecture" className="mt-8 text-sm text-muted-foreground">
+        {ARCH_BOXES.map((box, i) => (
+          <span key={box.label}>
+            <span className="font-medium text-foreground">{box.label}</span>
+            {" "}
+            <span className={box.ziflux ? "font-mono text-accent" : ""}>{box.scope}</span>
+            {i < ARCH_BOXES.length - 1 && <span className="mx-2">&rarr;</span>}
+          </span>
+        ))}
+      </p>
 
       {/* Setup */}
       <div className="mt-10">

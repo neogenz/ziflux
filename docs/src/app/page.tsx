@@ -13,8 +13,8 @@ export default function HomePage() {
       <main>
         <Hero />
         <QuickStart />
-        <ApiReference />
         <Freshness />
+        <ApiReference />
         <PriorArt />
       </main>
       <Footer />

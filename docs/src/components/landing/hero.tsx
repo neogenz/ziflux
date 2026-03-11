@@ -37,26 +37,16 @@ export function Hero() {
         <CodeBlock code={USAGE_CODE} filename="order-list.store.ts" />
       </div>
 
-      {/* Comparison card — compact */}
-      <div className="mt-8 rounded-xl border border-border bg-muted/50 p-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <h3 className="mb-1.5 text-sm font-semibold text-muted-foreground">
-              Without ziflux
-            </h3>
-            <p className="text-sm font-mono text-muted-foreground">
-              spinner &rarr; data &rarr; spinner &rarr; data
-            </p>
-          </div>
-          <div>
-            <h3 className="mb-1.5 text-sm font-semibold text-accent">
-              With cachedResource()
-            </h3>
-            <p className="text-sm font-mono text-accent">
-              spinner &rarr; data &rarr; instant &rarr; instant
-            </p>
-          </div>
-        </div>
+      {/* Comparison — inline */}
+      <div className="mt-8 grid gap-4 text-sm sm:grid-cols-2">
+        <p className="text-muted-foreground">
+          <span className="font-semibold">Without ziflux</span><br />
+          <span className="font-mono">spinner &rarr; data &rarr; spinner &rarr; data</span>
+        </p>
+        <p>
+          <span className="font-semibold text-accent">With cachedResource()</span><br />
+          <span className="font-mono text-accent">spinner &rarr; data &rarr; instant &rarr; instant</span>
+        </p>
       </div>
     </section>
   )

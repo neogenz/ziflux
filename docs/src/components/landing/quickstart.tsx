@@ -66,19 +66,19 @@ export class OrderListComponent {
 }`
 
 const ARCH_BOXES = [
-  { label: "Component", scope: "view scope", color: "bg-blue-500/25 border-blue-500/50 text-blue-500" },
-  { label: "Store", scope: "route scope", color: "bg-purple-500/25 border-purple-500/50 text-purple-500" },
-  { label: "API Service", scope: "root singleton", color: "bg-accent/25 border-accent/50 text-accent" },
-  { label: "DataCache", scope: "root singleton", color: "bg-accent/25 border-accent/50 text-accent" },
-  { label: "Server", scope: "remote", color: "bg-neutral-500/20 border-neutral-400/40 text-neutral-400" },
+  { label: "Component", scope: "view scope", color: "bg-blue-500/25 border-blue-500/50 text-blue-500", ziflux: false },
+  { label: "Store", scope: "cachedResource()", color: "bg-purple-500/25 border-purple-500/50 text-purple-500", ziflux: true },
+  { label: "API Service", scope: "injectCachedHttp()", color: "bg-accent/25 border-accent/50 text-accent", ziflux: true },
+  { label: "DataCache", scope: "root singleton", color: "bg-accent/25 border-accent/50 text-accent", ziflux: true },
+  { label: "Server", scope: "remote", color: "bg-neutral-500/20 border-neutral-400/40 text-neutral-400", ziflux: false },
 ]
 
 export function QuickStart() {
   return (
-    <section id="quickstart" className="mx-auto max-w-4xl px-6 py-16 sm:py-20">
+    <section id="quickstart" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Quick Start</h2>
       <p className="mt-2 text-muted-foreground">
-        ziflux plugs into Angular&apos;s service &rarr; store &rarr; component pattern. Here&apos;s what each layer gets.
+        Three files to add SWR caching to any feature.
       </p>
 
       {/* Architecture diagram — visual boxes */}
@@ -86,7 +86,12 @@ export function QuickStart() {
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           {ARCH_BOXES.map((box, i) => (
             <div key={box.label} className="flex items-center gap-2 sm:gap-3">
-              <div className={`flex flex-col items-center gap-1.5 rounded-lg border px-4 py-3 ${box.color}`}>
+              <div className={`relative flex flex-col items-center gap-1.5 rounded-lg border px-4 py-3 ${box.color}`}>
+                {box.ziflux && (
+                  <span className="absolute -top-2 -right-1 rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
+                    ziflux
+                  </span>
+                )}
                 <span className="text-sm font-bold whitespace-nowrap">{box.label}</span>
                 <span className="text-[11px] font-medium opacity-60 whitespace-nowrap">{box.scope}</span>
               </div>
@@ -98,87 +103,42 @@ export function QuickStart() {
         </div>
       </div>
 
-      {/* Step 0: Setup */}
+      {/* Setup */}
       <div className="mt-10">
-        <div className="mb-3 flex items-center gap-3">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
-            0
-          </span>
-          <h3 className="text-lg font-semibold">Setup</h3>
-          <span className="text-xs text-muted-foreground">
-            <code>provideZiflux()</code> &mdash; global cache durations
-          </span>
-        </div>
+        <h3 className="mb-3 text-sm font-semibold">
+          <code className="text-accent">provideZiflux()</code>
+          <span className="ml-2 font-normal text-muted-foreground">— global cache durations</span>
+        </h3>
         <CodeBlock code={CONFIG_CODE} filename="app.config.ts" />
       </div>
 
-      {/* Step 1: API */}
-      <div className="mt-10">
-        <div className="mb-3 flex items-center gap-3">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
-            1
-          </span>
-          <h3 className="text-lg font-semibold">API Service</h3>
-          <span className="text-xs text-muted-foreground">
-            <code>DataCache</code> + <code>injectCachedHttp()</code> &mdash; auto-populates cache on GET
-          </span>
-        </div>
+      {/* API */}
+      <div className="mt-8">
+        <h3 className="mb-3 text-sm font-semibold">
+          <code className="text-accent">DataCache</code> + <code className="text-accent">injectCachedHttp()</code>
+          <span className="ml-2 font-normal text-muted-foreground">— auto-populates cache on GET</span>
+        </h3>
         <CodeBlock code={API_CODE} filename="order.api.ts" />
       </div>
 
-      {/* Step 2: Store */}
-      <div className="mt-10">
-        <div className="mb-3 flex items-center gap-3">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
-            2
-          </span>
-          <h3 className="text-lg font-semibold">Store</h3>
-          <span className="text-xs text-muted-foreground">
-            <code>cachedResource()</code> &mdash; returns stale data instantly, re-fetches in background
-          </span>
-        </div>
+      {/* Store */}
+      <div className="mt-8">
+        <h3 className="mb-3 text-sm font-semibold">
+          <code className="text-accent">cachedResource()</code>
+          <span className="ml-2 font-normal text-muted-foreground">— returns stale data instantly, re-fetches in background</span>
+        </h3>
         <CodeBlock code={STORE_CODE} filename="order-list.store.ts" />
       </div>
 
-      {/* Step 3: Component */}
-      <div className="mt-10">
-        <div className="mb-3 flex items-center gap-3">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
-            3
-          </span>
-          <h3 className="text-lg font-semibold">Component</h3>
-          <span className="text-xs text-muted-foreground">
-            <code>isInitialLoading()</code> + <code>isStale()</code> &mdash; spinner only on first visit
-          </span>
-        </div>
+      {/* Component */}
+      <div className="mt-8">
+        <h3 className="mb-3 text-sm font-semibold">
+          <code className="text-accent">isInitialLoading()</code> + <code className="text-accent">isStale()</code>
+          <span className="ml-2 font-normal text-muted-foreground">— spinner only on first visit</span>
+        </h3>
         <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
       </div>
 
-      {/* Rules */}
-      <div className="mt-10 rounded-xl border border-accent/20 bg-accent/5 p-6">
-        <h4 className="mb-3 text-sm font-semibold text-accent">
-          Hard rules
-        </h4>
-        <ol className="space-y-2 text-sm text-muted-foreground">
-          <li className="flex gap-2">
-            <span className="font-mono text-accent">1.</span>
-            Components <span className="font-medium text-foreground">never</span> inject API services directly
-          </li>
-          <li className="flex gap-2">
-            <span className="font-mono text-accent">2.</span>
-            HTTP logic lives in the API service, <span className="font-medium text-foreground">never</span> in the store
-          </li>
-          <li className="flex gap-2">
-            <span className="font-mono text-accent">3.</span>
-            The store <span className="font-medium text-foreground">never</span> instantiates a DataCache — it reads{" "}
-            <code>api.cache</code>
-          </li>
-          <li className="flex gap-2">
-            <span className="font-mono text-accent">4.</span>
-            Mutations: store calls API → API invalidates cache
-          </li>
-        </ol>
-      </div>
     </section>
   )
 }

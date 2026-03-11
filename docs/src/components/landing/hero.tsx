@@ -11,7 +11,7 @@ const USAGE_CODE = `const todos = cachedResource({
 
 export function Hero() {
   return (
-    <section className="mx-auto max-w-4xl px-6 pt-20 pb-16 sm:pt-28 sm:pb-20">
+    <section className="mx-auto max-w-4xl px-6 pt-20 pb-10 sm:pt-28 sm:pb-14">
       {/* Badge */}
       <div className="mb-6 flex items-center gap-2">
         <span className="inline-flex items-center rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
@@ -31,7 +31,7 @@ export function Hero() {
       {/* One-liner subtitle */}
       <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
         Instant navigations, background refreshes, zero spinners.{" "}
-        <span className="text-foreground font-medium">Four exports.</span>
+        <span className="text-foreground font-medium">Six exports.</span>
       </p>
 
       {/* Install */}

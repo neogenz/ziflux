@@ -78,6 +78,58 @@ export class ProductApi {
 }`,
   },
   {
+    id: "cached-mutation",
+    label: "cachedMutation()",
+    description: "Wraps any mutation with signal-based lifecycle, optimistic updates, and automatic cache invalidation.",
+    code: `function cachedMutation<A = void, R = void, C = void>(options: {
+  mutationFn: (args: A) => Observable<R> | Promise<R>
+  cache?: { invalidate(prefix: string[]): void }
+  invalidateKeys?: (args: A, result: R) => string[][]
+  onMutate?: (args: A) => C | Promise<C>       // snapshot for rollback
+  onSuccess?: (result: R, args: A) => void
+  onError?: (error: unknown, args: A, context: C | undefined) => void
+}): CachedMutationRef<A, R>`,
+    usage: `interface CachedMutationRef<A, R> {
+  mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
+  readonly status: Signal<CachedMutationStatus>  // 'idle' | 'pending' | 'success' | 'error'
+  readonly isPending: Signal<boolean>
+  readonly error: Signal<unknown>
+  readonly data: Signal<R | undefined>
+  reset(): void
+}
+
+// Usage — optimistic delete with rollback
+readonly deleteMutation = cachedMutation({
+  mutationFn: (id: string) => this.#api.delete$(id),
+  cache: this.#api.cache,
+  invalidateKeys: (id) => [['order']],
+  onMutate: (id) => {
+    const prev = this.orders.value()
+    this.orders.update(list => list?.filter(o => o.id !== id))
+    return prev
+  },
+  onError: (_err, _id, prev) => { if (prev) this.orders.set(prev) },
+})`,
+  },
+  {
+    id: "any-loading",
+    label: "anyLoading()",
+    description: "Aggregate loading state from multiple signals. Returns true if any signal is true.",
+    code: `function anyLoading(...signals: Signal<boolean>[]): Signal<boolean>
+// Implementation: computed(() => signals.some(s => s()))`,
+    usage: `// Combine loading states from multiple resources
+readonly isLoading = anyLoading(
+  this.orders.isLoading,
+  this.products.isLoading,
+  this.deleteMutation.isPending,
+)
+
+// In template
+@if (store.isLoading()) {
+  <app-progress-bar />
+}`,
+  },
+  {
     id: "provide-ziflux",
     label: "provideZiflux()",
     description: "Global configuration. One line in app.config.ts.",
@@ -102,9 +154,9 @@ export function ApiReference() {
   const active = tabs.find((t) => t.id === activeTab)!
 
   return (
-    <section id="api" className="mx-auto max-w-4xl px-6 py-16 sm:py-20">
+    <section id="api" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">API Reference</h2>
-      <p className="mt-2 text-muted-foreground">Four exports. Nothing else.</p>
+      <p className="mt-2 text-muted-foreground">Six exports. Nothing else.</p>
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2">

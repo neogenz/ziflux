@@ -19,7 +19,7 @@ readonly deleteMutation = cachedMutation({
 
 export function Freshness() {
   return (
-    <section id="freshness" className="mx-auto max-w-4xl px-6 py-16 sm:py-20">
+    <section id="freshness" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How Caching Works</h2>
       <p className="mt-2 text-muted-foreground">
         Every cached entry goes through three phases. <code>invalidate()</code> marks entries stale &mdash; it never deletes them.

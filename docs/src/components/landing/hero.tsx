@@ -43,6 +43,8 @@ export function Hero() {
         </div>
 
         {/* Animated comparison */}
+        <h2 className="mt-10 text-lg font-semibold">What it feels like</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Same app, same actions. One caches.</p>
         <NavigationDemo />
       </div>
     </section>

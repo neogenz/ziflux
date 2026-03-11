@@ -213,7 +213,7 @@ describe('cachedMutation', () => {
   it('onError is called with context from onMutate', async () => {
     const onError = vi.fn()
 
-    const mutation = cachedMutation<string, void, string[]>({
+    const mutation = cachedMutation<string, undefined, string[]>({
       mutationFn: () => Promise.reject(new Error('fail')),
       onMutate: () => ['rollback-data'],
       onError,
@@ -228,7 +228,7 @@ describe('cachedMutation', () => {
   it('supports optimistic update with rollback', async () => {
     const items = signal(['a', 'b', 'c'])
 
-    const mutation = cachedMutation<string, void, string[]>({
+    const mutation = cachedMutation<string, undefined, string[]>({
       mutationFn: () => Promise.reject(new Error('fail')),
       onMutate: id => {
         const prev = items()
@@ -315,10 +315,11 @@ describe('cachedMutation', () => {
     })
     expect(await successMutation.mutate()).toBe(42)
 
-    const errorMutation = cachedMutation({
+    const errorMutation = cachedMutation<undefined, string>({
       mutationFn: () => Promise.reject(new Error('fail')),
     })
-    expect(await errorMutation.mutate()).toBeUndefined()
+    const errorResult = await errorMutation.mutate()
+    expect(errorResult).toBeUndefined()
   })
 
   // --- Observable error ---

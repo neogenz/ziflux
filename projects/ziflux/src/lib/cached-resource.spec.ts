@@ -18,7 +18,7 @@ async function waitForStatus(
   for (let i = 0; i < maxAttempts; i++) {
     if (ref.status() === targetStatus) return
     await flushMicrotasks()
-    TestBed.flushEffects()
+    TestBed.tick()
   }
   throw new Error(`Status never reached ${targetStatus}, stuck at ${ref.status()}`)
 }
@@ -83,7 +83,7 @@ describe('cachedResource', () => {
     )
 
     await flushMicrotasks()
-    TestBed.flushEffects()
+    TestBed.tick()
     expect(ref.isInitialLoading()).toBe(true)
     expect(ref.isStale()).toBe(false)
 
@@ -136,7 +136,7 @@ describe('cachedResource', () => {
     )
 
     await flushMicrotasks()
-    TestBed.flushEffects()
+    TestBed.tick()
 
     // During loading: should show stale data
     expect(ref.value()).toBe('stale-data')
@@ -187,7 +187,7 @@ describe('cachedResource', () => {
 
     await flushMicrotasks()
     await flushMicrotasks()
-    TestBed.flushEffects()
+    TestBed.tick()
     expect(ref.status()).toBe('idle')
     expect(ref.value()).toBeUndefined()
     expect(loaderCalled).toBe(false)
@@ -221,7 +221,11 @@ describe('cachedResource', () => {
         params: () => ({}),
         loader: () => {
           fetchCount++
-          return new Promise(r => setTimeout(() => r('data'), 10))
+          return new Promise<string>(r => {
+            setTimeout(() => {
+              r('data')
+            }, 10)
+          })
         },
       }),
     )
@@ -229,7 +233,11 @@ describe('cachedResource', () => {
     // Also prefetch the same key concurrently
     const prefetchPromise = cache.prefetch(['test'], () => {
       fetchCount++
-      return new Promise(r => setTimeout(() => r('data'), 10))
+      return new Promise<string>(r => {
+        setTimeout(() => {
+          r('data')
+        }, 10)
+      })
     })
 
     await prefetchPromise
@@ -251,7 +259,7 @@ describe('cachedResource', () => {
 
     await waitForStatus(ref, 'resolved')
     ref.set('overridden')
-    TestBed.flushEffects()
+    TestBed.tick()
     expect(ref.value()).toBe('overridden')
   })
 
@@ -267,7 +275,7 @@ describe('cachedResource', () => {
 
     await waitForStatus(ref, 'resolved')
     ref.update(v => (v ?? '') + ' world')
-    TestBed.flushEffects()
+    TestBed.tick()
     expect(ref.value()).toBe('hello world')
   })
 
@@ -290,6 +298,28 @@ describe('cachedResource', () => {
   })
 
   // --- per-resource staleTime ---
+
+  it('staleTime: 0 overrides cache default — data is always stale', async () => {
+    cache.set(['test-zero'], 'cached-data')
+
+    let loaderCalled = false
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test-zero'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalled = true
+          return Promise.resolve('fresh-data')
+        },
+        staleTime: 0,
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+    expect(loaderCalled).toBe(true)
+    expect(ref.value()).toBe('fresh-data')
+  })
 
   it('respects per-resource staleTime override', async () => {
     cache.set(['test'], 'cached')
@@ -346,7 +376,7 @@ describe('cachedResource', () => {
 
     ref.destroy()
     await flushMicrotasks()
-    TestBed.flushEffects()
+    TestBed.tick()
     expect(ref.status()).toBe('idle')
   })
 
@@ -455,13 +485,13 @@ describe('cachedResource', () => {
 
       // Let first attempt fail and enter retry delay
       await flushMicrotasks()
-      TestBed.flushEffects()
+      TestBed.tick()
       await flushMicrotasks()
 
       // Destroy triggers abort
       ref.destroy()
       await flushMicrotasks()
-      TestBed.flushEffects()
+      TestBed.tick()
 
       // Should have only attempted once before abort stopped it
       expect(attempt).toBe(1)
@@ -499,7 +529,7 @@ describe('cachedResource', () => {
       // Wait for data to go stale (10ms) + at least one poll cycle (50ms)
       await new Promise(r => setTimeout(r, 150))
       await flushMicrotasks()
-      TestBed.flushEffects()
+      TestBed.tick()
 
       expect(loadCount).toBeGreaterThan(afterInitial)
     })
@@ -524,7 +554,7 @@ describe('cachedResource', () => {
 
       await new Promise(r => setTimeout(r, 120))
       await flushMicrotasks()
-      TestBed.flushEffects()
+      TestBed.tick()
 
       expect(loadCount).toBe(afterInitial)
     })
@@ -550,7 +580,7 @@ describe('cachedResource', () => {
 
       await new Promise(r => setTimeout(r, 120))
       await flushMicrotasks()
-      TestBed.flushEffects()
+      TestBed.tick()
 
       expect(loadCount).toBe(afterInitial)
     })

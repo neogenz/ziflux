@@ -8,17 +8,23 @@ function retryWithBackoff<T>(
   abortSignal: AbortSignal,
 ): Promise<T> {
   const attempt = (n: number): Promise<T> =>
-    fn().catch(error => {
+    fn().catch((error: unknown) => {
       if (n >= config.maxRetries || !config.retryIf(error) || abortSignal.aborted) {
         throw error
       }
       const delay = Math.random() * Math.min(config.maxDelay, config.baseDelay * 2 ** n)
       return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => resolve(attempt(n + 1)), delay)
-        abortSignal.addEventListener('abort', () => {
-          clearTimeout(timer)
-          reject(error)
-        })
+        const timer = setTimeout(() => {
+          resolve(attempt(n + 1))
+        }, delay)
+        abortSignal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer)
+            reject(error as Error)
+          },
+          { once: true },
+        )
       })
     })
   return attempt(0)
@@ -41,7 +47,8 @@ export function cachedResource<T, P extends object>(
 
   const resolveKey = (p: P): string[] => (typeof cacheKey === 'function' ? cacheKey(p) : cacheKey)
 
-  const cacheGetOptions = staleTime || expireTime ? { staleTime, expireTime } : undefined
+  const cacheGetOptions =
+    staleTime !== undefined || expireTime !== undefined ? { staleTime, expireTime } : undefined
 
   // Captures cached data whenever params or cache version change.
   // Used to display stale data during background revalidation.
@@ -95,7 +102,9 @@ export function cachedResource<T, P extends object>(
       const interval = typeof refetchInterval === 'function' ? refetchInterval() : refetchInterval
       if (!interval || interval <= 0) return
       const id = setInterval(() => res.reload(), interval)
-      onCleanup(() => clearInterval(id))
+      onCleanup(() => {
+        clearInterval(id)
+      })
     })
   }
 
@@ -124,9 +133,15 @@ export function cachedResource<T, P extends object>(
     error: res.error,
     isLoading: res.isLoading,
     reload: () => res.reload(),
-    destroy: () => res.destroy(),
-    set: (v: T) => res.set(v),
-    update: (fn: (prev: T | undefined) => T) => res.update(fn),
+    destroy: () => {
+      res.destroy()
+    },
+    set: (v: T) => {
+      res.set(v)
+    },
+    update: (fn: (prev: T | undefined) => T) => {
+      res.update(fn)
+    },
     hasValue: () => value() !== undefined,
     isStale,
     isInitialLoading,

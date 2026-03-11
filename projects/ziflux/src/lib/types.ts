@@ -91,6 +91,7 @@ export interface CachedMutationOptions<A = void, R = void, C = void> {
 }
 
 export interface CachedMutationRef<A, R> {
+  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void-arg pattern for no-arg mutations
   mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
   readonly status: Signal<CachedMutationStatus>
   readonly isPending: Signal<boolean>

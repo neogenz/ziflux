@@ -19,7 +19,9 @@ export class DataCache<T> {
     if (this.#config.cleanupInterval) {
       const destroyRef = inject(DestroyRef)
       const id = setInterval(() => this.cleanup(), this.#config.cleanupInterval)
-      destroyRef.onDestroy(() => clearInterval(id))
+      destroyRef.onDestroy(() => {
+        clearInterval(id)
+      })
     }
   }
 
@@ -59,6 +61,7 @@ export class DataCache<T> {
     const prefixStr = JSON.stringify(prefix).slice(0, -1)
     for (const [key, entry] of this.#entries) {
       if (key.startsWith(prefixStr)) {
+        // Shift timestamp backward so age exceeds staleTime → entry reads as stale
         entry.createdAt -= this.#config.staleTime + 1
       }
     }
@@ -66,7 +69,11 @@ export class DataCache<T> {
   }
 
   wrap(key: string[], obs$: Observable<T>): Observable<T> {
-    return obs$.pipe(tap(data => this.set(key, data)))
+    return obs$.pipe(
+      tap(data => {
+        this.set(key, data)
+      }),
+    )
   }
 
   deduplicate(key: string[], fn: () => Promise<T>): Promise<T> {

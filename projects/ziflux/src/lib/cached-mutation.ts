@@ -11,6 +11,7 @@ export function cachedMutation<A = void, R = void, C = void>(
   const error = signal<unknown>(null)
   const data = signal<R | undefined>(undefined)
 
+  // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void-arg pattern for no-arg mutations
   async function mutate(...rawArgs: A extends void ? [] : [args: A]): Promise<R | undefined> {
     const args = rawArgs[0] as A
     status.set('pending')

@@ -16,9 +16,11 @@ export function injectCachedHttp<T>(cache: DataCache<T>): CachedHttpClient<T> {
 
   return {
     get(url, key, options) {
-      return http
-        .get<T>(url, options as Record<string, unknown>)
-        .pipe(tap(data => cache.set(key, data)))
+      return http.get<T>(url, options as Record<string, unknown>).pipe(
+        tap(data => {
+          cache.set(key, data)
+        }),
+      )
     },
     post(url, body, options) {
       return http.post<T>(url, body, options as Record<string, unknown>)

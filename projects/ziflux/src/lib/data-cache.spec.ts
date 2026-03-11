@@ -145,6 +145,21 @@ describe('DataCache', () => {
     expect(cache.get(['a'])?.data).toBe('hello')
   })
 
+  it('invalidate() makes entry stale but not expired', () => {
+    cache.set(['a'], 'data')
+    cache.invalidate(['a'])
+
+    const result = cache.get(['a'])
+    expect(result).not.toBeNull()
+    expect(result?.data).toBe('data')
+    expect(result?.fresh).toBe(false)
+
+    // Confirm it's NOT expired — still retrievable with any expireTime
+    const info = cache.inspect()
+    const entry = info.entries.find(e => e.key[0] === 'a')
+    expect(entry?.expired).toBe(false)
+  })
+
   it('bumps version on invalidate', () => {
     const v0 = cache.version()
     cache.invalidate(['whatever'])
@@ -193,7 +208,11 @@ describe('DataCache', () => {
     let callCount = 0
     const fn = () => {
       callCount++
-      return new Promise<string>(resolve => setTimeout(() => resolve('result'), 10))
+      return new Promise<string>(resolve => {
+        setTimeout(() => {
+          resolve('result')
+        }, 10)
+      })
     }
 
     const [r1, r2, r3] = await Promise.all([
@@ -293,14 +312,16 @@ describe('DataCache', () => {
     expect(info.size).toBe(2)
     expect(info.entries).toHaveLength(2)
 
-    const entryA = info.entries.find(e => e.key[0] === 'a')!
-    expect(entryA.data).toBe('hello')
-    expect(entryA.fresh).toBe(true)
-    expect(entryA.expired).toBe(false)
+    const entryA = info.entries.find(e => e.key[0] === 'a')
+    expect(entryA).toBeDefined()
+    expect(entryA?.data).toBe('hello')
+    expect(entryA?.fresh).toBe(true)
+    expect(entryA?.expired).toBe(false)
 
-    const entryBC = info.entries.find(e => e.key[0] === 'b')!
-    expect(entryBC.key).toEqual(['b', 'c'])
-    expect(entryBC.data).toBe('world')
+    const entryBC = info.entries.find(e => e.key[0] === 'b')
+    expect(entryBC).toBeDefined()
+    expect(entryBC?.key).toEqual(['b', 'c'])
+    expect(entryBC?.data).toBe('world')
   })
 
   it('reflects stale entries after invalidation', () => {
@@ -406,7 +427,9 @@ describe('DataCache', () => {
     expect(autoGcCache.get(['a'])).toBeNull()
 
     // cleanup
-    destroyFns.forEach(fn => fn())
+    destroyFns.forEach(fn => {
+      fn()
+    })
     vi.useRealTimers()
   })
 
@@ -429,7 +452,9 @@ describe('DataCache', () => {
     )
 
     // Destroy before cleanup fires
-    destroyFns.forEach(fn => fn())
+    destroyFns.forEach(fn => {
+      fn()
+    })
 
     autoGcCache.set(['a'], 'v1')
     vi.advanceTimersByTime(200) // past cleanupInterval, but interval was cleared

@@ -1,7 +1,4 @@
-"use client"
-
-import { useState } from "react"
-import { Check, Copy } from "lucide-react"
+import { CopyButton } from "./copy-button"
 
 const KEYWORDS = new Set([
   "import", "export", "from", "const", "let", "var", "readonly", "new",
@@ -51,14 +48,6 @@ export function CodeBlock({
   filename?: string
   language?: string
 }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   const highlighted = language === "bash"
     ? code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     : highlightTS(code)
@@ -73,13 +62,7 @@ export function CodeBlock({
       <pre className={filename ? "!rounded-t-none !border-t-0" : ""}>
         <code dangerouslySetInnerHTML={{ __html: highlighted }} />
       </pre>
-      <button
-        onClick={handleCopy}
-        className="absolute top-3 right-3 rounded-lg bg-white/10 p-2 text-white/40 opacity-0 transition-all hover:bg-white/20 hover:text-white/70 group-hover:opacity-100"
-        aria-label="Copy code"
-      >
-        {copied ? <Check size={14} /> : <Copy size={14} />}
-      </button>
+      <CopyButton text={code} />
     </div>
   )
 }

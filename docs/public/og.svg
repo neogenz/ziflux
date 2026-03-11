@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0a0a0b"/>
+  <rect x="556" y="215" width="88" height="88" rx="16" fill="#6d5acd"/>
+  <text x="600" y="278" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="52" font-weight="700" fill="white" text-anchor="middle">Z</text>
+  <text x="600" y="360" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="48" font-weight="700" fill="white" text-anchor="middle">ziflux</text>
+  <text x="600" y="408" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="24" font-weight="400" fill="#a1a1aa" text-anchor="middle">SWR caching for Angular resource()</text>
+  <text x="600" y="446" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="18" font-weight="400" fill="#71717a" text-anchor="middle">Instant navigations · Background refreshes · Zero spinners</text>
+</svg>

@@ -84,6 +84,36 @@ code:not(pre code) {
 .token-punctuation { color: var(--code-punctuation); }
 .token-number { color: var(--code-number); }
 
+/* Accent glow on hero headline */
+.glow-accent {
+  text-shadow: 0 0 40px rgba(249, 115, 22, 0.3);
+}
+
+/* Code block depth */
+pre {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dark pre {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Navigation demo row entrance */
+.nav-row-enter {
+  animation: navRowIn 250ms ease-out both;
+}
+
+@keyframes navRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Selection */
 ::selection {
   background: rgba(249, 115, 22, 0.2);

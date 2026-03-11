@@ -4,7 +4,7 @@ const CONFIG_CODE = `export const appConfig: ApplicationConfig = {
   providers: [
     provideZiflux({
       staleTime: 30_000,   // 30s — data considered fresh
-      gcTime:   300_000,   // 5min — stale data evicted
+      expireTime:   300_000,   // 5min — stale data evicted
     }),
   ],
 }`
@@ -39,7 +39,7 @@ export class OrderListStore {
 
   readonly orders = cachedResource({
     cache: this.#api.cache,
-    key: p => ['order', 'list', p.status, p.search],
+    cacheKey: params => ['order', 'list', params.status, params.search],
     params: () => this.filters(),
     loader: ({ params }) => this.#api.getAll$(params),
   })
@@ -65,36 +65,17 @@ export class OrderListComponent {
   readonly store = inject(OrderListStore)
 }`
 
-const ARCH_BOXES = [
-  { label: "Component", scope: "view scope", ziflux: false },
-  { label: "Store", scope: "cachedResource()", ziflux: true },
-  { label: "API Service", scope: "injectCachedHttp()", ziflux: true },
-  { label: "DataCache", scope: "root singleton", ziflux: true },
-  { label: "Server", scope: "remote", ziflux: false },
-]
-
 export function QuickStart() {
   return (
     <section id="quickstart" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Quick Start</h2>
-      <p className="mt-2 text-muted-foreground">
-        Three files to add SWR caching to any feature.
-      </p>
-
-      {/* Architecture diagram — inline text flow */}
-      <p id="architecture" className="mt-8 text-sm text-muted-foreground">
-        {ARCH_BOXES.map((box, i) => (
-          <span key={box.label}>
-            <span className="font-medium text-foreground">{box.label}</span>
-            {" "}
-            <span className={box.ziflux ? "font-mono text-accent" : ""}>{box.scope}</span>
-            {i < ARCH_BOXES.length - 1 && <span className="mx-2">&rarr;</span>}
-          </span>
-        ))}
-      </p>
+      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
+        <a href="#quickstart" className="hover:no-underline">Quick Start <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
+      </h2>
 
       {/* Setup */}
-      <div className="mt-10">
+      <p className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Setup</p>
+
+      <div className="mt-4">
         <h3 className="mb-3 text-sm font-semibold">
           <code className="text-accent">provideZiflux()</code>
           <span className="ml-2 font-normal text-muted-foreground">— global cache durations</span>
@@ -102,8 +83,10 @@ export function QuickStart() {
         <CodeBlock code={CONFIG_CODE} filename="app.config.ts" />
       </div>
 
-      {/* API */}
-      <div className="mt-8">
+      {/* Per feature */}
+      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Per feature</p>
+
+      <div className="mt-4">
         <h3 className="mb-3 text-sm font-semibold">
           <code className="text-accent">DataCache</code> + <code className="text-accent">injectCachedHttp()</code>
           <span className="ml-2 font-normal text-muted-foreground">— auto-populates cache on GET</span>
@@ -111,7 +94,6 @@ export function QuickStart() {
         <CodeBlock code={API_CODE} filename="order.api.ts" />
       </div>
 
-      {/* Store */}
       <div className="mt-8">
         <h3 className="mb-3 text-sm font-semibold">
           <code className="text-accent">cachedResource()</code>
@@ -120,7 +102,6 @@ export function QuickStart() {
         <CodeBlock code={STORE_CODE} filename="order-list.store.ts" />
       </div>
 
-      {/* Component */}
       <div className="mt-8">
         <h3 className="mb-3 text-sm font-semibold">
           <code className="text-accent">isInitialLoading()</code> + <code className="text-accent">isStale()</code>

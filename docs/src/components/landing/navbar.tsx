@@ -7,7 +7,6 @@ import { Github, ExternalLink, Menu, X, Sun, Moon, Monitor } from "lucide-react"
 const NAV_LINKS = [
   { href: "#quickstart", label: "Quick Start" },
   { href: "#api", label: "API" },
-  { href: "#architecture", label: "Architecture" },
   { href: "#freshness", label: "Caching" },
 ]
 
@@ -35,23 +34,52 @@ function ThemeToggle() {
   )
 }
 
+function useActiveSection() {
+  const [active, setActive] = useState("")
+
+  useEffect(() => {
+    const ids = NAV_LINKS.map((l) => l.href.slice(1))
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActive(`#${entry.target.id}`)
+          }
+        }
+      },
+      { rootMargin: "-40% 0px -55% 0px" },
+    )
+
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  return active
+}
+
 export function Navbar() {
   const [open, setOpen] = useState(false)
+  const activeSection = useActiveSection()
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
-        <a href="#" className="flex items-center gap-2.5 font-semibold tracking-tight">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-[13px] font-bold text-white">
-            Z
-          </span>
-          ziflux
+        <a href="#" className="text-lg font-bold tracking-tight">
+          ziflux<span className="font-normal text-muted-foreground">.docs</span>
         </a>
 
         {/* Desktop links */}
         <div className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
           {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className="transition-colors hover:text-foreground">
+            <a
+              key={link.href}
+              href={link.href}
+              className={`transition-colors hover:text-foreground ${activeSection === link.href ? "text-foreground" : ""}`}
+            >
               {link.label}
             </a>
           ))}
@@ -68,7 +96,7 @@ export function Navbar() {
             <ExternalLink size={10} />
           </a>
           <a
-            href="#" /* TODO: replace with real GitHub URL */
+            href="https://github.com/neogenz/ziflux"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"

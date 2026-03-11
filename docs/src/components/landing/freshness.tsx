@@ -20,7 +20,9 @@ readonly deleteMutation = cachedMutation({
 export function Freshness() {
   return (
     <section id="freshness" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">How Caching Works</h2>
+      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
+        <a href="#freshness" className="hover:no-underline">How Caching Works <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
+      </h2>
       <p className="mt-2 text-muted-foreground">
         Every cached entry goes through three phases. <code>invalidate()</code> marks entries stale &mdash; it never deletes them.
       </p>
@@ -54,7 +56,7 @@ export function Freshness() {
       <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
         <div className="flex-[3]">Data written to cache</div>
         <div className="flex-[3]"><code className="font-semibold text-foreground">staleTime</code> elapsed &mdash; data may be outdated</div>
-        <div className="flex-[2]"><code className="font-semibold text-foreground">gcTime</code> elapsed &mdash; garbage collected</div>
+        <div className="flex-[2]"><code className="font-semibold text-foreground">expireTime</code> elapsed &mdash; entry evicted</div>
       </div>
 
       {/* Loading states table */}
@@ -62,6 +64,7 @@ export function Freshness() {
         <h3 className="mb-4 text-lg font-semibold">What the user sees</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
+            <caption className="sr-only">Cache state and corresponding UI behavior for each navigation scenario</caption>
             <thead>
               <tr className="border-b border-border text-left text-xs font-semibold text-muted-foreground">
                 <th className="px-4 py-3">Scenario</th>
@@ -144,6 +147,31 @@ export function Freshness() {
           <code>cachedMutation()</code> handles the full lifecycle: snapshot before, optimistic update, rollback on error, cache invalidation on success.
         </p>
         <CodeBlock code={OPTIMISTIC_CODE} filename="order-list.store.ts" />
+      </div>
+
+      {/* When to cache */}
+      <div className="mt-10">
+        <h3 className="mb-4 text-lg font-semibold">When to Cache</h3>
+        <div className="grid gap-x-8 gap-y-6 text-sm sm:grid-cols-2">
+          <div className="border-l-2 border-emerald-500 pl-4">
+            <p className="mb-2 font-semibold text-emerald-500">Cache</p>
+            <ul className="space-y-1.5 text-muted-foreground">
+              <li>GET — entity lists</li>
+              <li>GET — entity details</li>
+              <li>Data shared across multiple screens</li>
+              <li>Predictable access patterns (tabs, navigation)</li>
+            </ul>
+          </div>
+          <div className="border-l-2 border-red-400 pl-4">
+            <p className="mb-2 font-semibold text-red-400">Don&apos;t cache</p>
+            <ul className="space-y-1.5 text-muted-foreground">
+              <li>POST / PUT / DELETE</li>
+              <li>Search results with volatile params</li>
+              <li>Real-time data (WebSocket, SSE)</li>
+              <li>Large binaries</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   )

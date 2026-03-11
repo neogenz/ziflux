@@ -11,7 +11,7 @@ const tabs = [
     code: `class DataCache<T> {
   readonly version: Signal<number>  // auto-increments on invalidate()
 
-  get(key: string[], options?: { staleTime?: number; gcTime?: number }): { data: T; fresh: boolean } | null
+  get(key: string[], options?: { staleTime?: number; expireTime?: number }): { data: T; fresh: boolean } | null
   set(key: string[], data: T): void
   invalidate(prefix: string[]): void  // marks stale + bumps version
   wrap(key: string[], obs$: Observable<T>): Observable<T>
@@ -34,11 +34,11 @@ this.cache.invalidate(['order'])  // prefix match`,
     description: "resource() extended with cache awareness. Same mental model.",
     code: `function cachedResource<T, P extends object>(options: {
   cache: DataCache<T>
-  key: string[] | ((params: P) => string[])
+  cacheKey: string[] | ((params: P) => string[])
   params?: () => P | undefined     // undefined = idle
   loader: (ctx: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
   staleTime?: number
-  gcTime?: number
+  expireTime?: number
 }): CachedResourceRef<T>`,
     usage: `interface CachedResourceRef<T> {
   readonly value: Signal<T | undefined>
@@ -135,12 +135,12 @@ readonly isLoading = anyLoading(
     description: "Global configuration. One line in app.config.ts.",
     code: `provideZiflux({
   staleTime: 30_000,  // ms before fresh → stale   (default: 30s)
-  gcTime: 300_000,    // ms before stale → evicted  (default: 5min)
+  expireTime: 300_000,    // ms before stale → evicted  (default: 5min)
 })`,
     usage: `// app.config.ts
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideZiflux({ staleTime: 30_000, gcTime: 300_000 }),
+    provideZiflux({ staleTime: 30_000, expireTime: 300_000 }),
   ],
 }
 
@@ -155,8 +155,10 @@ export function ApiReference() {
 
   return (
     <section id="api" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">API Reference</h2>
-      <p className="mt-2 text-muted-foreground">Seven exports.</p>
+      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
+        <a href="#api" className="hover:no-underline">API Reference <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
+      </h2>
+      <p className="mt-2 text-muted-foreground">The complete API.</p>
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2">

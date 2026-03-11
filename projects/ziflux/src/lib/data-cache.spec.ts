@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { DestroyRef, Injector, runInInjectionContext } from '@angular/core'
 import { DataCache } from './data-cache'
 import { ZIFLUX_CONFIG } from './provide-ziflux'
-import type { ZifluxConfig } from './types'
+import type { DataCacheOptions, ZifluxConfig } from './types'
 
 function createCache<T>(
-  config?: Partial<ZifluxConfig>,
+  config?: DataCacheOptions,
   globalConfig?: Partial<ZifluxConfig>,
 ): DataCache<T> {
   const providers: Array<{ provide: unknown; useValue: unknown }> = []
@@ -104,6 +104,23 @@ describe('DataCache', () => {
     expect(cache.get(['a'], { expireTime: 50 })).toBeNull()
 
     vi.useRealTimers()
+  })
+
+  // --- name ---
+
+  it('auto-generates name when not provided', () => {
+    expect(cache.name).toMatch(/^cache-\d+$/)
+  })
+
+  it('uses provided name', () => {
+    const named = createCache<string>({ name: 'orders' })
+    expect(named.name).toBe('orders')
+  })
+
+  it('generates unique names for multiple caches', () => {
+    const c1 = createCache<string>()
+    const c2 = createCache<string>()
+    expect(c1.name).not.toBe(c2.name)
   })
 
   // --- config priority: arg > global > defaults ---
@@ -347,6 +364,52 @@ describe('DataCache', () => {
 
     resolvePromise('done')
     await deduplicatePromise
+  })
+
+  it('returns timeToStale and timeToExpire for entries', () => {
+    const custom = createCache<string>({ staleTime: 1000, expireTime: 5000 })
+    custom.set(['a'], 'data')
+
+    vi.useFakeTimers()
+    vi.advanceTimersByTime(300)
+
+    const info = custom.inspect()
+    const entry = info.entries[0]
+    expect(entry.timeToStale).toBe(700)
+    expect(entry.timeToExpire).toBe(4700)
+    expect(entry.state).toBe('fresh')
+
+    vi.useRealTimers()
+  })
+
+  it('returns state=stale when past staleTime but before expireTime', () => {
+    const custom = createCache<string>({ staleTime: 100, expireTime: 5000 })
+    custom.set(['a'], 'data')
+
+    vi.useFakeTimers()
+    vi.advanceTimersByTime(200)
+
+    const entry = custom.inspect().entries[0]
+    expect(entry.state).toBe('stale')
+    expect(entry.timeToStale).toBe(0)
+    expect(entry.timeToExpire).toBe(4800)
+
+    vi.useRealTimers()
+  })
+
+  it('returns state=expired when past expireTime', () => {
+    const custom = createCache<string>({ staleTime: 100, expireTime: 500 })
+    custom.set(['a'], 'data')
+
+    vi.useFakeTimers()
+    vi.advanceTimersByTime(600)
+
+    const entry = custom.inspect().entries[0]
+    expect(entry.state).toBe('expired')
+    expect(entry.timeToStale).toBe(0)
+    expect(entry.timeToExpire).toBe(0)
+
+    vi.useRealTimers()
   })
 
   it('returns correct version and config', () => {

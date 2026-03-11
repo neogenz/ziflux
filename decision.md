@@ -282,6 +282,27 @@ params: () => {
 
 ---
 
+## D-23 — Devtools via `withDevtools()` feature, not config flag
+
+**Decision:** Devtools capabilities (cache registry, console logging) are activated via `withDevtools()`, a feature function passed to `provideZiflux()`.
+
+**Rationale:** Follows Angular's `provideRouter(routes, withDebugTracing())` pattern. Feature functions compose cleanly, tree-shake when unused, and match what TanStack Query Angular and NgRx Signal Store do. Zero runtime cost when not enabled — `DataCache` uses `inject(CacheRegistry, { optional: true })` and `inject(DevtoolsLogger, { optional: true })`, which return `null` when `withDevtools()` is absent.
+
+**Usage:**
+```typescript
+provideZiflux({ staleTime: 60_000 }, withDevtools())
+```
+
+---
+
+## D-24 — Devtools component auto-gates via `isDevMode()`, not manual guards
+
+**Decision:** `ZifluxDevtoolsComponent` checks `isDevMode()` internally and renders nothing in production builds. The user drops `<ziflux-devtools />` once — no `@if` guard needed.
+
+**Rationale:** Like Vercel's toolbar on preview deploys — the component decides visibility internally. Angular's `isDevMode()` is the standard runtime check tied to the build configuration (`ng build` vs `ng build --configuration production`). This eliminates a class of bugs where developers forget to remove devtools from production templates.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

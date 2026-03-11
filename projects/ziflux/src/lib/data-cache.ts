@@ -1,25 +1,48 @@
 import { DestroyRef, inject, signal } from '@angular/core'
 import { type Observable, tap } from 'rxjs'
+import { CacheRegistry } from './cache-registry'
+import { DevtoolsLogger } from './devtools-logger'
 import { ZIFLUX_CONFIG } from './provide-ziflux'
-import type { CacheEntry, CacheInspection, ZifluxConfig } from './types'
+import type {
+  CacheEntry,
+  CacheEntryInfo,
+  CacheInspection,
+  DataCacheOptions,
+  ZifluxConfig,
+} from './types'
+
+let cacheCounter = 0
 
 export class DataCache<T> {
   readonly #entries = new Map<string, CacheEntry<T>>()
   readonly #inFlight = new Map<string, Promise<T>>()
   readonly #version = signal(0)
   readonly #config: ZifluxConfig
+  readonly #logger: DevtoolsLogger | null
 
+  readonly name: string
   readonly version = this.#version.asReadonly()
 
-  constructor(config?: Partial<ZifluxConfig>) {
+  constructor(config?: DataCacheOptions) {
     const globalConfig = inject(ZIFLUX_CONFIG, { optional: true })
     const defaults: ZifluxConfig = { staleTime: 30_000, expireTime: 300_000 }
     this.#config = { ...defaults, ...globalConfig, ...config }
+    this.name = config?.name ?? `cache-${cacheCounter++}`
+
+    this.#logger = inject(DevtoolsLogger, { optional: true })
+    const registry = inject(CacheRegistry, { optional: true })
+    const destroyRef = inject(DestroyRef, { optional: true })
+
+    if (registry) {
+      registry.register(this as DataCache<unknown>)
+      destroyRef?.onDestroy(() => {
+        registry.unregister(this as DataCache<unknown>)
+      })
+    }
 
     if (this.#config.cleanupInterval) {
-      const destroyRef = inject(DestroyRef)
       const id = setInterval(() => this.cleanup(), this.#config.cleanupInterval)
-      destroyRef.onDestroy(() => {
+      destroyRef?.onDestroy(() => {
         clearInterval(id)
       })
     }
@@ -55,6 +78,7 @@ export class DataCache<T> {
 
   set(key: string[], data: T): void {
     this.#entries.set(this.#serialize(key), { data, createdAt: Date.now() })
+    this.#logger?.logSet(this.name, key, data)
   }
 
   invalidate(prefix: string[]): void {
@@ -66,6 +90,7 @@ export class DataCache<T> {
       }
     }
     this.#version.update(v => v + 1)
+    this.#logger?.logInvalidate(this.name, prefix)
   }
 
   wrap(key: string[], obs$: Observable<T>): Observable<T> {
@@ -79,8 +104,12 @@ export class DataCache<T> {
   deduplicate(key: string[], fn: () => Promise<T>): Promise<T> {
     const serialized = this.#serialize(key)
     const existing = this.#inFlight.get(serialized)
-    if (existing) return existing
+    if (existing) {
+      this.#logger?.logDeduplicate(this.name, key, true)
+      return existing
+    }
 
+    this.#logger?.logDeduplicate(this.name, key, false)
     const promise = fn().finally(() => this.#inFlight.delete(serialized))
     this.#inFlight.set(serialized, promise)
     return promise
@@ -95,19 +124,26 @@ export class DataCache<T> {
     this.#entries.clear()
     this.#inFlight.clear()
     this.#version.update(v => v + 1)
+    this.#logger?.logClear(this.name)
   }
 
   inspect(): CacheInspection<T> {
     const now = Date.now()
     const entries = [...this.#entries].map(([serialized, entry]) => {
       const age = now - entry.createdAt
+      const fresh = age <= this.#config.staleTime
+      const expired = age > this.#config.expireTime
+      const state: CacheEntryInfo<T>['state'] = fresh ? 'fresh' : expired ? 'expired' : 'stale'
       return {
         key: JSON.parse(serialized) as string[],
         data: entry.data,
         createdAt: entry.createdAt,
         age,
-        fresh: age <= this.#config.staleTime,
-        expired: age > this.#config.expireTime,
+        fresh,
+        expired,
+        timeToStale: Math.max(0, this.#config.staleTime - age),
+        timeToExpire: Math.max(0, this.#config.expireTime - age),
+        state,
       }
     })
 
@@ -126,6 +162,7 @@ export class DataCache<T> {
     for (const [key, entry] of this.#entries) {
       if (now - entry.createdAt > this.#config.expireTime) {
         this.#entries.delete(key)
+        this.#logger?.logEvict(this.name, JSON.parse(key) as string[])
         evicted++
       }
     }

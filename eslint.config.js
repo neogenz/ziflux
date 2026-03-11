@@ -19,7 +19,7 @@ export default tseslint.config(
     processor: angular.processInlineTemplates,
     rules: {
       '@angular-eslint/directive-selector': ['error', { type: 'attribute', prefix: 'lib', style: 'camelCase' }],
-      '@angular-eslint/component-selector': ['error', { type: 'element', prefix: 'lib', style: 'kebab-case' }],
+      '@angular-eslint/component-selector': ['error', { type: 'element', prefix: ['lib', 'ziflux'], style: 'kebab-case' }],
       // void is used as generic default for no-arg mutations (CachedMutationOptions<A = void>)
       '@typescript-eslint/no-invalid-void-type': ['error', { allowInGenericTypeArguments: true }],
       // Template literals with numbers are idiomatic TypeScript

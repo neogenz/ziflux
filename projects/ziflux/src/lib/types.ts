@@ -1,4 +1,4 @@
-import type { ResourceStatus, Signal } from '@angular/core'
+import type { EnvironmentProviders, ResourceStatus, Signal } from '@angular/core'
 import type { HttpContext, HttpHeaders, HttpParams } from '@angular/common/http'
 import type { Observable } from 'rxjs'
 import type { DataCache } from './data-cache'
@@ -25,6 +25,9 @@ export interface CacheEntryInfo<T> {
   age: number
   fresh: boolean
   expired: boolean
+  timeToStale: number
+  timeToExpire: number
+  state: 'fresh' | 'stale' | 'expired'
 }
 
 export interface CacheInspection<T> {
@@ -34,6 +37,16 @@ export interface CacheInspection<T> {
   version: number
   config: ZifluxConfig
 }
+
+export interface DataCacheOptions extends Partial<ZifluxConfig> {
+  name?: string
+}
+
+export interface DevtoolsConfig {
+  logOperations?: boolean
+}
+
+export type ZifluxFeature = EnvironmentProviders & { readonly ɵzifluxFeature: never }
 
 // --- Retry ---
 

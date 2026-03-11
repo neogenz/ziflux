@@ -27,42 +27,48 @@ export function Freshness() {
       {/* Timeline */}
       <div className="mt-8 overflow-x-auto rounded-xl border border-border bg-muted/50 p-6">
         <div className="min-w-[400px] font-mono text-sm">
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <span className="w-16 text-right text-xs">write</span>
-            <span className="w-24 text-right text-xs">staleTime</span>
-            <span className="w-24 text-right text-xs">gcTime</span>
+          {/* Labels */}
+          <div className="flex items-end text-xs text-muted-foreground">
+            <span className="w-4" />
+            <span className="flex-[3] text-left">write</span>
+            <span className="flex-[3] text-left">staleTime</span>
+            <span className="flex-[2] text-left">gcTime</span>
           </div>
+          {/* Tick marks */}
           <div className="mt-2 flex items-center">
             <span className="w-4 text-muted-foreground">│</span>
-            <span className="w-28" />
+            <span className="flex-[3]" />
             <span className="w-4 text-muted-foreground">│</span>
-            <span className="w-28" />
+            <span className="flex-[3]" />
             <span className="w-4 text-muted-foreground">│</span>
           </div>
+          {/* Bars */}
           <div className="mt-1 flex items-center text-xs">
             <span className="w-4 text-muted-foreground">├</span>
-            <span className="w-28 border-t-2 border-emerald-500" />
+            <span className="flex-[3] h-2 rounded-sm bg-emerald-500/80" />
             <span className="w-4 text-muted-foreground">├</span>
-            <span className="w-28 border-t-2 border-amber-500" />
+            <span className="flex-[3] h-2 rounded-sm bg-amber-500/80" />
             <span className="w-4 text-muted-foreground">├</span>
-            <span className="w-16 border-t-2 border-red-400" />
+            <span className="flex-[2] h-2 rounded-sm bg-red-400/80" />
             <span className="text-muted-foreground">▶</span>
           </div>
-          <div className="mt-2 flex items-center text-xs">
+          {/* State labels */}
+          <div className="mt-3 flex items-center text-xs">
             <span className="w-4" />
-            <span className="w-28 text-center text-emerald-500 font-semibold">FRESH</span>
+            <span className="flex-[3] text-center text-emerald-500 font-semibold">FRESH</span>
             <span className="w-4" />
-            <span className="w-28 text-center text-amber-500 font-semibold">STALE</span>
+            <span className="flex-[3] text-center text-amber-500 font-semibold">STALE</span>
             <span className="w-4" />
-            <span className="w-16 text-center text-red-400 font-semibold">EVICTED</span>
+            <span className="flex-[2] text-center text-red-400 font-semibold">EVICTED</span>
           </div>
+          {/* Descriptions */}
           <div className="mt-1 flex items-center text-xs text-muted-foreground">
             <span className="w-4" />
-            <span className="w-28 text-center">return directly</span>
+            <span className="flex-[3] text-center">return directly</span>
             <span className="w-4" />
-            <span className="w-28 text-center">return + bg fetch</span>
+            <span className="flex-[3] text-center">return + bg fetch</span>
             <span className="w-4" />
-            <span className="w-16 text-center">fetch server</span>
+            <span className="flex-[2] text-center">fetch server</span>
           </div>
         </div>
       </div>
@@ -73,10 +79,10 @@ export function Freshness() {
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/50 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <tr className="border-b border-border bg-muted/50 text-left text-xs font-semibold text-muted-foreground">
                 <th className="px-4 py-3">Situation</th>
                 <th className="px-4 py-3">Cache</th>
-                <th className="px-4 py-3">isInitialLoading</th>
+                <th className="px-4 py-3 font-mono">isInitialLoading</th>
                 <th className="px-4 py-3">Display</th>
               </tr>
             </thead>

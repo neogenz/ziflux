@@ -33,12 +33,12 @@ export function Hero() {
       </p>
 
       {/* Install */}
-      <div className="mt-8 max-w-md">
+      <div className="mt-8">
         <CodeBlock code={INSTALL_CODE} language="bash" />
       </div>
 
       {/* Config */}
-      <div className="mt-4 max-w-xl">
+      <div className="mt-4">
         <CodeBlock code={HERO_CODE} filename="app.config.ts" />
       </div>
 
@@ -46,7 +46,7 @@ export function Hero() {
       <div className="mt-12 rounded-xl border border-border bg-muted/50 p-6">
         <div className="grid gap-6 sm:grid-cols-2">
           <div>
-            <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
               resource()
             </h3>
             <p className="text-sm leading-relaxed text-muted-foreground">
@@ -57,7 +57,7 @@ export function Hero() {
             </p>
           </div>
           <div>
-            <h3 className="mb-1 text-sm font-semibold uppercase tracking-wider text-accent">
+            <h3 className="mb-1 text-sm font-semibold text-accent">
               DataCache
             </h3>
             <p className="text-sm leading-relaxed text-muted-foreground">

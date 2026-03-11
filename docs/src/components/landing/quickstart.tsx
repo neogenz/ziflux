@@ -65,7 +65,7 @@ export function QuickStart() {
       </p>
 
       {/* Architecture diagram */}
-      <div className="mt-8 overflow-x-auto rounded-xl border border-border bg-muted/50 p-6 font-mono text-sm">
+      <div id="architecture" className="mt-8 overflow-x-auto rounded-xl border border-border bg-muted/50 p-6 font-mono text-sm">
         <pre className="!bg-transparent !border-0 !p-0 text-muted-foreground">
 {`Component  →  Store  →  API Service  →  DataCache  →  Server
 view scope    route      root             root          remote
@@ -117,7 +117,7 @@ view scope    route      root             root          remote
 
       {/* Rules */}
       <div className="mt-10 rounded-xl border border-accent/20 bg-accent/5 p-6">
-        <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider text-accent">
+        <h4 className="mb-3 text-sm font-semibold text-accent">
           Hard rules
         </h4>
         <ol className="space-y-2 text-sm text-muted-foreground">

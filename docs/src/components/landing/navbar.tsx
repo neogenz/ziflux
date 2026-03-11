@@ -1,6 +1,18 @@
-import { Github, ExternalLink } from "lucide-react"
+"use client"
+
+import { useState } from "react"
+import { Github, ExternalLink, Menu, X } from "lucide-react"
+
+const NAV_LINKS = [
+  { href: "#quickstart", label: "Quick Start" },
+  { href: "#api", label: "API" },
+  { href: "#architecture", label: "Architecture" },
+  { href: "#freshness", label: "Freshness" },
+]
 
 export function Navbar() {
+  const [open, setOpen] = useState(false)
+
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
@@ -11,19 +23,13 @@ export function Navbar() {
           ziflux
         </a>
 
+        {/* Desktop links */}
         <div className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
-          <a href="#quickstart" className="transition-colors hover:text-foreground">
-            Quick Start
-          </a>
-          <a href="#api" className="transition-colors hover:text-foreground">
-            API
-          </a>
-          <a href="#architecture" className="transition-colors hover:text-foreground">
-            Architecture
-          </a>
-          <a href="#freshness" className="transition-colors hover:text-foreground">
-            Freshness
-          </a>
+          {NAV_LINKS.map((link) => (
+            <a key={link.href} href={link.href} className="transition-colors hover:text-foreground">
+              {link.label}
+            </a>
+          ))}
         </div>
 
         <div className="flex items-center gap-3">
@@ -37,7 +43,7 @@ export function Navbar() {
             <ExternalLink size={10} />
           </a>
           <a
-            href="https://github.com/user/ziflux"
+            href="#" /* TODO: replace with real GitHub URL */
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
@@ -45,8 +51,35 @@ export function Navbar() {
           >
             <Github size={18} />
           </a>
+
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+            aria-label={open ? "Close menu" : "Open menu"}
+          >
+            {open ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile dropdown */}
+      {open && (
+        <div className="border-t border-border/50 bg-background px-6 pb-4 pt-2 sm:hidden">
+          <div className="flex flex-col gap-3">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </header>
   )
 }

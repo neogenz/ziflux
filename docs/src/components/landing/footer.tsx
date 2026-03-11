@@ -11,7 +11,7 @@ export function Footer() {
           <span>ziflux &middot; MIT License</span>
         </div>
         <a
-          href="https://github.com/user/ziflux"
+          href="#" /* TODO: replace with real GitHub URL */
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"

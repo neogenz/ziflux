@@ -34,7 +34,7 @@ export function WhatNot() {
       {/* Identity */}
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="rounded-xl border border-border p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-emerald-500">
+          <h3 className="mb-4 text-sm font-semibold text-emerald-500">
             What it is
           </h3>
           <ul className="space-y-3">
@@ -47,7 +47,7 @@ export function WhatNot() {
           </ul>
         </div>
         <div className="rounded-xl border border-border p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-red-400">
+          <h3 className="mb-4 text-sm font-semibold text-red-400">
             What it is NOT
           </h3>
           <ul className="space-y-3">
@@ -64,7 +64,7 @@ export function WhatNot() {
       {/* When to cache */}
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
         <div className="rounded-xl border border-border p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-emerald-500">
+          <h3 className="mb-4 text-sm font-semibold text-emerald-500">
             Cache
           </h3>
           <ul className="space-y-3">
@@ -77,7 +77,7 @@ export function WhatNot() {
           </ul>
         </div>
         <div className="rounded-xl border border-border p-6">
-          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-red-400">
+          <h3 className="mb-4 text-sm font-semibold text-red-400">
             Don&apos;t cache
           </h3>
           <ul className="space-y-3">

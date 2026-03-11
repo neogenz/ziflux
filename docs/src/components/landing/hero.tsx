@@ -26,11 +26,44 @@ export function Hero() {
         <span className="text-accent">resource()</span>
       </h1>
 
-      {/* Subtitle */}
+      {/* Pain point */}
       <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-        Instant navigations, background refreshes, no spinners on return visits.{" "}
+        <code>resource()</code> re-fetches on every navigation. Your users see spinners on data they already had.
+      </p>
+
+      {/* Solution */}
+      <p className="mt-2 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+        ziflux adds a cache layer. Instant returns, background refreshes, zero spinners on return visits.{" "}
         <span className="text-foreground font-medium">Four exports. That&apos;s the entire API.</span>
       </p>
+
+      {/* What it is — the "why" */}
+      <div className="mt-10 rounded-xl border border-border bg-muted/50 p-6">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
+              resource() alone
+            </h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Fetch lifecycle &mdash; <code>loading</code> | <code>resolved</code> | <code>error</code>
+            </p>
+            <p className="mt-1 text-sm font-mono text-muted-foreground">
+              spinner &rarr; data &rarr; spinner &rarr; data
+            </p>
+          </div>
+          <div>
+            <h3 className="mb-1 text-sm font-semibold text-accent">
+              resource() + DataCache
+            </h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Data lifecycle &mdash; <code>fresh</code> | <code>stale</code> | <code>expired</code>
+            </p>
+            <p className="mt-1 text-sm font-mono text-accent">
+              spinner &rarr; data &rarr; instant &rarr; instant
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Install */}
       <div className="mt-8">
@@ -40,35 +73,6 @@ export function Hero() {
       {/* Config */}
       <div className="mt-4">
         <CodeBlock code={HERO_CODE} filename="app.config.ts" />
-      </div>
-
-      {/* What it is */}
-      <div className="mt-12 rounded-xl border border-border bg-muted/50 p-6">
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
-              resource()
-            </h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Fetch lifecycle &mdash; <code>loading</code> | <code>resolved</code> | <code>error</code>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Knows <span className="font-medium text-foreground">how</span> to fetch.
-            </p>
-          </div>
-          <div>
-            <h3 className="mb-1 text-sm font-semibold text-accent">
-              DataCache
-            </h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Data lifecycle &mdash; <code>fresh</code> | <code>stale</code> | <code>expired</code>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Knows <span className="font-medium text-foreground">when</span> to re-fetch and{" "}
-              <span className="font-medium text-foreground">what</span> to keep.
-            </p>
-          </div>
-        </div>
       </div>
     </section>
   )

@@ -120,9 +120,9 @@ this.orders.set(snapshot) // rollback
 
 ---
 
-## D-09 — Four exports only
+## D-09 — Minimal exports
 
-**Decision:** The public API is `DataCache`, `cachedResource`, `injectCachedHttp`, `provideZiflux`. Nothing else. (See D-12 for `injectCachedHttp` rationale, D-15 for the rename to `provideZiflux`.)
+**Decision:** The public API started as 4 exports (`DataCache`, `cachedResource`, `injectCachedHttp`, `provideZiflux`), later extended to 7 with `cachedMutation`, `anyLoading`, and `ZIFLUX_CONFIG`. (See D-12 for `injectCachedHttp` rationale, D-15 for the rename to `provideZiflux`, D-16 for `cachedMutation`, D-17 for `anyLoading`.)
 
 **Rationale:** Every additional export is a concept to learn. Prefetching, invalidation patterns, and loading state handling are either built into these four primitives or handled by Angular's native APIs.
 
@@ -209,6 +209,36 @@ params: () => {
 **Decision:** The global config provider is `provideZiflux()`, not `provideDataCache()`.
 
 **Rationale:** Aligns with the library name. One provider, one name. The injection token is `ZIFLUX_CONFIG`.
+
+---
+
+## D-16 — `cachedMutation()` — mutation lifecycle with signals
+
+**Decision:** Add `cachedMutation<A, R, C>()` — a factory that wraps any mutation (Observable or Promise) with signal-based `status`, `isPending`, `error`, `data`, and automatic cache invalidation.
+
+**Rationale:**
+
+- Every mutation in a store repeats ~13 lines of identical boilerplate: loading signal, error signal, try/catch, invalidation, finally
+- `cachedMutation()` reduces this to 5 declarative lines while keeping full control (optimistic updates, rollback, success/error callbacks)
+- `cache` is optional and structurally typed `{ invalidate(prefix: string[]): void }` — mutations without cache (email, workflow) still get `isPending`/`error` tracking
+- `invalidateKeys` receives `(args, result)` — the server response can drive which keys to invalidate
+- `mutate()` never rejects — errors are captured in the `error` signal, no unhandled Promise rejections
+- Concurrent mutations: last-write-wins (simple, sufficient for v1)
+- No injection context required — `signal()` works anywhere in Angular 21+
+
+**Rejected alternatives:**
+- TanStack-style `useMutation` hook → requires injection context, opinionated on caching
+- Store-level `mutate()` helper → doesn't compose, can't be used declaratively as a class field
+
+---
+
+## D-17 — `anyLoading()` accepts `Signal<boolean>[]`, not `CachedResourceRef[]`
+
+**Decision:** `anyLoading(...signals: Signal<boolean>[])` takes any boolean signals, not library-specific types.
+
+**Rationale:** Maximally generic. Works with `CachedResourceRef.isLoading`, `CachedMutationRef.isPending`, or any user-created `Signal<boolean>`. Three lines of implementation, zero coupling.
+
+**Rejected alternative:** `anyLoading(...refs: CachedResourceRef[])` → too narrow, can't mix resources and mutations.
 
 ---
 

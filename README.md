@@ -17,7 +17,7 @@ view scope    route      root             root          remote
 ```
 
 **You write** Component, Store, API Service — plain Angular `@Injectable()` classes.
-**Library provides** `DataCache`, `cachedResource()`, `injectCachedHttp()`, and `provideZiflux()` — the cache layer only.
+**Library provides** `DataCache`, `cachedResource()`, `cachedMutation()`, `injectCachedHttp()`, `provideZiflux()`, and `anyLoading()` — the cache + mutation lifecycle layer.
 
 Signals flow back from Store to Component. The cache is transparent to the Store.
 
@@ -63,7 +63,7 @@ One line. All `DataCache` instances in your app inherit these defaults.
 
 ## API
 
-Four exports.
+Seven exports.
 
 ### `DataCache<T>`
 
@@ -147,6 +147,44 @@ provideZiflux({
   gcTime: 300_000, // ms before stale → evicted (default: 5min)
 })
 ```
+
+### `cachedMutation<A, R, C>()`
+
+Declarative mutation lifecycle — status signals, cache invalidation, optimistic updates.
+
+```typescript
+function cachedMutation<A = void, R = void, C = void>(options: {
+  mutationFn: (args: A) => Observable<R> | Promise<R>
+  cache?: { invalidate(prefix: string[]): void } // any DataCache works
+  invalidateKeys?: (args: A, result: R) => string[][]
+  onMutate?: (args: A) => C | Promise<C> // optimistic update, returns rollback context
+  onSuccess?: (result: R, args: A) => void
+  onError?: (error: unknown, args: A, context: C | undefined) => void
+}): CachedMutationRef<A, R>
+```
+
+```typescript
+interface CachedMutationRef<A, R> {
+  mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
+  readonly status: Signal<CachedMutationStatus> // 'idle' | 'pending' | 'success' | 'error'
+  readonly isPending: Signal<boolean>
+  readonly error: Signal<unknown>
+  readonly data: Signal<R | undefined> // last successful result
+  reset(): void // back to idle
+}
+```
+
+`mutate()` never rejects — errors are captured in the `error` signal.
+
+### `anyLoading()`
+
+Aggregate loading state from any `Signal<boolean>`.
+
+```typescript
+function anyLoading(...signals: Signal<boolean>[]): Signal<boolean>
+```
+
+Works with both `CachedResourceRef.isLoading` and `CachedMutationRef.isPending`.
 
 ---
 
@@ -268,20 +306,59 @@ export class OrderDetailStore {
 }
 ```
 
-### 5. Optimistic updates
+### 5. Mutations with `cachedMutation()`
 
-No new API. Angular's `resource.set()` / `resource.update()` handle it natively.
+Replaces ~13 lines of boilerplate per mutation with a declarative definition.
 
 ```typescript
-async delete(id: string) {
-  const snapshot = this.orders.value()
-  this.orders.update(list => list?.filter(o => o.id !== id))  // optimistic
-  try {
-    await firstValueFrom(this.#api.delete$(id))
-  } catch {
-    this.orders.set(snapshot)  // rollback
-  }
+@Injectable()
+export class OrderListStore {
+  readonly #api = inject(OrderApi)
+
+  readonly orders = cachedResource({ /* ... */ })
+
+  readonly deleteOrder = cachedMutation({
+    cache: this.#api.cache,
+    mutationFn: (id: string) => this.#api.delete$(id),
+    invalidateKeys: (id) => [['order', 'details', id], ['order', 'list']],
+  })
 }
+```
+
+```html
+<button (click)="store.deleteOrder.mutate(order.id)">Delete</button>
+@if (store.deleteOrder.isPending()) { <app-spinner /> }
+```
+
+### 6. Optimistic updates + rollback
+
+Use `onMutate` to apply optimistic changes, return rollback context, revert on error.
+
+```typescript
+readonly updateOrder = cachedMutation<{ id: string; data: Partial<Order> }, Order, Order[]>({
+  cache: this.#api.cache,
+  mutationFn: (args) => this.#api.update$(args.id, args.data),
+  invalidateKeys: (args) => [['order', 'details', args.id], ['order', 'list']],
+  onMutate: (args) => {
+    const prev = this.orders.value()
+    this.orders.update(list =>
+      list?.map(o => (o.id === args.id ? { ...o, ...args.data } : o)),
+    )
+    return prev // rollback context
+  },
+  onError: (_err, _args, context) => {
+    if (context) this.orders.set(context)
+  },
+})
+```
+
+### 7. Aggregate loading state
+
+```typescript
+readonly isAnythingLoading = anyLoading(
+  this.orders.isLoading,
+  this.deleteOrder.isPending,
+)
 ```
 
 ---
@@ -359,7 +436,7 @@ export class ProductApi {
   }
 
   create$(body: CreateProduct): Observable<Product> {
-    return this.#http.post('/products', body).pipe(tap(() => this.cache.invalidate(['product'])))
+    return this.#http.post('/products', body)
   }
 }
 ```
@@ -377,6 +454,17 @@ export class ProductListStore {
     params: () => ({}),
     loader: () => this.#api.getAll$(),
   })
+
+  readonly createProduct = cachedMutation({
+    cache: this.#api.cache,
+    mutationFn: (body: CreateProduct) => this.#api.create$(body),
+    invalidateKeys: () => [['product', 'list']],
+  })
+
+  readonly isAnythingLoading = anyLoading(
+    this.products.isLoading,
+    this.createProduct.isPending,
+  )
 }
 ```
 
@@ -396,6 +484,8 @@ export class ProductListComponent {
 - Call HTTP methods from a store
 - Skip the API layer and fetch directly in `cachedResource`'s loader
 - Create a new `DataCache` per store (use the one from the API service)
+- Write manual loading/error signal boilerplate — use `cachedMutation()` instead
+- Invalidate cache manually inside a store — use `cachedMutation`'s `invalidateKeys`
 
 ---
 

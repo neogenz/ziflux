@@ -46,6 +46,28 @@ export interface CachedResourceOptions<T, P extends object> {
   gcTime?: number
 }
 
+// --- cachedMutation ---
+
+export type CachedMutationStatus = 'idle' | 'pending' | 'success' | 'error'
+
+export interface CachedMutationOptions<A = void, R = void, C = void> {
+  mutationFn: (args: A) => Observable<R> | Promise<R>
+  cache?: { invalidate(prefix: string[]): void }
+  invalidateKeys?: (args: A, result: R) => string[][]
+  onMutate?: (args: A) => C | Promise<C>
+  onSuccess?: (result: R, args: A) => void
+  onError?: (error: unknown, args: A, context: C | undefined) => void
+}
+
+export interface CachedMutationRef<A, R> {
+  mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
+  readonly status: Signal<CachedMutationStatus>
+  readonly isPending: Signal<boolean>
+  readonly error: Signal<unknown>
+  readonly data: Signal<R | undefined>
+  reset(): void
+}
+
 // --- injectCachedHttp ---
 
 export interface CachedHttpRequestOptions {

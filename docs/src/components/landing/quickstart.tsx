@@ -66,11 +66,11 @@ export class OrderListComponent {
 }`
 
 const ARCH_BOXES = [
-  { label: "Component", scope: "view scope", color: "bg-blue-500/25 border-blue-500/50 text-blue-500", ziflux: false },
-  { label: "Store", scope: "cachedResource()", color: "bg-purple-500/25 border-purple-500/50 text-purple-500", ziflux: true },
-  { label: "API Service", scope: "injectCachedHttp()", color: "bg-accent/25 border-accent/50 text-accent", ziflux: true },
-  { label: "DataCache", scope: "root singleton", color: "bg-accent/25 border-accent/50 text-accent", ziflux: true },
-  { label: "Server", scope: "remote", color: "bg-neutral-500/20 border-neutral-400/40 text-neutral-400", ziflux: false },
+  { label: "Component", scope: "view scope", ziflux: false },
+  { label: "Store", scope: "cachedResource()", ziflux: true },
+  { label: "API Service", scope: "injectCachedHttp()", ziflux: true },
+  { label: "DataCache", scope: "root singleton", ziflux: true },
+  { label: "Server", scope: "remote", ziflux: false },
 ]
 
 export function QuickStart() {
@@ -86,17 +86,14 @@ export function QuickStart() {
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
           {ARCH_BOXES.map((box, i) => (
             <div key={box.label} className="flex items-center gap-2 sm:gap-3">
-              <div className={`relative flex flex-col items-center gap-1.5 rounded-lg border px-4 py-3 ${box.color}`}>
-                {box.ziflux && (
-                  <span className="absolute -top-2 -right-1 rounded bg-accent px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
-                    ziflux
-                  </span>
-                )}
+              <div className="flex flex-col items-center gap-1.5 rounded-lg border border-border bg-background px-4 py-3">
                 <span className="text-sm font-bold whitespace-nowrap">{box.label}</span>
-                <span className="text-[11px] font-medium opacity-60 whitespace-nowrap">{box.scope}</span>
+                <span className={`text-[11px] font-mono whitespace-nowrap ${box.ziflux ? "text-accent font-medium" : "text-muted-foreground"}`}>
+                  {box.scope}
+                </span>
               </div>
               {i < ARCH_BOXES.length - 1 && (
-                <span className="text-foreground/40 text-lg font-bold">&rarr;</span>
+                <span className="text-muted-foreground text-lg">&rarr;</span>
               )}
             </div>
           ))}

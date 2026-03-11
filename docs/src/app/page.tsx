@@ -1,6 +1,5 @@
 import { Navbar } from "@/components/landing/navbar"
 import { Hero } from "@/components/landing/hero"
-import { WhatNot } from "@/components/landing/what-not"
 import { QuickStart } from "@/components/landing/quickstart"
 import { ApiReference } from "@/components/landing/api-reference"
 import { Freshness } from "@/components/landing/freshness"
@@ -13,7 +12,6 @@ export default function HomePage() {
       <Navbar />
       <main>
         <Hero />
-        <WhatNot />
         <QuickStart />
         <ApiReference />
         <Freshness />

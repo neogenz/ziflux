@@ -1,5 +1,14 @@
 import { CodeBlock } from "./code-block"
 
+const CONFIG_CODE = `export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZiflux({
+      staleTime: 30_000,   // 30s — data considered fresh
+      gcTime:   300_000,   // 5min — stale data evicted
+    }),
+  ],
+}`
+
 const API_CODE = `@Injectable({ providedIn: 'root' })
 export class OrderApi {
   readonly cache = new DataCache<Order>()
@@ -56,21 +65,51 @@ export class OrderListComponent {
   readonly store = inject(OrderListStore)
 }`
 
+const ARCH_BOXES = [
+  { label: "Component", scope: "view scope", color: "bg-blue-500/25 border-blue-500/50 text-blue-500" },
+  { label: "Store", scope: "route scope", color: "bg-purple-500/25 border-purple-500/50 text-purple-500" },
+  { label: "API Service", scope: "root singleton", color: "bg-accent/25 border-accent/50 text-accent" },
+  { label: "DataCache", scope: "root singleton", color: "bg-accent/25 border-accent/50 text-accent" },
+  { label: "Server", scope: "remote", color: "bg-neutral-500/20 border-neutral-400/40 text-neutral-400" },
+]
+
 export function QuickStart() {
   return (
     <section id="quickstart" className="mx-auto max-w-4xl px-6 py-16 sm:py-20">
       <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Quick Start</h2>
       <p className="mt-2 text-muted-foreground">
-        Every feature follows the same 3-file pattern. Always. No exceptions.
+        ziflux plugs into Angular&apos;s service &rarr; store &rarr; component pattern. Here&apos;s what each layer gets.
       </p>
 
-      {/* Architecture diagram */}
-      <div id="architecture" className="mt-8 overflow-x-auto rounded-xl border border-border bg-muted/50 p-6 font-mono text-sm">
-        <pre className="!bg-transparent !border-0 !p-0 text-muted-foreground">
-{`Component  →  Store  →  API Service  →  DataCache  →  Server
-view scope    route      root             root          remote
-              scope      singleton        singleton`}
-        </pre>
+      {/* Architecture diagram — visual boxes */}
+      <div id="architecture" className="mt-8 overflow-x-auto rounded-xl border border-border bg-muted/50 p-6">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+          {ARCH_BOXES.map((box, i) => (
+            <div key={box.label} className="flex items-center gap-2 sm:gap-3">
+              <div className={`flex flex-col items-center gap-1.5 rounded-lg border px-4 py-3 ${box.color}`}>
+                <span className="text-sm font-bold whitespace-nowrap">{box.label}</span>
+                <span className="text-[11px] font-medium opacity-60 whitespace-nowrap">{box.scope}</span>
+              </div>
+              {i < ARCH_BOXES.length - 1 && (
+                <span className="text-foreground/40 text-lg font-bold">&rarr;</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Step 0: Setup */}
+      <div className="mt-10">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-white">
+            0
+          </span>
+          <h3 className="text-lg font-semibold">Setup</h3>
+          <span className="text-xs text-muted-foreground">
+            <code>provideZiflux()</code> &mdash; global cache durations
+          </span>
+        </div>
+        <CodeBlock code={CONFIG_CODE} filename="app.config.ts" />
       </div>
 
       {/* Step 1: API */}
@@ -81,7 +120,7 @@ view scope    route      root             root          remote
           </span>
           <h3 className="text-lg font-semibold">API Service</h3>
           <span className="text-xs text-muted-foreground">
-            singleton &middot; owns the cache &middot; owns HTTP
+            <code>DataCache</code> + <code>injectCachedHttp()</code> &mdash; auto-populates cache on GET
           </span>
         </div>
         <CodeBlock code={API_CODE} filename="order.api.ts" />
@@ -95,7 +134,7 @@ view scope    route      root             root          remote
           </span>
           <h3 className="text-lg font-semibold">Store</h3>
           <span className="text-xs text-muted-foreground">
-            route-scoped &middot; reads api.cache &middot; no HTTP
+            <code>cachedResource()</code> &mdash; returns stale data instantly, re-fetches in background
           </span>
         </div>
         <CodeBlock code={STORE_CODE} filename="order-list.store.ts" />
@@ -109,7 +148,7 @@ view scope    route      root             root          remote
           </span>
           <h3 className="text-lg font-semibold">Component</h3>
           <span className="text-xs text-muted-foreground">
-            injects the store &middot; reads signals &middot; zero logic
+            <code>isInitialLoading()</code> + <code>isStale()</code> &mdash; spinner only on first visit
           </span>
         </div>
         <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />

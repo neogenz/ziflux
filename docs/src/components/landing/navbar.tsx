@@ -1,14 +1,39 @@
 "use client"
 
-import { useState } from "react"
-import { Github, ExternalLink, Menu, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useTheme } from "next-themes"
+import { Github, ExternalLink, Menu, X, Sun, Moon, Monitor } from "lucide-react"
 
 const NAV_LINKS = [
   { href: "#quickstart", label: "Quick Start" },
   { href: "#api", label: "API" },
   { href: "#architecture", label: "Architecture" },
-  { href: "#freshness", label: "Freshness" },
+  { href: "#freshness", label: "Caching" },
 ]
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  if (!mounted) {
+    return <div className="h-9 w-9" />
+  }
+
+  const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light"
+  const Icon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor
+
+  return (
+    <button
+      onClick={() => setTheme(next)}
+      className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
+      aria-label={`Switch to ${next} theme`}
+    >
+      <Icon size={18} />
+    </button>
+  )
+}
 
 export function Navbar() {
   const [open, setOpen] = useState(false)
@@ -32,7 +57,7 @@ export function Navbar() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <a
             href="https://www.npmjs.com/package/ziflux"
             target="_blank"
@@ -51,6 +76,7 @@ export function Navbar() {
           >
             <Github size={18} />
           </a>
+          <ThemeToggle />
 
           {/* Mobile hamburger */}
           <button

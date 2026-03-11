@@ -31,16 +31,14 @@
   --code-number: #fab387;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --muted: #171717;
-    --muted-foreground: #a3a3a3;
-    --border: #262626;
-    --accent: #f97316;
-    --accent-foreground: #ffffff;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --muted: #171717;
+  --muted-foreground: #a3a3a3;
+  --border: #262626;
+  --accent: #f97316;
+  --accent-foreground: #ffffff;
 }
 
 html {

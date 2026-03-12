@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component } from '@angular/core'
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router'
 import { ZifluxDevtoolsComponent } from 'ziflux'
+import { networkDelay } from './todo/fake-todo.interceptor'
 
 @Component({
   selector: 'app-root',
@@ -48,25 +49,22 @@ import { ZifluxDevtoolsComponent } from 'ziflux'
       border-bottom-color: var(--color-primary);
     }
 
-    .loading-bar {
-      height: 3px;
-      background: var(--color-primary);
-      animation: loading 1.5s ease-in-out infinite;
+    .latency-control {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
     }
 
-    @keyframes loading {
-      0% {
-        width: 0;
-        margin-left: 0;
-      }
-      50% {
-        width: 60%;
-        margin-left: 20%;
-      }
-      100% {
-        width: 0;
-        margin-left: 100%;
-      }
+    .latency-control select {
+      padding: 2px 6px;
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      font-size: 0.8rem;
+      background: var(--color-surface);
+      color: var(--color-text);
     }
 
     main {
@@ -84,10 +82,21 @@ import { ZifluxDevtoolsComponent } from 'ziflux'
         >
         <a routerLink="/cache" routerLinkActive="active">Cache Inspector</a>
       </div>
+      <div class="latency-control">
+        <label for="latency">Latency</label>
+        <select
+          id="latency"
+          [value]="networkDelay()"
+          (change)="networkDelay.set(+$any($event.target).value)"
+        >
+          <option value="0">0ms</option>
+          <option value="300">300ms</option>
+          <option value="500">500ms</option>
+          <option value="1500">1.5s</option>
+          <option value="3000">3s</option>
+        </select>
+      </div>
     </nav>
-    @if (loading()) {
-      <div class="loading-bar"></div>
-    }
     <main>
       <router-outlet />
     </main>
@@ -95,5 +104,5 @@ import { ZifluxDevtoolsComponent } from 'ziflux'
   `,
 })
 export class AppComponent {
-  loading = signal(false)
+  readonly networkDelay = networkDelay
 }

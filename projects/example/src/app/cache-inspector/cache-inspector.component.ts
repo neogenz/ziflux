@@ -7,12 +7,9 @@ import {
   inject,
   signal,
 } from '@angular/core'
-import { HttpClient } from '@angular/common/http'
-import { firstValueFrom } from 'rxjs'
 import { CacheRegistry } from 'ziflux'
 import type { CacheEntryInfo, CacheInspection } from 'ziflux'
-import { TodoCacheService } from '../todo/todo.cache'
-import { Todo } from '../todo/todo.model'
+import { TodoApi } from '../todo/todo.api'
 
 @Component({
   selector: 'app-cache-inspector',
@@ -338,8 +335,7 @@ import { Todo } from '../todo/todo.model'
 })
 export class CacheInspectorComponent {
   readonly #registry = inject(CacheRegistry)
-  readonly #todoCaches = inject(TodoCacheService)
-  readonly #http = inject(HttpClient)
+  readonly #todoApi = inject(TodoApi)
   readonly #destroyRef = inject(DestroyRef)
 
   readonly #refreshTick = signal(0)
@@ -394,9 +390,7 @@ export class CacheInspectorComponent {
   }
 
   async prefetchTodo1(): Promise<void> {
-    await this.#todoCaches.itemCache.prefetch(['todos', '1'], () =>
-      firstValueFrom(this.#http.get<Todo>('/api/todos/1')),
-    )
+    await this.#todoApi.prefetchById(1)
     this.refresh()
   }
 

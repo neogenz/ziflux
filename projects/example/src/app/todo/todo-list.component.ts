@@ -1,30 +1,29 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
-import { HttpClient } from '@angular/common/http'
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
 import { RouterLink } from '@angular/router'
-import { firstValueFrom } from 'rxjs'
-import { anyLoading, cachedMutation, cachedResource } from 'ziflux'
-import type { CachedMutationRef, CachedResourceRef } from 'ziflux'
-import { TodoCacheService } from './todo.cache'
-import type { Todo } from './todo.model'
+import { TodoListStore } from './todo-list.store'
 
 @Component({
   selector: 'app-todo-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
+  providers: [TodoListStore],
   template: `
     <!-- Header -->
     <div class="header">
       <h1>Todos</h1>
       <div class="header-actions">
-        @if (isAnyLoading()) {
+        @if (store.isAnyLoading()) {
           <span class="loading-badge">Loading...</span>
         }
-        @if (todos.isStale() && !todos.isInitialLoading()) {
+        @if (store.todos.isStale() && !store.todos.isInitialLoading()) {
           <span class="stale-badge">Refreshing...</span>
         }
-        <button (click)="todos.reload()">Reload</button>
-        <button [class.primary]="pollingEnabled()" (click)="pollingEnabled.update(v => !v)">
-          Polling: {{ pollingEnabled() ? 'ON (3s)' : 'OFF' }}
+        <button (click)="store.todos.reload()">Reload</button>
+        <button
+          [class.primary]="store.pollingEnabled()"
+          (click)="store.pollingEnabled.update(v => !v)"
+        >
+          Polling: {{ store.pollingEnabled() ? 'ON (3s)' : 'OFF' }}
         </button>
       </div>
     </div>
@@ -37,14 +36,14 @@ import type { Todo } from './todo.model'
         placeholder="New todo title..."
         (keydown.enter)="addTodo(titleInput)"
       />
-      <button class="primary" [disabled]="addMutation.isPending()" (click)="addTodo(titleInput)">
-        {{ addMutation.isPending() ? 'Adding...' : 'Add' }}
+      <button class="primary" [disabled]="store.isAdding()" (click)="addTodo(titleInput)">
+        {{ store.isAdding() ? 'Adding...' : 'Add' }}
       </button>
     </div>
 
     <!-- Todo list -->
     <div class="card todo-card">
-      @if (todos.isInitialLoading()) {
+      @if (store.todos.isInitialLoading()) {
         <div class="skeleton-list">
           <div class="skeleton-item"></div>
           <div class="skeleton-item"></div>
@@ -52,26 +51,26 @@ import type { Todo } from './todo.model'
         </div>
       } @else {
         <ul class="todo-list">
-          @for (todo of todos.value() ?? []; track todo.id) {
+          @for (todo of store.todos.value() ?? []; track todo.id) {
             <li class="todo-item" [class.completed]="todo.completed">
               <input
                 type="checkbox"
                 [checked]="todo.completed"
-                [disabled]="toggleMutation.isPending()"
-                (change)="toggleTodo(todo)"
+                [disabled]="store.isToggling()"
+                (change)="store.toggleTodo(todo)"
               />
               <a
                 [routerLink]="['/todos', todo.id]"
                 class="todo-title"
-                (mouseenter)="prefetchTodo(todo.id)"
+                (mouseenter)="store.prefetchTodo(todo.id)"
                 >{{ todo.title }}</a
               >
               <button
                 class="danger delete-btn"
-                [disabled]="deleteMutation.isPending()"
-                (click)="deleteTodo(todo)"
+                [disabled]="store.isDeleting()"
+                (click)="store.deleteTodo(todo)"
               >
-                {{ deleteMutation.isPending() ? '...' : 'Delete' }}
+                {{ store.isDeleting() ? '...' : 'Delete' }}
               </button>
             </li>
           }
@@ -80,11 +79,11 @@ import type { Todo } from './todo.model'
     </div>
 
     <!-- Footer -->
-    @if (todos.hasValue()) {
+    @if (store.todos.hasValue()) {
       <div class="footer">
-        <span>{{ (todos.value() ?? []).length }} todos</span>
+        <span>{{ (store.todos.value() ?? []).length }} todos</span>
         <span>&mdash;</span>
-        <span>{{ completedCount() }} completed</span>
+        <span>{{ store.completedCount() }} completed</span>
       </div>
     }
   `,
@@ -220,81 +219,12 @@ import type { Todo } from './todo.model'
   `,
 })
 export class TodoListComponent {
-  readonly #http = inject(HttpClient)
-  readonly #caches = inject(TodoCacheService)
-
-  readonly pollingEnabled = signal(false)
-
-  readonly todos: CachedResourceRef<Todo[]> = cachedResource<Todo[], Record<string, never>>({
-    cache: this.#caches.listCache,
-    cacheKey: ['todos'],
-    params: () => ({}),
-    loader: () => this.#http.get<Todo[]>('/api/todos'),
-    staleTime: 5_000,
-    refetchInterval: () => (this.pollingEnabled() ? 3_000 : false),
-  })
-
-  readonly addMutation: CachedMutationRef<string, Todo> = cachedMutation<string, Todo>({
-    mutationFn: title => this.#http.post<Todo>('/api/todos', { title }),
-    cache: this.#caches.listCache,
-    invalidateKeys: () => [['todos']],
-  })
-
-  readonly toggleMutation: CachedMutationRef<Todo, Todo> = cachedMutation<Todo, Todo>({
-    mutationFn: todo =>
-      this.#http.patch<Todo>(`/api/todos/${todo.id}`, { completed: !todo.completed }),
-    cache: this.#caches.listCache,
-    invalidateKeys: todo => [['todos'], ['todos', String(todo.id)]],
-  })
-
-  readonly deleteMutation: CachedMutationRef<Todo, null> = cachedMutation<Todo, null, Todo[]>({
-    mutationFn: todo => this.#http.delete<null>(`/api/todos/${todo.id}`),
-    cache: this.#caches.listCache,
-    invalidateKeys: () => [['todos']],
-    onMutate: todo => {
-      const current = this.todos.value() ?? []
-      const filtered = current.filter(t => t.id !== todo.id)
-      this.todos.set(filtered)
-      this.#caches.listCache.set(['todos'], filtered)
-      return current
-    },
-    onError: (_err, _todo, previousList) => {
-      if (previousList) {
-        this.todos.set(previousList)
-        this.#caches.listCache.set(['todos'], previousList)
-      }
-    },
-  })
-
-  readonly isAnyLoading = anyLoading(
-    this.todos.isLoading,
-    this.addMutation.isPending,
-    this.toggleMutation.isPending,
-    this.deleteMutation.isPending,
-  )
-
-  readonly completedCount = computed(
-    () => (this.todos.value() ?? []).filter(t => t.completed).length,
-  )
+  readonly store = inject(TodoListStore)
 
   async addTodo(input: HTMLInputElement): Promise<void> {
     const title = input.value.trim()
     if (!title) return
-    await this.addMutation.mutate(title)
+    await this.store.addTodo(title)
     input.value = ''
-  }
-
-  toggleTodo(todo: Todo): void {
-    void this.toggleMutation.mutate(todo)
-  }
-
-  deleteTodo(todo: Todo): void {
-    void this.deleteMutation.mutate(todo)
-  }
-
-  async prefetchTodo(id: number): Promise<void> {
-    await this.#caches.itemCache.prefetch(['todos', String(id)], () =>
-      firstValueFrom(this.#http.get<Todo>(`/api/todos/${id}`)),
-    )
   }
 }

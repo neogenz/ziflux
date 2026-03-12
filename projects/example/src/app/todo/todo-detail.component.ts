@@ -1,44 +1,42 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, effect, inject, input } from '@angular/core'
 import { DatePipe } from '@angular/common'
-import { HttpClient } from '@angular/common/http'
 import { RouterLink } from '@angular/router'
-import { cachedResource, cachedMutation } from 'ziflux'
-import { TodoCacheService } from './todo.cache'
-import { Todo } from './todo.model'
+import { TodoDetailStore } from './todo-detail.store'
 
 @Component({
   selector: 'app-todo-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, DatePipe],
+  providers: [TodoDetailStore],
   template: `
     <div class="detail-container">
       <a routerLink="/" class="back-link">← Back to todos</a>
 
-      @if (todo.isInitialLoading()) {
+      @if (store.todo.isInitialLoading()) {
         <div class="skeleton">
           <div class="skeleton-title"></div>
           <div class="skeleton-line"></div>
           <div class="skeleton-line short"></div>
         </div>
-      } @else if (todo.error()) {
+      } @else if (store.todo.error()) {
         <div class="error-card">
           <p class="error-msg">Failed to load todo.</p>
-          <button class="btn btn-retry" (click)="todo.reload()">Retry</button>
+          <button class="btn btn-retry" (click)="store.todo.reload()">Retry</button>
         </div>
-      } @else if (todo.value(); as t) {
+      } @else if (store.todo.value(); as t) {
         <div class="todo-card">
           <div class="card-header">
-            @if (editing()) {
+            @if (store.editing()) {
               <input
                 class="edit-input"
-                [value]="editTitle()"
-                (input)="editTitle.set($any($event.target).value)"
+                [value]="store.editTitle()"
+                (input)="store.editTitle.set($any($event.target).value)"
               />
             } @else {
               <h1 class="todo-title">{{ t.title }}</h1>
             }
 
-            @if (todo.isStale()) {
+            @if (store.todo.isStale()) {
               <span class="badge badge-stale">Refreshing…</span>
             }
           </div>
@@ -55,20 +53,20 @@ import { Todo } from './todo.model'
           </div>
 
           <div class="actions">
-            @if (editing()) {
+            @if (store.editing()) {
               <button
                 class="btn btn-primary"
-                [disabled]="editMutation.isPending()"
-                (click)="saveEdit(t)"
+                [disabled]="store.isSaving()"
+                (click)="store.saveEdit(t)"
               >
-                {{ editMutation.isPending() ? 'Saving…' : 'Save' }}
+                {{ store.isSaving() ? 'Saving…' : 'Save' }}
               </button>
-              <button class="btn btn-secondary" (click)="cancelEdit()">Cancel</button>
-              @if (editMutation.error()) {
+              <button class="btn btn-secondary" (click)="store.cancelEdit()">Cancel</button>
+              @if (store.saveError()) {
                 <span class="error-inline">Save failed — please retry.</span>
               }
             } @else {
-              <button class="btn btn-secondary" (click)="startEdit(t)">Edit</button>
+              <button class="btn btn-secondary" (click)="store.startEdit(t)">Edit</button>
             }
           </div>
         </div>
@@ -238,58 +236,10 @@ import { Todo } from './todo.model'
   `,
 })
 export class TodoDetailComponent {
-  // Route param bound via withComponentInputBinding()
   id = input.required<string>()
+  readonly store = inject(TodoDetailStore)
 
-  readonly #caches = inject(TodoCacheService)
-  readonly #http = inject(HttpClient)
-
-  // --- cachedResource with params ---
-  // Re-fetches whenever id() changes; skips fetch when id is absent.
-  //
-  // Alternative using injectCachedHttp (simpler, no retry config):
-  //   this.#caches.cachedHttp.get(`/api/todos/${this.id()}`, ['todos', this.id()])
-  //   This returns an Observable backed by itemCache — no manual loader needed.
-  readonly todo = cachedResource<Todo, { id: string }>({
-    cache: this.#caches.itemCache,
-    cacheKey: params => ['todos', params.id],
-    params: () => {
-      const id = this.id()
-      return id ? { id } : undefined
-    },
-    loader: ({ params }) => this.#http.get<Todo>(`/api/todos/${params.id}`),
-    staleTime: 10_000,
-    retry: { maxRetries: 3, baseDelay: 1_000, maxDelay: 5_000 },
-  })
-
-  // --- Edit state ---
-  readonly editing = signal(false)
-  readonly editTitle = signal('')
-
-  // --- cachedMutation for edit ---
-  readonly editMutation = cachedMutation<{ id: number; title: string }, Todo>({
-    mutationFn: args => this.#http.patch<Todo>(`/api/todos/${args.id}`, { title: args.title }),
-    cache: this.#caches.listCache,
-    invalidateKeys: args => [['todos'], ['todos', String(args.id)]],
-    onSuccess: () => {
-      this.editing.set(false)
-    },
-    onError: err => {
-      console.error('Edit failed:', err)
-    },
-  })
-
-  startEdit(t: Todo): void {
-    this.editTitle.set(t.title)
-    this.editing.set(true)
-  }
-
-  cancelEdit(): void {
-    this.editing.set(false)
-    this.editMutation.reset()
-  }
-
-  saveEdit(t: Todo): void {
-    void this.editMutation.mutate({ id: t.id, title: this.editTitle() })
+  constructor() {
+    effect(() => this.store.load(this.id()))
   }
 }

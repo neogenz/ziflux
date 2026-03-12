@@ -1,6 +1,9 @@
+import { signal } from '@angular/core'
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http'
 import { delay, of } from 'rxjs'
 import { Todo } from './todo.model'
+
+export const networkDelay = signal(500)
 
 let nextId = 4
 
@@ -10,8 +13,10 @@ const TODOS: Todo[] = [
   { id: 3, title: 'Build a demo app', completed: false, createdAt: '2026-03-10T09:15:00Z' },
 ]
 
-function randomDelay(): number {
-  return 300 + Math.random() * 500
+function simulatedDelay(): number {
+  const base = networkDelay()
+  if (base === 0) return 0
+  return base * (0.8 + Math.random() * 0.4)
 }
 
 export const fakeTodoInterceptor: HttpInterceptorFn = (req, next) => {
@@ -19,7 +24,7 @@ export const fakeTodoInterceptor: HttpInterceptorFn = (req, next) => {
 
   // GET /api/todos
   if (url === '/api/todos' && req.method === 'GET') {
-    return of(new HttpResponse({ status: 200, body: [...TODOS] })).pipe(delay(randomDelay()))
+    return of(new HttpResponse({ status: 200, body: [...TODOS] })).pipe(delay(simulatedDelay()))
   }
 
   // GET /api/todos/:id
@@ -29,10 +34,10 @@ export const fakeTodoInterceptor: HttpInterceptorFn = (req, next) => {
     const todo = TODOS.find(t => t.id === id)
     if (!todo) {
       return of(new HttpResponse({ status: 404, body: { error: 'Not found' } })).pipe(
-        delay(randomDelay()),
+        delay(simulatedDelay()),
       )
     }
-    return of(new HttpResponse({ status: 200, body: { ...todo } })).pipe(delay(randomDelay()))
+    return of(new HttpResponse({ status: 200, body: { ...todo } })).pipe(delay(simulatedDelay()))
   }
 
   // POST /api/todos
@@ -45,7 +50,7 @@ export const fakeTodoInterceptor: HttpInterceptorFn = (req, next) => {
       createdAt: new Date().toISOString(),
     }
     TODOS.push(todo)
-    return of(new HttpResponse({ status: 201, body: { ...todo } })).pipe(delay(randomDelay()))
+    return of(new HttpResponse({ status: 201, body: { ...todo } })).pipe(delay(simulatedDelay()))
   }
 
   // PATCH /api/todos/:id
@@ -55,12 +60,12 @@ export const fakeTodoInterceptor: HttpInterceptorFn = (req, next) => {
     const index = TODOS.findIndex(t => t.id === id)
     if (index === -1) {
       return of(new HttpResponse({ status: 404, body: { error: 'Not found' } })).pipe(
-        delay(randomDelay()),
+        delay(simulatedDelay()),
       )
     }
     Object.assign(TODOS[index], req.body)
     return of(new HttpResponse({ status: 200, body: { ...TODOS[index] } })).pipe(
-      delay(randomDelay()),
+      delay(simulatedDelay()),
     )
   }
 
@@ -72,7 +77,7 @@ export const fakeTodoInterceptor: HttpInterceptorFn = (req, next) => {
     if (index !== -1) {
       TODOS.splice(index, 1)
     }
-    return of(new HttpResponse({ status: 204, body: null })).pipe(delay(randomDelay()))
+    return of(new HttpResponse({ status: 204, body: null })).pipe(delay(simulatedDelay()))
   }
 
   return next(req)

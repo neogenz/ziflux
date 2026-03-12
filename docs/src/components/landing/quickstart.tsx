@@ -12,22 +12,18 @@ const CONFIG_CODE = `export const appConfig: ApplicationConfig = {
 const API_CODE = `@Injectable({ providedIn: 'root' })
 export class OrderApi {
   readonly cache = new DataCache<Order>()
-  readonly #http = injectCachedHttp(this.cache)
+  readonly #http = inject(HttpClient)
 
   getAll$(filters: OrderFilters): Observable<Order[]> {
-    return this.#http.get('/orders', ['order', 'list', filters.status], {
-      params: { ...filters },
-    })
+    return this.#http.get<Order[]>('/orders', { params: { ...filters } })
   }
 
   getById$(id: string): Observable<Order> {
-    return this.#http.get(\`/orders/\${id}\`, ['order', 'details', id])
+    return this.#http.get<Order>(\`/orders/\${id}\`)
   }
 
   delete$(id: string): Observable<void> {
-    return this.#http
-      .delete<void>(\`/orders/\${id}\`)
-      .pipe(tap(() => this.cache.invalidate(['order'])))
+    return this.#http.delete<void>(\`/orders/\${id}\`)
   }
 }`
 
@@ -88,8 +84,8 @@ export function QuickStart() {
 
       <div className="mt-4">
         <h3 className="mb-3 text-sm font-semibold">
-          <code className="text-accent">DataCache</code> + <code className="text-accent">injectCachedHttp()</code>
-          <span className="ml-2 font-normal text-muted-foreground">— auto-populates cache on GET</span>
+          <code className="text-accent">DataCache</code> + <code className="text-accent">HttpClient</code>
+          <span className="ml-2 font-normal text-muted-foreground">— cache lives in the API service</span>
         </h3>
         <CodeBlock code={API_CODE} filename="order.api.ts" />
       </div>

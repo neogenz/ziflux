@@ -303,11 +303,28 @@ provideZiflux({ staleTime: 60_000 }, withDevtools())
 
 ---
 
+## D-25 — Remove `injectCachedHttp()` from public API
+
+**Decision:** Remove `injectCachedHttp()`, `CachedHttpClient<T>`, and `CachedHttpRequestOptions` from the public API. API services use plain `HttpClient`. `cachedResource` handles all cache read/write. `DataCache.wrap()` and `DataCache.prefetch()` remain as low-level primitives.
+
+**Rationale:**
+
+- `injectCachedHttp` duplicated `DataCache.wrap()` (same `tap → cache.set` pattern)
+- When used with `cachedResource`, the cache key had to be specified twice (API service + store) — source of silent bugs if they diverged
+- `cachedResource` already writes to the cache after the loader resolves, making the `tap` write from `injectCachedHttp` a redundant double-write
+- For prefetch, `DataCache.prefetch()` handles the cache write — `injectCachedHttp` was redundant there too
+- Violated the lib's goal of crystal-clear, zero-learning-curve API
+
+**Migration:** Replace `injectCachedHttp(cache)` with `inject(HttpClient)`. Cache population is handled by `cachedResource`. For prefetch, use `cache.prefetch(key, () => firstValueFrom(http.get(...)))`.
+
+**Supersedes:** D-12
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.
 - **`DataCache` config override per instance** — ✓ Yes. Priority: constructor arg > global provider > defaults.
 - **`prefetch()` on `DataCache` vs standalone function** — ✓ Method on `DataCache`.
 - **RxJS interop** — ✓ `firstValueFrom()` used internally in `cachedResource`. No helper needed.
-- **`injectCachedHttp` return type** — ✓ Typed as `CachedHttpClient<T>`.
 - **`cachedResource` staleSnapshot exposure** — ✓ Kept internal. No public API for it.

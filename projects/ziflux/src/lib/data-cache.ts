@@ -73,7 +73,7 @@ export class DataCache<T> {
       return null
     }
 
-    return { data: entry.data, fresh: age <= staleTime }
+    return { data: entry.data, fresh: age < staleTime }
   }
 
   set(key: string[], data: T): void {
@@ -131,7 +131,7 @@ export class DataCache<T> {
     const now = Date.now()
     const entries = [...this.#entries].map(([serialized, entry]) => {
       const age = now - entry.createdAt
-      const fresh = age <= this.#config.staleTime
+      const fresh = age < this.#config.staleTime
       const expired = age > this.#config.expireTime
       const state: CacheEntryInfo<T>['state'] = fresh ? 'fresh' : expired ? 'expired' : 'stale'
       return {

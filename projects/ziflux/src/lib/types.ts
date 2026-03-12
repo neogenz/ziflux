@@ -1,5 +1,4 @@
 import type { EnvironmentProviders, ResourceStatus, Signal } from '@angular/core'
-import type { HttpContext, HttpHeaders, HttpParams } from '@angular/common/http'
 import type { Observable } from 'rxjs'
 import type { DataCache } from './data-cache'
 
@@ -111,22 +110,4 @@ export interface CachedMutationRef<A, R> {
   readonly error: Signal<unknown>
   readonly data: Signal<R | undefined>
   reset(): void
-}
-
-// --- injectCachedHttp ---
-
-export interface CachedHttpRequestOptions {
-  headers?: HttpHeaders | Record<string, string | string[]>
-  params?: HttpParams | Record<string, string | string[]>
-  context?: HttpContext
-  reportProgress?: boolean
-  withCredentials?: boolean
-}
-
-export interface CachedHttpClient<T> {
-  get(url: string, key: string[], options?: CachedHttpRequestOptions): Observable<T>
-  post(url: string, body: unknown, options?: CachedHttpRequestOptions): Observable<T>
-  put(url: string, body: unknown, options?: CachedHttpRequestOptions): Observable<T>
-  patch(url: string, body: unknown, options?: CachedHttpRequestOptions): Observable<T>
-  delete(url: string, options?: CachedHttpRequestOptions): Observable<T>
 }

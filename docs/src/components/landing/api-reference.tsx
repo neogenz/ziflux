@@ -55,29 +55,6 @@ this.cache.invalidate(['order'])  // prefix match`,
 }`,
   },
   {
-    id: "inject-cached-http",
-    label: "injectCachedHttp()",
-    description: "HTTP client that auto-populates the cache on GET responses.",
-    code: `function injectCachedHttp<T>(cache: DataCache<T>): CachedHttpClient<T>
-
-interface CachedHttpClient<T> {
-  get(url: string, key: string[], options?): Observable<T>     // fetches + caches
-  post(url: string, body: unknown, options?): Observable<T>    // pass-through
-  put(url: string, body: unknown, options?): Observable<T>     // pass-through
-  patch(url: string, body: unknown, options?): Observable<T>   // pass-through
-  delete(url: string, options?): Observable<T>                 // pass-through
-}`,
-    usage: `@Injectable({ providedIn: 'root' })
-export class ProductApi {
-  readonly cache = new DataCache<Product>()
-  readonly #http = injectCachedHttp(this.cache)  // must be in injection context
-
-  getAll$(): Observable<Product[]> {
-    return this.#http.get('/products', ['product', 'list'])
-  }
-}`,
-  },
-  {
     id: "cached-mutation",
     label: "cachedMutation()",
     description: "Wraps any mutation with signal-based lifecycle, optimistic updates, and automatic cache invalidation.",

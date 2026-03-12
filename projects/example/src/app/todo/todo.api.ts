@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
 import type { Observable } from 'rxjs'
 import { firstValueFrom } from 'rxjs'
-import { DataCache, injectCachedHttp } from 'ziflux'
+import { DataCache } from 'ziflux'
 import type { Todo } from './todo.model'
 
 @Injectable({ providedIn: 'root' })
@@ -10,14 +10,13 @@ export class TodoApi {
   readonly listCache = new DataCache<Todo[]>({ name: 'todo-list', staleTime: 5_000 })
   readonly itemCache = new DataCache<Todo>({ name: 'todo-item', staleTime: 10_000 })
   readonly #http = inject(HttpClient)
-  readonly #cachedHttp = injectCachedHttp<Todo>(this.itemCache)
 
   getAll$(): Observable<Todo[]> {
     return this.#http.get<Todo[]>('/api/todos')
   }
 
   getById$(id: string): Observable<Todo> {
-    return this.#cachedHttp.get(`/api/todos/${id}`, ['todos', id])
+    return this.#http.get<Todo>(`/api/todos/${id}`)
   }
 
   create$(title: string): Observable<Todo> {
@@ -34,7 +33,7 @@ export class TodoApi {
 
   prefetchById(id: number): Promise<void> {
     return this.itemCache.prefetch(['todos', String(id)], () =>
-      firstValueFrom(this.#cachedHttp.get(`/api/todos/${id}`, ['todos', String(id)])),
+      firstValueFrom(this.#http.get<Todo>(`/api/todos/${id}`)),
     )
   }
 }

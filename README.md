@@ -17,7 +17,7 @@ view scope    route      root             root          remote
 ```
 
 **You write** Component, Store, API Service — plain Angular `@Injectable()` classes.
-**Library provides** `DataCache`, `cachedResource()`, `cachedMutation()`, `injectCachedHttp()`, `provideZiflux()`, `withDevtools()`, `ZifluxDevtoolsComponent`, and `anyLoading()` — the cache + mutation lifecycle layer.
+**Library provides** `DataCache`, `cachedResource()`, `cachedMutation()`, `provideZiflux()`, `withDevtools()`, `ZifluxDevtoolsComponent`, and `anyLoading()` — the cache + mutation lifecycle layer.
 
 Signals flow back from Store to Component. The cache is transparent to the Store.
 
@@ -68,7 +68,7 @@ One line. All `DataCache` instances in your app inherit these defaults.
 
 ## API
 
-Ten exports.
+Nine exports.
 
 ### `DataCache<T>`
 
@@ -140,26 +140,6 @@ interface RetryConfig {
 ```
 
 `refetchInterval` enables polling — pass a number (ms) or a function returning `number | false` to pause.
-
-### `injectCachedHttp(cache)`
-
-HTTP client that auto-populates a `DataCache` on GET responses.
-
-```typescript
-function injectCachedHttp<T>(cache: DataCache<T>): CachedHttpClient<T>
-```
-
-```typescript
-interface CachedHttpClient<T> {
-  get(url: string, key: string[], options?): Observable<T> // fetches + caches
-  post(url: string, body: unknown, options?): Observable<T> // pass-through
-  put(url: string, body: unknown, options?): Observable<T> // pass-through
-  patch(url: string, body: unknown, options?): Observable<T> // pass-through
-  delete(url: string, options?): Observable<T> // pass-through
-}
-```
-
-Must be called in an injection context (field initializer of an `@Injectable()`).
 
 ### `provideZiflux(config?, ...features)`
 
@@ -294,22 +274,18 @@ The cache lives here — it's a singleton that survives route navigations.
 @Injectable({ providedIn: 'root' })
 export class OrderApi {
   readonly cache = new DataCache<Order>()
-  readonly #http = injectCachedHttp(this.cache)
+  readonly #http = inject(HttpClient)
 
   getAll$(filters: OrderFilters): Observable<Order[]> {
-    return this.#http.get('/orders', ['order', 'list', filters.status], {
-      params: { ...filters },
-    })
+    return this.#http.get<Order[]>('/orders', { params: { ...filters } })
   }
 
   getById$(id: string): Observable<Order> {
-    return this.#http.get(`/orders/${id}`, ['order', 'details', id])
+    return this.#http.get<Order>(`/orders/${id}`)
   }
 
   delete$(id: string): Observable<void> {
-    return this.#http
-      .delete<void>(`/orders/${id}`)
-      .pipe(tap(() => this.cache.invalidate(['order'])))
+    return this.#http.delete<void>(`/orders/${id}`)
   }
 }
 ```
@@ -499,18 +475,18 @@ When generating code for a ziflux project, follow this pattern exactly:
 @Injectable({ providedIn: 'root' })
 export class ProductApi {
   readonly cache = new DataCache<Product>()
-  readonly #http = injectCachedHttp(this.cache)
+  readonly #http = inject(HttpClient)
 
   getAll$(): Observable<Product[]> {
-    return this.#http.get('/products', ['product', 'list'])
+    return this.#http.get<Product[]>('/products')
   }
 
   getById$(id: string): Observable<Product> {
-    return this.#http.get(`/products/${id}`, ['product', 'details', id])
+    return this.#http.get<Product>(`/products/${id}`)
   }
 
   create$(body: CreateProduct): Observable<Product> {
-    return this.#http.post('/products', body)
+    return this.#http.post<Product>('/products', body)
   }
 }
 ```
@@ -553,7 +529,7 @@ export class ProductListComponent {
 
 ### What an agent must NOT do
 
-- Inject `HttpClient` or an API service directly in a component
+- Inject an API service directly in a component
 - Put `DataCache` inside a store
 - Call HTTP methods from a store
 - Skip the API layer and fetch directly in `cachedResource`'s loader

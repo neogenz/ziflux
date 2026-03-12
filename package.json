@@ -1,6 +1,6 @@
 {
   "name": "ziflux",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "ng": "ng",
     "build": "ng build ziflux",
@@ -10,7 +10,9 @@
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"projects/**/*.ts\"",
-    "format:check": "prettier --check \"projects/**/*.ts\""
+    "format:check": "prettier --check \"projects/**/*.ts\"",
+    "changelog": "changelogen --dry",
+    "release:prepare": "changelogen --bump --release"
   },
   "type": "module",
   "private": true,
@@ -30,8 +32,12 @@
     "@angular/build": "^21.2.1",
     "@angular/cli": "^21.0.4",
     "@angular/compiler-cli": "^21.0.0",
+    "@commitlint/cli": "^20.4.4",
+    "@commitlint/config-conventional": "^20.4.4",
+    "@commitlint/types": "^20.4.4",
     "@eslint/js": "^10.0.1",
     "angular-eslint": "^21.3.0",
+    "changelogen": "^0.6.2",
     "eslint": "^10.0.3",
     "jsdom": "^28.0.0",
     "lefthook": "^2.1.3",

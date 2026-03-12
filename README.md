@@ -17,7 +17,7 @@ view scope    route      root             root          remote
 ```
 
 **You write** Component, Store, API Service — plain Angular `@Injectable()` classes.
-**Library provides** `DataCache`, `cachedResource()`, `cachedMutation()`, `injectCachedHttp()`, `provideZiflux()`, and `anyLoading()` — the cache + mutation lifecycle layer.
+**Library provides** `DataCache`, `cachedResource()`, `cachedMutation()`, `injectCachedHttp()`, `provideZiflux()`, `withDevtools()`, `ZifluxDevtoolsComponent`, and `anyLoading()` — the cache + mutation lifecycle layer.
 
 Signals flow back from Store to Component. The cache is transparent to the Store.
 
@@ -57,13 +57,18 @@ export const appConfig: ApplicationConfig = {
 }
 ```
 
+```typescript
+// With devtools (dev mode only)
+providers: [provideZiflux({ staleTime: 30_000, expireTime: 300_000 }, withDevtools())]
+```
+
 One line. All `DataCache` instances in your app inherit these defaults.
 
 ---
 
 ## API
 
-Seven exports.
+Ten exports.
 
 ### `DataCache<T>`
 
@@ -100,6 +105,8 @@ function cachedResource<T, P extends object>(options: {
   loader: (context: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
   staleTime?: number // override global
   expireTime?: number // override global
+  retry?: number | RetryConfig          // auto-retry with exponential backoff
+  refetchInterval?: number | (() => number | false) // polling
 }): CachedResourceRef<T>
 ```
 
@@ -121,6 +128,19 @@ interface CachedResourceRef<T> {
 
 Everything else (`status()`, `error()`, `reload()`, `set()`, `update()`) behaves exactly like Angular's `ResourceRef<T>`.
 
+`retry` accepts a retry count (exponential backoff with defaults) or a full `RetryConfig`:
+
+```typescript
+interface RetryConfig {
+  maxRetries: number
+  baseDelay?: number              // default: 1_000 ms
+  maxDelay?: number               // default: 30_000 ms
+  retryIf?: (error: unknown) => boolean // default: retry all
+}
+```
+
+`refetchInterval` enables polling — pass a number (ms) or a function returning `number | false` to pause.
+
 ### `injectCachedHttp(cache)`
 
 HTTP client that auto-populates a `DataCache` on GET responses.
@@ -141,7 +161,14 @@ interface CachedHttpClient<T> {
 
 Must be called in an injection context (field initializer of an `@Injectable()`).
 
-### `provideZiflux(config?)`
+### `provideZiflux(config?, ...features)`
+
+```typescript
+function provideZiflux(
+  config?: Partial<ZifluxConfig>,
+  ...features: ZifluxFeature[]
+): EnvironmentProviders
+```
 
 ```typescript
 provideZiflux({
@@ -149,6 +176,46 @@ provideZiflux({
   expireTime: 300_000, // ms before stale → evicted (default: 5min)
 })
 ```
+
+Pass feature functions like `withDevtools()` as additional arguments.
+
+### `withDevtools(config?: DevtoolsConfig)`
+
+Enables cache inspector and structured console logging. Only active in dev mode.
+
+```typescript
+function withDevtools(config?: DevtoolsConfig): ZifluxFeature
+```
+
+```typescript
+interface DevtoolsConfig {
+  logOperations?: boolean // default: true in dev mode
+}
+```
+
+### `ZifluxDevtoolsComponent`
+
+Floating overlay panel for inspecting live cache state. Standalone component.
+
+```typescript
+// In your root component template
+<ziflux-devtools />
+```
+
+Toggle with **Ctrl+Shift+Z** (Cmd+Shift+Z on Mac). Shows per-cache entries, freshness state, TTL, and in-flight requests.
+
+### `CacheRegistry`
+
+Global registry of all `DataCache` instances. Auto-managed when `withDevtools()` is enabled.
+
+```typescript
+class CacheRegistry {
+  readonly caches: Signal<Map<string, DataCache<unknown>>>
+  inspectAll(): { name: string; inspection: CacheInspection<unknown> }[]
+}
+```
+
+Useful for building custom monitoring — most users won't need it directly.
 
 ### `cachedMutation<A, R, C>()`
 

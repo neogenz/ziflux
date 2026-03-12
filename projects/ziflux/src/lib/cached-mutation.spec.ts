@@ -324,6 +324,60 @@ describe('cachedMutation', () => {
 
   // --- Observable error ---
 
+  // --- Concurrent mutations (last-write-wins per D-16) ---
+
+  it('concurrent mutate() calls — last to resolve wins on data signal', async () => {
+    let resolveFirst!: (v: string) => void
+    let resolveSecond!: (v: string) => void
+
+    const mutation = cachedMutation({
+      mutationFn: (label: string) =>
+        new Promise<string>(r => {
+          if (label === 'first') resolveFirst = r
+          else resolveSecond = r
+        }),
+    })
+
+    const p1 = mutation.mutate('first')
+    const p2 = mutation.mutate('second')
+    expect(mutation.status()).toBe('pending')
+
+    resolveSecond('second-result')
+    await p2
+    expect(mutation.data()).toBe('second-result')
+
+    resolveFirst('first-result')
+    await p1
+    expect(mutation.data()).toBe('first-result')
+    expect(mutation.status()).toBe('success')
+  })
+
+  it('concurrent mutate() — error in first does not affect second', async () => {
+    let rejectFirst!: (e: Error) => void
+    let resolveSecond!: (v: string) => void
+
+    const mutation = cachedMutation({
+      mutationFn: (label: string) =>
+        new Promise<string>((resolve, reject) => {
+          if (label === 'first') rejectFirst = reject
+          else resolveSecond = resolve
+        }),
+    })
+
+    const p1 = mutation.mutate('first')
+    const p2 = mutation.mutate('second')
+
+    rejectFirst(new Error('fail'))
+    await p1
+    expect(mutation.status()).toBe('error')
+
+    resolveSecond('ok')
+    await p2
+    expect(mutation.status()).toBe('success')
+    expect(mutation.data()).toBe('ok')
+    expect(mutation.error()).toBeNull()
+  })
+
   it('handles Observable error in mutationFn', async () => {
     const mutation = cachedMutation({
       mutationFn: () => throwError(() => new Error('obs-error')),

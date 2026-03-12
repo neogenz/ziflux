@@ -33,6 +33,7 @@ export function cachedMutation<A = void, R = void, C = void>(
       }
 
       data.set(result)
+      error.set(null)
       status.set('success')
       onSuccess?.(result, args)
       return result

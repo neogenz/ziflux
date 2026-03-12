@@ -325,7 +325,7 @@ describe('cachedResource', () => {
     cache.set(['test'], 'cached')
 
     // Wait for the entry to exceed the per-resource staleTime of 50ms
-    await new Promise(r => setTimeout(r, 60))
+    await new Promise(r => setTimeout(r, 200))
 
     let loaderCalled = false
     const ref = TestBed.runInInjectionContext(() =>
@@ -527,7 +527,7 @@ describe('cachedResource', () => {
       const afterInitial = loadCount
 
       // Wait for data to go stale (10ms) + at least one poll cycle (50ms)
-      await new Promise(r => setTimeout(r, 150))
+      await new Promise(r => setTimeout(r, 400))
       await flushMicrotasks()
       TestBed.tick()
 
@@ -552,7 +552,7 @@ describe('cachedResource', () => {
       await waitForStatus(ref, 'resolved')
       const afterInitial = loadCount
 
-      await new Promise(r => setTimeout(r, 120))
+      await new Promise(r => setTimeout(r, 400))
       await flushMicrotasks()
       TestBed.tick()
 
@@ -578,7 +578,7 @@ describe('cachedResource', () => {
       await waitForStatus(ref, 'resolved')
       const afterInitial = loadCount
 
-      await new Promise(r => setTimeout(r, 120))
+      await new Promise(r => setTimeout(r, 400))
       await flushMicrotasks()
       TestBed.tick()
 

@@ -40,6 +40,34 @@ function normalizeRetryConfig(retry: number | RetryConfig): Required<RetryConfig
   }
 }
 
+/**
+ * Creates an Angular `resource()` with SWR (stale-while-revalidate) caching.
+ *
+ * On each `params` change or cache invalidation, previously cached data is
+ * served immediately while a background fetch refreshes the entry. The loader
+ * runs only when the cache entry is missing or stale.
+ *
+ * Supports Promises and Observables in the `loader`. Pass `retry` (number or
+ * `RetryConfig`) to enable exponential-backoff retries. Pass `refetchInterval`
+ * to poll in the background — the interval is reactive: if you pass a signal,
+ * changing it restarts the timer automatically.
+ *
+ * @remarks
+ * Must be called inside an injection context (constructor, `inject()` call, or
+ * `runInInjectionContext()`). The underlying `resource()` and the polling
+ * `effect()` are destroyed with the owning injector.
+ *
+ * @example
+ * ```ts
+ * readonly todos = cachedResource({
+ *   cache: this.todoApi.cache,
+ *   cacheKey: (p) => ['todos', p.userId],
+ *   params: () => ({ userId: this.userId() }),
+ *   loader: ({ params }) => this.http.get<Todo[]>(`/api/todos?userId=${params.userId}`),
+ *   staleTime: 30_000,
+ * });
+ * ```
+ */
 export function cachedResource<T, P extends object>(
   options: CachedResourceOptions<T, P>,
 ): CachedResourceRef<T> {

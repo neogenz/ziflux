@@ -2,6 +2,32 @@ import { computed, signal } from '@angular/core'
 import { firstValueFrom, isObservable } from 'rxjs'
 import type { CachedMutationOptions, CachedMutationRef, CachedMutationStatus } from './types'
 
+/**
+ * Creates a mutation handler with signal-based status tracking.
+ *
+ * Lifecycle per `mutate()` call: `idle` → `pending` → `success | error`.
+ * On success, `invalidateKeys` entries are marked stale in the cache, which
+ * causes any active `cachedResource` watching those keys to revalidate.
+ * `mutate()` never rejects — errors are captured in the `error` signal.
+ *
+ * @remarks
+ * Concurrent calls follow last-write-wins semantics: each call independently
+ * sets `status` and `data` when it settles, so overlapping calls can produce
+ * interleaved signal updates. Debounce or disable the trigger while `isPending`
+ * to avoid this.
+ *
+ * @example
+ * ```ts
+ * readonly createTodo = cachedMutation({
+ *   cache: this.todoApi.cache,
+ *   mutationFn: (todo: NewTodo) => this.http.post<Todo>('/api/todos', todo),
+ *   invalidateKeys: () => [['todos']],
+ * });
+ *
+ * // In template or method:
+ * await this.createTodo.mutate({ title: 'Buy milk' });
+ * ```
+ */
 export function cachedMutation<A = void, R = void, C = void>(
   options: CachedMutationOptions<A, R, C>,
 ): CachedMutationRef<A, R> {

@@ -13,6 +13,18 @@ import type {
 
 let cacheCounter = 0
 
+/**
+ * In-memory SWR cache scoped to an Angular injection context.
+ *
+ * Keys are serialized string arrays; entries transition through
+ * `fresh → stale → expired` states based on `staleTime` and `expireTime`.
+ *
+ * @remarks
+ * There is no LRU eviction and no max-size cap — memory is unbounded.
+ * Expired entries are only removed on `get()` or explicit `cleanup()` calls.
+ * Without `cleanupInterval`, memory grows until the cache is destroyed.
+ * Cleanup is entirely opt-in.
+ */
 export class DataCache<T> {
   readonly #entries = new Map<string, CacheEntry<T>>()
   readonly #inFlight = new Map<string, Promise<T>>()
@@ -20,9 +32,15 @@ export class DataCache<T> {
   readonly #config: ZifluxConfig
   readonly #logger: DevtoolsLogger | null
 
+  /** Human-readable identifier, used by devtools. Auto-generated if not provided in config. */
   readonly name: string
+  /** Monotonically incrementing signal that bumps on every `invalidate()` or `clear()`. */
   readonly version = this.#version.asReadonly()
 
+  /**
+   * Must be called inside an Angular injection context (constructor, factory, or `runInInjectionContext`).
+   * Merges global config from `provideZiflux()` with local overrides.
+   */
   constructor(config?: DataCacheOptions) {
     const globalConfig = inject(ZIFLUX_CONFIG, { optional: true })
     const defaults: ZifluxConfig = { staleTime: 30_000, expireTime: 300_000 }
@@ -48,14 +66,21 @@ export class DataCache<T> {
     }
   }
 
+  /** Resolved stale threshold in milliseconds. */
   get staleTime(): number {
     return this.#config.staleTime
   }
 
+  /** Resolved expiry threshold in milliseconds. */
   get expireTime(): number {
     return this.#config.expireTime
   }
 
+  /**
+   * Returns the cached entry for `key`, or `null` if absent or expired.
+   * Per-call `staleTime`/`expireTime` overrides take precedence over the instance config.
+   * An expired entry is deleted on read.
+   */
   get(
     key: string[],
     options?: { staleTime?: number; expireTime?: number },
@@ -76,11 +101,24 @@ export class DataCache<T> {
     return { data: entry.data, fresh: age < staleTime }
   }
 
+  /** Writes or overwrites an entry. Resets the entry's `createdAt` timestamp. */
   set(key: string[], data: T): void {
     this.#entries.set(this.#serialize(key), { data, createdAt: Date.now() })
     this.#logger?.logSet(this.name, key, data)
   }
 
+  /**
+   * Marks all entries whose key starts with `prefix` as stale.
+   *
+   * Matching is performed on the JSON-serialized key: `prefix` is serialized
+   * with `JSON.stringify` and the closing `]` is stripped, so `['todos']`
+   * matches any key whose serialization begins with `["todos"` — e.g.
+   * `['todos', '1']`, `['todos', 'all']`, etc.
+   *
+   * Entries are not deleted; their timestamp is shifted back so that
+   * `get()` returns `fresh: false`, triggering a background revalidation.
+   * Bumps `version` to notify reactive consumers.
+   */
   invalidate(prefix: string[]): void {
     if (prefix.length === 0) return
     const prefixStr = JSON.stringify(prefix).slice(0, -1)
@@ -94,6 +132,13 @@ export class DataCache<T> {
     this.#logger?.logInvalidate(this.name, prefix)
   }
 
+  /**
+   * Low-level primitive for Observable-based loaders.
+   * Returns the source Observable with a side-effect that writes emitted
+   * values into the cache via `set()`. Intended for bridging RxJS
+   * data sources (e.g. `HttpClient`) into the cache without breaking the
+   * Observable chain.
+   */
   wrap(key: string[], obs$: Observable<T>): Observable<T> {
     return obs$.pipe(
       tap(data => {
@@ -102,6 +147,12 @@ export class DataCache<T> {
     )
   }
 
+  /**
+   * Ensures at most one in-flight request per key at any time.
+   * If a request for `key` is already pending, returns the existing promise
+   * instead of calling `fn` again. The in-flight record is cleared when
+   * the promise settles.
+   */
   deduplicate(key: string[], fn: () => Promise<T>): Promise<T> {
     const serialized = this.#serialize(key)
     const existing = this.#inFlight.get(serialized)
@@ -116,11 +167,17 @@ export class DataCache<T> {
     return promise
   }
 
+  /**
+   * Eagerly fetches and stores data before it is requested.
+   * Uses `deduplicate()` internally, so concurrent prefetch calls for the
+   * same key are collapsed into one request.
+   */
   async prefetch(key: string[], fn: () => Promise<T>): Promise<void> {
     const data = await this.deduplicate(key, fn)
     this.set(key, data)
   }
 
+  /** Removes all entries and cancels in-flight deduplication. Bumps `version`. */
   clear(): void {
     this.#entries.clear()
     this.#inFlight.clear()
@@ -128,6 +185,10 @@ export class DataCache<T> {
     this.#logger?.logClear(this.name)
   }
 
+  /**
+   * Returns a point-in-time snapshot of cache internals.
+   * Intended for devtools and debugging; do not use in production data flows.
+   */
   inspect(): CacheInspection<T> {
     const now = Date.now()
     const entries = [...this.#entries].map(([serialized, entry]) => {
@@ -157,6 +218,11 @@ export class DataCache<T> {
     }
   }
 
+  /**
+   * Evicts all entries whose age exceeds `expireTime`.
+   * Called automatically on the interval set by `cleanupInterval` (if configured).
+   * Returns the number of entries removed.
+   */
   cleanup(): number {
     const now = Date.now()
     let evicted = 0

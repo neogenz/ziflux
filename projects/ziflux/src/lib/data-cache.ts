@@ -82,6 +82,7 @@ export class DataCache<T> {
   }
 
   invalidate(prefix: string[]): void {
+    if (prefix.length === 0) return
     const prefixStr = JSON.stringify(prefix).slice(0, -1)
     for (const [key, entry] of this.#entries) {
       if (key.startsWith(prefixStr)) {

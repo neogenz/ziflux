@@ -193,6 +193,24 @@ describe('DataCache', () => {
     expect(cache.get(['a', 'c'])?.fresh).toBe(true)
   })
 
+  it('invalidate does not collide with keys sharing a string prefix', () => {
+    cache.set(['order', 'list'], 'order-list')
+    cache.set(['orders'], 'orders-data')
+    cache.set(['orderDetails', '1'], 'detail')
+
+    cache.invalidate(['order'])
+
+    expect(cache.get(['order', 'list'])?.fresh).toBe(false)
+    expect(cache.get(['orders'])?.fresh).toBe(true)
+    expect(cache.get(['orderDetails', '1'])?.fresh).toBe(true)
+  })
+
+  it('invalidate with empty prefix is a no-op', () => {
+    cache.set(['a'], 'data')
+    cache.invalidate([])
+    expect(cache.get(['a'])?.fresh).toBe(true)
+  })
+
   // --- version ---
 
   it('starts at 0', () => {

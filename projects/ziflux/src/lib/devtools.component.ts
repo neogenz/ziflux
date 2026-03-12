@@ -5,8 +5,10 @@ import {
   DestroyRef,
   inject,
   isDevMode,
+  PLATFORM_ID,
   signal,
 } from '@angular/core'
+import { isPlatformBrowser } from '@angular/common'
 import { CacheRegistry } from './cache-registry'
 import type { CacheInspection } from './types'
 
@@ -390,6 +392,7 @@ export class ZifluxDevtoolsComponent {
   readonly inspections = signal<InspectionEntry[]>([])
 
   readonly #registry = inject(CacheRegistry, { optional: true })
+  readonly #isBrowser = isPlatformBrowser(inject(PLATFORM_ID))
   readonly #expandedCaches = signal(new Set<string>())
   readonly #expandedEntries = signal(new Set<string>())
 
@@ -403,7 +406,7 @@ export class ZifluxDevtoolsComponent {
   })
 
   constructor() {
-    if (!this.devMode) return
+    if (!this.devMode || !this.#isBrowser) return
 
     const destroyRef = inject(DestroyRef)
     const id = setInterval(() => {
@@ -452,6 +455,7 @@ export class ZifluxDevtoolsComponent {
   }
 
   onKeydown(event: KeyboardEvent): void {
+    if (!this.#isBrowser) return
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'Z') {
       event.preventDefault()
       this.panelOpen.update(v => !v)

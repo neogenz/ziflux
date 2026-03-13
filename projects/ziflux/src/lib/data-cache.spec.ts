@@ -481,6 +481,52 @@ describe('DataCache', () => {
     vi.useRealTimers()
   })
 
+  // --- maxEntries ---
+
+  it('evicts oldest entry when maxEntries is exceeded', () => {
+    const limited = createCache<string>({ maxEntries: 2 })
+    limited.set(['a'], 'A')
+    limited.set(['b'], 'B')
+    limited.set(['c'], 'C') // should evict 'a'
+
+    expect(limited.get(['a'])).toBeNull()
+    expect(limited.get(['b'])?.data).toBe('B')
+    expect(limited.get(['c'])?.data).toBe('C')
+  })
+
+  it('LRU: accessing an entry prevents its eviction', () => {
+    const limited = createCache<string>({ maxEntries: 2 })
+    limited.set(['a'], 'A')
+    limited.set(['b'], 'B')
+
+    // Access 'a' → moves it to end, 'b' is now oldest
+    limited.get(['a'])
+
+    limited.set(['c'], 'C') // should evict 'b', not 'a'
+    expect(limited.get(['a'])?.data).toBe('A')
+    expect(limited.get(['b'])).toBeNull()
+    expect(limited.get(['c'])?.data).toBe('C')
+  })
+
+  it('overwriting an existing key does not count as a new entry', () => {
+    const limited = createCache<string>({ maxEntries: 2 })
+    limited.set(['a'], 'v1')
+    limited.set(['b'], 'v2')
+    limited.set(['a'], 'v3') // overwrite, not new
+
+    expect(limited.get(['a'])?.data).toBe('v3')
+    expect(limited.get(['b'])?.data).toBe('v2')
+  })
+
+  it('maxEntries: undefined means no limit', () => {
+    const unlimited = createCache<string>()
+    for (let i = 0; i < 100; i++) {
+      unlimited.set([`key-${i}`], `val-${i}`)
+    }
+    expect(unlimited.get(['key-0'])?.data).toBe('val-0')
+    expect(unlimited.get(['key-99'])?.data).toBe('val-99')
+  })
+
   // --- auto-cleanup ---
 
   it('auto-cleanup fires on interval', () => {

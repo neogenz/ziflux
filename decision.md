@@ -321,6 +321,20 @@ provideZiflux({ staleTime: 60_000 }, withDevtools())
 
 ---
 
+## D-26 — Add `maxEntries` with LRU eviction
+
+**Decision:** `ZifluxConfig.maxEntries` is an optional soft limit. When `set()` pushes the entry count above `maxEntries`, the least recently used entry is evicted. `get()` promotes accessed entries to most-recently-used position using Map insertion-order reordering.
+
+**Rationale:**
+- SPAs with dynamic key cardinality (detail pages by ID) cause unbounded memory growth
+- `cleanupInterval` only evicts expired entries — doesn't bound total count
+- LRU is the right policy because frequently accessed entries (list pages) should survive while rarely visited details are evicted
+- JavaScript `Map` preserves insertion order — `delete()` + `set()` = O(1) move-to-end
+
+**Trade-off:** `get()` now does a `delete+set` when `maxEntries` is configured. This is O(1) but touches the Map on every read. Acceptable for cache hit paths.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

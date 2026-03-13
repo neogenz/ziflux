@@ -21,6 +21,11 @@ export interface ZifluxConfig {
    * if many unique cache keys accumulate over the session lifetime.
    */
   cleanupInterval?: number // ms between auto-cleanup sweeps (undefined = disabled)
+  /**
+   * Maximum number of entries. When exceeded, the least recently used entry is evicted on write.
+   * When `undefined`, no limit is enforced.
+   */
+  maxEntries?: number
 }
 
 // --- Cache inspection ---

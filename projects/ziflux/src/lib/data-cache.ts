@@ -20,9 +20,9 @@ let cacheCounter = 0
  * `fresh → stale → expired` states based on `staleTime` and `expireTime`.
  *
  * @remarks
- * There is no LRU eviction and no max-size cap — memory is unbounded.
- * Expired entries are only removed on `get()` or explicit `cleanup()` calls.
- * Without `cleanupInterval`, memory grows until the cache is destroyed.
+ * When `maxEntries` is configured, entries are evicted in LRU order on write.
+ * `get()` promotes accessed entries to most-recently-used position.
+ * Without `maxEntries`, memory is bounded only by `expireTime` and `cleanup()`.
  * Cleanup is entirely opt-in.
  */
 export class DataCache<T> {
@@ -98,13 +98,30 @@ export class DataCache<T> {
       return null
     }
 
+    // LRU: move to end of iteration order (most recently used)
+    if (this.#config.maxEntries) {
+      this.#entries.delete(serialized)
+      this.#entries.set(serialized, entry)
+    }
+
     return { data: entry.data, fresh: age < staleTime }
   }
 
   /** Writes or overwrites an entry. Resets the entry's `createdAt` timestamp. */
   set(key: string[], data: T): void {
     this.#entries.set(this.#serialize(key), { data, createdAt: Date.now() })
+    this.#evictOverflow()
     this.#logger?.logSet(this.name, key, data)
+  }
+
+  #evictOverflow(): void {
+    const max = this.#config.maxEntries
+    if (!max || this.#entries.size <= max) return
+    const oldest = this.#entries.keys().next().value
+    if (oldest !== undefined) {
+      this.#entries.delete(oldest)
+      this.#logger?.logEvict(this.name, JSON.parse(oldest) as string[])
+    }
   }
 
   /**

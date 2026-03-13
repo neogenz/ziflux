@@ -53,7 +53,7 @@ npm install ziflux
 ```typescript
 // app.config.ts
 export const appConfig: ApplicationConfig = {
-  providers: [provideZiflux({ staleTime: 30_000, expireTime: 300_000 })],
+  providers: [provideZiflux({ staleTime: 30_000, expireTime: 300_000, maxEntries: 500 })],
 }
 ```
 
@@ -154,6 +154,7 @@ function provideZiflux(
 provideZiflux({
   staleTime: 30_000, // ms before fresh → stale (default: 30s)
   expireTime: 300_000, // ms before stale → evicted (default: 5min)
+  maxEntries: 500, // LRU eviction when exceeded (default: unlimited)
 })
 ```
 

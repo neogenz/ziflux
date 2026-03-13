@@ -1,8 +1,15 @@
 {
   "name": "ngx-ziflux",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "SWR caching layer for Angular's resource() API. Zero dependencies. Signal-native.",
-  "keywords": ["angular", "cache", "swr", "stale-while-revalidate", "signals", "resource"],
+  "keywords": [
+    "angular",
+    "cache",
+    "swr",
+    "stale-while-revalidate",
+    "signals",
+    "resource"
+  ],
   "license": "MIT",
   "author": "Maxime Desogus",
   "repository": {

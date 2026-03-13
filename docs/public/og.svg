@@ -1,7 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="#0a0a0b"/>
-  <rect x="556" y="215" width="88" height="88" rx="16" fill="#6d5acd"/>
-  <text x="600" y="278" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="52" font-weight="700" fill="white" text-anchor="middle">Z</text>
+  <g transform="translate(600, 250) scale(0.25) translate(-242.5, -270)">
+    <!-- Top row -->
+    <rect x="110" y="110" width="45" height="45" fill="white"/>
+    <rect x="165" y="110" width="45" height="45" fill="white"/>
+    <rect x="220" y="110" width="45" height="45" fill="white"/>
+    <rect x="275" y="110" width="45" height="45" fill="white"/>
+    <rect x="330" y="110" width="45" height="45" fill="white"/>
+    <!-- Diagonal - dissolving -->
+    <rect x="275" y="165" width="45" height="45" fill="white" opacity="0.8"/>
+    <rect x="330" y="165" width="45" height="45" fill="white" opacity="0.15"/>
+    <rect x="220" y="220" width="45" height="45" fill="white" opacity="0.5"/>
+    <rect x="275" y="220" width="45" height="45" fill="white" opacity="0.1"/>
+    <rect x="165" y="275" width="45" height="45" fill="white" opacity="0.3"/>
+    <rect x="220" y="275" width="45" height="45" fill="white" opacity="0.08"/>
+    <rect x="110" y="330" width="45" height="45" fill="white" opacity="0.15"/>
+    <!-- Bottom row -->
+    <rect x="110" y="385" width="45" height="45" fill="white"/>
+    <rect x="165" y="385" width="45" height="45" fill="white"/>
+    <rect x="220" y="385" width="45" height="45" fill="white"/>
+    <rect x="275" y="385" width="45" height="45" fill="white"/>
+    <rect x="330" y="385" width="45" height="45" fill="white"/>
+  </g>
   <text x="600" y="360" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="48" font-weight="700" fill="white" text-anchor="middle">ziflux</text>
   <text x="600" y="408" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="24" font-weight="400" fill="#a1a1aa" text-anchor="middle">SWR caching for Angular resource()</text>
   <text x="600" y="446" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="18" font-weight="400" fill="#71717a" text-anchor="middle">Instant navigations · Background refreshes · Zero spinners</text>

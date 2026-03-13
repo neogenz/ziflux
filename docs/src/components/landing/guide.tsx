@@ -1,33 +1,5 @@
 import { CodeBlock } from "./code-block"
 
-const API_SERVICE_CODE = `@Injectable({ providedIn: 'root' })
-export class OrderApi {
-  readonly cache = new DataCache()
-  readonly #http = inject(HttpClient)
-
-  getAll$(filters: OrderFilters) {
-    return this.#http.get<Order[]>('/orders', { params: { ...filters } })
-  }
-
-  getById$(id: string) {
-    return this.#http.get<Order>(\`/orders/\${id}\`)
-  }
-}`
-
-const LIST_STORE_CODE = `@Injectable()
-export class OrderListStore {
-  readonly #api = inject(OrderApi)
-
-  readonly filters = signal<OrderFilters>({ status: 'all' })
-
-  readonly orders = cachedResource({
-    cache: this.#api.cache,
-    cacheKey: params => ['order', 'list', params.status],
-    params: () => this.filters(),
-    loader: ({ params }) => this.#api.getAll$(params),
-  })
-}`
-
 const DETAIL_STORE_CODE = `@Injectable()
 export class OrderDetailStore {
   readonly #api = inject(OrderApi)
@@ -151,7 +123,7 @@ export function Guide() {
         <a href="#guide" className="hover:no-underline">Guide <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
       <p className="mt-2 text-muted-foreground">
-        Full walkthrough — from project structure to optimistic updates.
+        Quick Start gave you the basics. Now: detail views, error handling, mutations, and optimistic updates.
       </p>
 
       {/* Architecture overview */}
@@ -250,11 +222,18 @@ export function Guide() {
         <div className="mt-6 rounded-lg border border-border bg-muted/30 px-5 py-4">
           <p className="text-sm font-semibold">Why the cache must be a singleton</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Stores are route-scoped — they&apos;re created when you navigate to a route and destroyed when you leave.
-            If <code>DataCache</code> lived in the Store, the cache would be destroyed on every navigation. No cache = no stale data to show instantly on return visits.
+            Two things need different lifetimes, and that tension drives the architecture:
           </p>
+          <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+            <li>
+              <strong className="text-foreground">Cache</strong> must be <code>providedIn: &apos;root&apos;</code> &mdash; it survives route navigations so SWR works across pages.
+            </li>
+            <li>
+              <strong className="text-foreground">Reactive params</strong> (filters, IDs) are route-scoped &mdash; each route instance gets its own independent state.
+            </li>
+          </ul>
           <p className="mt-2 text-sm text-muted-foreground">
-            The cache needs a singleton host (<code>providedIn: &apos;root&apos;</code>) so it survives across navigations.
+            You can&apos;t merge both lifetimes without losing one or the other. The 3-file pattern solves this by separating the cache host (API service, root) from the reactive state (Store, route-scoped).
             The API service is a natural choice — but <code>DataCache</code> works anywhere with an injection context. A dedicated <code>OrderCache</code> service works just as well.
           </p>
         </div>
@@ -313,36 +292,18 @@ export function Guide() {
       <div className="mt-10">
         <h3 className="mb-2 text-lg font-semibold">Usage</h3>
         <p className="mt-2 mb-4 text-sm text-muted-foreground">
-          Walkthrough of the 3-file pattern from Quick Start, then mutations and optimistic updates.
+          Picks up where Quick Start left off — using the same API service and list store from there.
         </p>
 
-        {/* 1. API Service */}
+        {/* 1. Detail Store */}
         <div className="mt-6">
-          <h4 className="mb-2 text-sm font-semibold">1. API Service</h4>
-          <p className="mb-3 text-sm text-muted-foreground">
-            The cache lives here — it&apos;s a singleton that survives route navigations.
-          </p>
-          <CodeBlock code={API_SERVICE_CODE} filename="order.api.ts" />
-        </div>
-
-        {/* 2. List Store */}
-        <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">2. Store — List with Filters</h4>
-          <CodeBlock code={LIST_STORE_CODE} filename="order-list.store.ts" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            <code>orders.reload()</code>, <code>orders.isInitialLoading()</code>, <code>orders.isStale()</code> — already there.
-          </p>
-        </div>
-
-        {/* 3. Detail Store */}
-        <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">3. Store — Detail by ID</h4>
+          <h4 className="mb-2 text-sm font-semibold">1. Store — Detail by ID</h4>
           <CodeBlock code={DETAIL_STORE_CODE} filename="order-detail.store.ts" />
         </div>
 
-        {/* 4. Templates */}
+        {/* 2. Templates */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">4. Templates</h4>
+          <h4 className="mb-2 text-sm font-semibold">2. Templates</h4>
           <CodeBlock code={TEMPLATE_CODE} filename="order-list.component.html" />
           <p className="mt-3 text-sm text-muted-foreground">
             When the server fails but stale data exists, show both:
@@ -352,9 +313,9 @@ export function Guide() {
           </div>
         </div>
 
-        {/* 5. Mutations */}
+        {/* 3. Mutations */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">5. Mutations with cachedMutation()</h4>
+          <h4 className="mb-2 text-sm font-semibold">3. Mutations with cachedMutation()</h4>
           <p className="mb-3 text-sm text-muted-foreground">
             Replaces ~13 lines of boilerplate per mutation with a declarative definition.
           </p>
@@ -364,18 +325,18 @@ export function Guide() {
           </div>
         </div>
 
-        {/* 6. Optimistic updates */}
+        {/* 4. Optimistic updates */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">6. Optimistic Updates + Rollback</h4>
+          <h4 className="mb-2 text-sm font-semibold">4. Optimistic Updates + Rollback</h4>
           <p className="mb-3 text-sm text-muted-foreground">
             Use <code>onMutate</code> to apply optimistic changes, return rollback context, revert on error.
           </p>
           <CodeBlock code={OPTIMISTIC_CODE} filename="order-list.store.ts" />
         </div>
 
-        {/* 7. Aggregate loading */}
+        {/* 5. Aggregate loading */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">7. Aggregate Loading State</h4>
+          <h4 className="mb-2 text-sm font-semibold">5. Aggregate Loading State</h4>
           <CodeBlock code={ANY_LOADING_CODE} filename="order-list.store.ts" />
         </div>
       </div>

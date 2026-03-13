@@ -2,21 +2,6 @@ import { CodeBlock } from "./code-block"
 
 const CACHE_KEYS_CODE = `cache.invalidate(['order'])   // ← one call, everything refreshes`
 
-const OPTIMISTIC_CODE = `// In your store — cachedMutation handles the full lifecycle
-readonly deleteMutation = cachedMutation({
-  mutationFn: (id: string) => this.#api.delete$(id),
-  cache: this.#api.cache,
-  invalidateKeys: (id) => [['order']],
-  onMutate: (id) => {
-    const prev = this.orders.value()                             // snapshot
-    this.orders.update(list => list?.filter(o => o.id !== id))   // optimistic
-    return prev                                                  // context
-  },
-  onError: (_err, _id, prev) => {
-    if (prev) this.orders.set(prev)                              // rollback
-  },
-})`
-
 export function Freshness() {
   return (
     <section id="freshness" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
@@ -138,15 +123,9 @@ export function Freshness() {
         <div className="mt-3">
           <CodeBlock code={CACHE_KEYS_CODE} />
         </div>
-      </div>
-
-      {/* Optimistic updates */}
-      <div className="mt-10">
-        <h3 className="mb-2 text-lg font-semibold">Optimistic Updates</h3>
-        <p className="mb-4 text-sm text-muted-foreground">
-          <code>cachedMutation()</code> handles the full lifecycle: snapshot before, optimistic update, rollback on error, cache invalidation on success.
+        <p className="mt-3 text-sm text-muted-foreground">
+          See the <a href="#guide" className="underline underline-offset-4 hover:text-foreground transition-colors">Guide</a> for full optimistic update and mutation examples.
         </p>
-        <CodeBlock code={OPTIMISTIC_CODE} filename="order-list.store.ts" />
       </div>
 
       {/* When to cache */}

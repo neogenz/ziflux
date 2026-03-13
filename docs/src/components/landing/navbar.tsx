@@ -9,7 +9,9 @@ const NAV_LINKS = [
   { href: "#guide", label: "Guide" },
   { href: "#testing", label: "Testing" },
   { href: "#freshness", label: "Caching" },
+  { href: "#advanced-usage", label: "Patterns" },
   { href: "#api", label: "API" },
+  { href: "#gotchas", label: "Gotchas" },
 ]
 
 function ThemeToggle() {

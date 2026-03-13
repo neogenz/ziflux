@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "scripts": {
     "ng": "ng",
-    "build": "ng build ziflux",
+    "build": "ng build ziflux && cp README.md LICENSE dist/ziflux/",
     "test": "ng test ziflux --no-watch",
     "test:watch": "ng test ziflux",
     "typecheck": "tsc --noEmit -p projects/ziflux/tsconfig.lib.json",

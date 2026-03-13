@@ -11,10 +11,10 @@ import type { CachedMutationOptions, CachedMutationRef, CachedMutationStatus } f
  * `mutate()` never rejects — errors are captured in the `error` signal.
  *
  * @remarks
- * Concurrent calls follow last-write-wins semantics: each call independently
- * sets `status` and `data` when it settles, so overlapping calls can produce
- * interleaved signal updates. Debounce or disable the trigger while `isPending`
- * to avoid this.
+ * Concurrent calls follow latest-wins-by-call-order semantics: only the most
+ * recently invoked `mutate()` updates reactive signals and fires lifecycle
+ * callbacks. Cache invalidation runs for all successful mutations regardless.
+ * Capture the `mutate()` return value if you need an earlier call's result.
  *
  * @example
  * ```ts
@@ -37,8 +37,11 @@ export function cachedMutation<A = void, R = void, C = void>(
   const error = signal<unknown>(null)
   const data = signal<R | undefined>(undefined)
 
+  let callCounter = 0
+
   // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void-arg pattern for no-arg mutations
   async function mutate(...rawArgs: A extends void ? [] : [args: A]): Promise<R | undefined> {
+    const thisCallId = ++callCounter
     const args = rawArgs[0] as A
     status.set('pending')
     error.set(null)
@@ -58,15 +61,20 @@ export function cachedMutation<A = void, R = void, C = void>(
         }
       }
 
-      data.set(result)
-      error.set(null)
-      status.set('success')
-      onSuccess?.(result, args)
+      if (thisCallId === callCounter) {
+        data.set(result)
+        error.set(null)
+        status.set('success')
+        onSuccess?.(result, args)
+      }
+
       return result
     } catch (err) {
-      error.set(err)
-      status.set('error')
-      onError?.(err, args, context)
+      if (thisCallId === callCounter) {
+        error.set(err)
+        status.set('error')
+        onError?.(err, args, context)
+      }
       return undefined
     }
   }

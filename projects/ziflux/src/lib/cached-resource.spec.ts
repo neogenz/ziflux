@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { ResourceStatus } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
 import { of } from 'rxjs'
@@ -322,27 +322,35 @@ describe('cachedResource', () => {
   })
 
   it('respects per-resource staleTime override', async () => {
-    cache.set(['test'], 'cached')
+    vi.useFakeTimers()
+    try {
+      cache.set(['test'], 'cached')
 
-    // Wait for the entry to exceed the per-resource staleTime of 50ms
-    await new Promise(r => setTimeout(r, 200))
+      // Wait for the entry to exceed the per-resource staleTime of 50ms
+      await vi.advanceTimersByTimeAsync(200)
 
-    let loaderCalled = false
-    const ref = TestBed.runInInjectionContext(() =>
-      cachedResource<string, Record<string, never>>({
-        cache,
-        cacheKey: ['test'],
-        params: () => ({}),
-        loader: () => {
-          loaderCalled = true
-          return Promise.resolve('fresh')
-        },
-        staleTime: 50, // entry is stale after 50ms (we waited 60ms)
-      }),
-    )
+      let loaderCalled = false
+      TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['test'],
+          params: () => ({}),
+          loader: () => {
+            loaderCalled = true
+            return Promise.resolve('fresh')
+          },
+          staleTime: 50, // entry is stale after 50ms (we waited 60ms)
+        }),
+      )
 
-    await waitForStatus(ref, 'resolved')
-    expect(loaderCalled).toBe(true)
+      // Advance to let the loader Promise.resolve() chain complete
+      await vi.advanceTimersByTimeAsync(10)
+      TestBed.tick()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(loaderCalled).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   // --- error handling ---
@@ -445,27 +453,35 @@ describe('cachedResource', () => {
     })
 
     it('retry: 3 shorthand works with default delays', async () => {
-      let attempt = 0
+      vi.useFakeTimers()
+      try {
+        let attempt = 0
 
-      const ref = TestBed.runInInjectionContext(() =>
-        cachedResource<string, Record<string, never>>({
-          cache,
-          cacheKey: ['retry-shorthand'],
-          params: () => ({}),
-          loader: () => {
-            attempt++
-            if (attempt <= 1) return Promise.reject(new Error('fail'))
-            return Promise.resolve('ok')
-          },
-          retry: 3, // shorthand: { maxRetries: 3, baseDelay: 1000, maxDelay: 30000 }
-        }),
-      )
+        const ref = TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache,
+            cacheKey: ['retry-shorthand'],
+            params: () => ({}),
+            loader: () => {
+              attempt++
+              if (attempt <= 1) return Promise.reject(new Error('fail'))
+              return Promise.resolve('ok')
+            },
+            retry: 3, // shorthand: { maxRetries: 3, baseDelay: 1000, maxDelay: 30000 }
+          }),
+        )
 
-      // Default delays: attempt 0 jitter ~0-1000ms. Wait up to 4s.
-      await waitForStatus(ref, 'resolved', 2000)
-      expect(ref.value()).toBe('ok')
-      expect(attempt).toBe(2) // 1 fail + 1 success
-    }, 10_000)
+        // Advance past all possible backoff delays (max 30s)
+        await vi.advanceTimersByTimeAsync(30000)
+        TestBed.tick()
+        await vi.advanceTimersByTimeAsync(0)
+
+        expect(ref.value()).toBe('ok')
+        expect(attempt).toBe(2) // 1 fail + 1 success
+      } finally {
+        vi.useRealTimers()
+      }
+    })
 
     it('AbortSignal cancels during retry delay', async () => {
       let attempt = 0
@@ -502,87 +518,105 @@ describe('cachedResource', () => {
 
   describe('refetchInterval', () => {
     it('static interval triggers reload periodically', async () => {
-      let loadCount = 0
+      vi.useFakeTimers()
+      try {
+        let loadCount = 0
 
-      // Short staleTime so data goes stale before poll fires
-      const pollCache = TestBed.runInInjectionContext(
-        () => new DataCache<string>({ staleTime: 10, expireTime: 300_000 }),
-      )
+        // Short staleTime so data goes stale before poll fires
+        const pollCache = TestBed.runInInjectionContext(
+          () => new DataCache<string>({ staleTime: 10, expireTime: 300_000 }),
+        )
 
-      const ref = TestBed.runInInjectionContext(() =>
-        cachedResource<string, Record<string, never>>({
-          cache: pollCache,
-          cacheKey: ['poll-test'],
-          params: () => ({}),
-          loader: () => {
-            loadCount++
-            return Promise.resolve(`data-${loadCount}`)
-          },
-          refetchInterval: 50,
-          staleTime: 10,
-        }),
-      )
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache: pollCache,
+            cacheKey: ['poll-test'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve(`data-${loadCount}`)
+            },
+            refetchInterval: 50,
+            staleTime: 10,
+          }),
+        )
 
-      await waitForStatus(ref, 'resolved')
-      const afterInitial = loadCount
+        // Let initial load complete
+        await vi.advanceTimersByTimeAsync(10)
+        TestBed.tick()
+        const afterInitial = loadCount
 
-      // Wait for data to go stale (10ms) + at least one poll cycle (50ms)
-      await new Promise(r => setTimeout(r, 400))
-      await flushMicrotasks()
-      TestBed.tick()
+        // Wait for data to go stale (10ms) + at least one poll cycle (50ms)
+        await vi.advanceTimersByTimeAsync(400)
+        TestBed.tick()
 
-      expect(loadCount).toBeGreaterThan(afterInitial)
+        expect(loadCount).toBeGreaterThan(afterInitial)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('no polling when option absent', async () => {
-      let loadCount = 0
+      vi.useFakeTimers()
+      try {
+        let loadCount = 0
 
-      const ref = TestBed.runInInjectionContext(() =>
-        cachedResource<string, Record<string, never>>({
-          cache,
-          cacheKey: ['no-poll'],
-          params: () => ({}),
-          loader: () => {
-            loadCount++
-            return Promise.resolve('data')
-          },
-        }),
-      )
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache,
+            cacheKey: ['no-poll'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve('data')
+            },
+          }),
+        )
 
-      await waitForStatus(ref, 'resolved')
-      const afterInitial = loadCount
+        // Let initial load complete
+        await vi.advanceTimersByTimeAsync(10)
+        TestBed.tick()
+        const afterInitial = loadCount
 
-      await new Promise(r => setTimeout(r, 400))
-      await flushMicrotasks()
-      TestBed.tick()
+        await vi.advanceTimersByTimeAsync(400)
+        TestBed.tick()
 
-      expect(loadCount).toBe(afterInitial)
+        expect(loadCount).toBe(afterInitial)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('false return from function stops polling', async () => {
-      let loadCount = 0
+      vi.useFakeTimers()
+      try {
+        let loadCount = 0
 
-      const ref = TestBed.runInInjectionContext(() =>
-        cachedResource<string, Record<string, never>>({
-          cache,
-          cacheKey: ['poll-false'],
-          params: () => ({}),
-          loader: () => {
-            loadCount++
-            return Promise.resolve('data')
-          },
-          refetchInterval: () => false,
-        }),
-      )
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache,
+            cacheKey: ['poll-false'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve('data')
+            },
+            refetchInterval: () => false,
+          }),
+        )
 
-      await waitForStatus(ref, 'resolved')
-      const afterInitial = loadCount
+        // Let initial load complete
+        await vi.advanceTimersByTimeAsync(10)
+        TestBed.tick()
+        const afterInitial = loadCount
 
-      await new Promise(r => setTimeout(r, 400))
-      await flushMicrotasks()
-      TestBed.tick()
+        await vi.advanceTimersByTimeAsync(400)
+        TestBed.tick()
 
-      expect(loadCount).toBe(afterInitial)
+        expect(loadCount).toBe(afterInitial)
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 })

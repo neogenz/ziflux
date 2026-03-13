@@ -2,6 +2,8 @@ import { computed, effect, linkedSignal, resource } from '@angular/core'
 import { firstValueFrom, isObservable } from 'rxjs'
 import type { CachedResourceOptions, CachedResourceRef, RetryConfig } from './types'
 
+const NO_VALUE = Symbol('NO_VALUE')
+
 function retryWithBackoff<T>(
   fn: () => Promise<T>,
   config: Required<RetryConfig>,
@@ -88,9 +90,9 @@ export function cachedResource<T, P extends object>(
       return resolveKey(p)
     },
     computation: (currentKey: string[] | undefined) => {
-      if (!currentKey) return undefined as T | undefined
+      if (!currentKey) return NO_VALUE
       const entry = cache.get(currentKey, cacheGetOptions)
-      return entry ? entry.data : undefined
+      return entry ? entry.data : NO_VALUE
     },
   })
 
@@ -143,18 +145,18 @@ export function cachedResource<T, P extends object>(
     const status = res.status()
     if (status === 'loading' || status === 'reloading') {
       const snapshot = staleSnapshot()
-      if (snapshot !== undefined) return snapshot
+      if (snapshot !== NO_VALUE) return snapshot
     }
     return res.value()
   })
 
   const isStale = computed(() => {
     const status = res.status()
-    return (status === 'loading' || status === 'reloading') && staleSnapshot() !== undefined
+    return (status === 'loading' || status === 'reloading') && staleSnapshot() !== NO_VALUE
   })
 
   const isInitialLoading = computed(
-    () => res.status() === 'loading' && staleSnapshot() === undefined,
+    () => res.status() === 'loading' && staleSnapshot() === NO_VALUE,
   )
 
   return {
@@ -172,7 +174,7 @@ export function cachedResource<T, P extends object>(
     update: (fn: (prev: T | undefined) => T) => {
       res.update(fn)
     },
-    hasValue: () => value() !== undefined,
+    hasValue: () => staleSnapshot() !== NO_VALUE || res.status() === 'resolved' || res.status() === 'local',
     isStale,
     isInitialLoading,
   }

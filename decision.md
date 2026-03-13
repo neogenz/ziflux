@@ -349,6 +349,24 @@ provideZiflux({ staleTime: 60_000 }, withDevtools())
 
 ---
 
+## D-29 — Use `Symbol('NO_VALUE')` sentinel in staleSnapshot
+
+**Decision:** `cachedResource` internally uses a `Symbol('NO_VALUE')` sentinel instead of `undefined` to represent "no cached data" in the stale snapshot.
+
+**Rationale:** When `T` includes `undefined` as a valid value (e.g., `DataCache<string | undefined>`), using `undefined` as both "no data" and "data is undefined" creates ambiguity. The sentinel makes the distinction type-safe. This is internal — the public `CachedResourceRef<T>.value` type is unchanged.
+
+---
+
+## D-28 — cachedMutation uses latest-wins by call order, not resolution order
+
+**Decision:** `mutate()` tracks a monotonically increasing call counter. Only the most recently invoked `mutate()` updates reactive signals (`status`, `data`, `error`) and fires lifecycle callbacks (`onSuccess`, `onError`). Cache invalidation runs for all successful mutations regardless.
+
+**Rationale:** With last-write-wins by resolution order, a slow earlier mutation could overwrite a faster later mutation's UI state — the user sees stale data from an earlier action. Latest-wins by call order ensures signals always reflect the most recent user intent. Cache invalidation must run for all successful mutations because the server state actually changed.
+
+**Trade-off:** If the user needs the result of an earlier mutation, they must capture it from the `mutate()` return value before the next call. Signals only reflect the latest.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

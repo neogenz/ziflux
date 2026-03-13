@@ -410,6 +410,7 @@ export class ZifluxDevtoolsComponent {
 
     const destroyRef = inject(DestroyRef)
     const id = setInterval(() => {
+      if (!this.panelOpen()) return
       this.#refresh()
     }, 1000)
     destroyRef.onDestroy(() => {

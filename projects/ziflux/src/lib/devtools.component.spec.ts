@@ -182,4 +182,22 @@ describe('ZifluxDevtoolsComponent', () => {
     expect(stats.textContent).toContain('2 entries')
     expect(stats.textContent).toContain('fresh')
   })
+
+  it('polling is gated on panelOpen — skips refresh when closed, runs when open', () => {
+    setup()
+    const registry = TestBed.inject(CacheRegistry)
+    const spy = vi.spyOn(registry, 'inspectAll')
+
+    // Panel is closed — advancing time should not trigger inspectAll
+    vi.advanceTimersByTime(1000)
+    fixture.detectChanges()
+    expect(spy).not.toHaveBeenCalled()
+
+    // Open the panel then advance — inspectAll should now be called
+    openPanel()
+    spy.mockClear()
+    vi.advanceTimersByTime(1000)
+    fixture.detectChanges()
+    expect(spy).toHaveBeenCalled()
+  })
 })

@@ -1,7 +1,41 @@
 # ziflux
 
+[![npm version](https://img.shields.io/npm/v/ziflux)](https://www.npmjs.com/package/ziflux)
+[![license](https://img.shields.io/npm/l/ziflux)](https://github.com/neogenz/ziflux/blob/main/LICENSE)
+[![Angular](https://img.shields.io/badge/Angular-21+-dd0031)](https://angular.dev)
+[![CI](https://github.com/neogenz/ziflux/actions/workflows/ci.yml/badge.svg)](https://github.com/neogenz/ziflux/actions/workflows/ci.yml)
+
 A zero-dependency, signal-native caching layer for Angular 21+.
 Stale-while-revalidate semantics for `resource()` — instant navigations, background refreshes, no spinners on return visits.
+
+---
+
+## Quick Start
+
+```bash
+npm install ziflux
+```
+
+```typescript
+// app.config.ts
+providers: [provideZiflux()]
+
+// todo.api.ts — singleton, owns the cache
+@Injectable({ providedIn: 'root' })
+export class TodoApi {
+  readonly cache = new DataCache<Todo>()
+  readonly #http = inject(HttpClient)
+  getAll$() { return this.#http.get<Todo[]>('/todos') }
+}
+
+// todo-list.store.ts — route-scoped, reads the cache
+readonly todos = cachedResource({
+  cache: this.#api.cache,
+  cacheKey: ['todos'],
+  params: () => ({}),
+  loader: () => this.#api.getAll$(),
+})
+```
 
 ---
 

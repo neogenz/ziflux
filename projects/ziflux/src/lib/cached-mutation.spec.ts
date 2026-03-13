@@ -324,9 +324,9 @@ describe('cachedMutation', () => {
 
   // --- Observable error ---
 
-  // --- Concurrent mutations (last-write-wins per D-16) ---
+  // --- Concurrent mutations (latest-wins by call order per D-28) ---
 
-  it('concurrent mutate() calls — last to resolve wins on data signal', async () => {
+  it('concurrent mutate() calls — latest call by invocation order wins on signals', async () => {
     let resolveFirst!: (v: string) => void
     let resolveSecond!: (v: string) => void
 
@@ -342,17 +342,20 @@ describe('cachedMutation', () => {
     const p2 = mutation.mutate('second')
     expect(mutation.status()).toBe('pending')
 
+    // second resolves first
     resolveSecond('second-result')
     await p2
     expect(mutation.data()).toBe('second-result')
+    expect(mutation.status()).toBe('success')
 
+    // first resolves later — signals should NOT be overwritten because second was called last
     resolveFirst('first-result')
     await p1
-    expect(mutation.data()).toBe('first-result')
+    expect(mutation.data()).toBe('second-result')
     expect(mutation.status()).toBe('success')
   })
 
-  it('concurrent mutate() — error in first does not affect second', async () => {
+  it('concurrent mutate() — error in first does not affect second (latest call wins)', async () => {
     let rejectFirst!: (e: Error) => void
     let resolveSecond!: (v: string) => void
 
@@ -367,15 +370,53 @@ describe('cachedMutation', () => {
     const p1 = mutation.mutate('first')
     const p2 = mutation.mutate('second')
 
+    // first errors but was not the latest call — signals must not update
     rejectFirst(new Error('fail'))
     await p1
-    expect(mutation.status()).toBe('error')
+    expect(mutation.status()).toBe('pending')
+    expect(mutation.error()).toBeNull()
 
     resolveSecond('ok')
     await p2
     expect(mutation.status()).toBe('success')
     expect(mutation.data()).toBe('ok')
     expect(mutation.error()).toBeNull()
+  })
+
+  it('outdated mutation still invalidates cache but skips signal updates', async () => {
+    let resolveFirst!: (v: string) => void
+    let resolveSecond!: (v: string) => void
+    const cache = { invalidate: vi.fn() }
+
+    const onSuccess = vi.fn()
+    const mutationWithCb = cachedMutation({
+      mutationFn: (label: string) =>
+        new Promise<string>(r => {
+          if (label === 'first') resolveFirst = r
+          else resolveSecond = r
+        }),
+      cache,
+      invalidateKeys: (_args, result) => [[result]],
+      onSuccess,
+    })
+
+    const p1 = mutationWithCb.mutate('first')
+    const p2 = mutationWithCb.mutate('second')
+
+    // first resolves while second is still in-flight — cache must invalidate but signals stay pending
+    resolveFirst('first-result')
+    await p1
+    expect(cache.invalidate).toHaveBeenCalledWith(['first-result'])
+    expect(mutationWithCb.data()).toBeUndefined()
+    expect(mutationWithCb.status()).toBe('pending')
+    expect(onSuccess).not.toHaveBeenCalled()
+
+    resolveSecond('second-result')
+    await p2
+    expect(cache.invalidate).toHaveBeenCalledWith(['second-result'])
+    expect(mutationWithCb.data()).toBe('second-result')
+    expect(mutationWithCb.status()).toBe('success')
+    expect(onSuccess).toHaveBeenCalledWith('second-result', 'second')
   })
 
   it('handles Observable error in mutationFn', async () => {

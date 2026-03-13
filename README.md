@@ -168,6 +168,18 @@ AI code generation instructions: [llms.txt](https://github.com/neogenz/ziflux/bl
 
 ---
 
+## AI Skills
+
+Install the ziflux expert skill for your AI coding agent:
+
+```bash
+npx skills add neogenz/ziflux
+```
+
+Gives your agent deep knowledge of ziflux APIs, patterns, and best practices for implementation, debugging, code review, and testing.
+
+---
+
 ## Limitations
 
 - **Client-side only** — no SSR transfer state. The cache is in-memory and does not serialize across server/client boundaries.

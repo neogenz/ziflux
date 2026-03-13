@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { href: "#advanced-usage", label: "Patterns" },
   { href: "#testing", label: "Testing" },
   { href: "#api", label: "API" },
-  { href: "#gotchas", label: "Gotchas" },
+  { href: "#ai-skills", label: "AI Skills" },
 ]
 
 function ThemeToggle() {

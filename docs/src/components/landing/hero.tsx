@@ -1,7 +1,7 @@
 import { CodeBlock } from "./code-block"
 import { NavigationDemo } from "./navigation-demo"
 
-const INSTALL_CODE = `npm install ziflux`
+const INSTALL_CODE = `npm install ngx-ziflux`
 
 const USAGE_CODE = `const todos = cachedResource({
   cache: this.#api.cache,

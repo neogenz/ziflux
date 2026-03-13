@@ -1,8 +1,8 @@
 import { CodeBlock } from "./code-block"
 
-const INSTALL_CODE = `npm install ziflux`
+const INSTALL_CODE = `npm install ngx-ziflux`
 
-const CONFIG_CODE = `import { provideZiflux } from 'ziflux'
+const CONFIG_CODE = `import { provideZiflux } from 'ngx-ziflux'
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -15,7 +15,7 @@ export const appConfig: ApplicationConfig = {
 
 const API_CODE = `import { inject, Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
-import { DataCache } from 'ziflux'
+import { DataCache } from 'ngx-ziflux'
 
 @Injectable({ providedIn: 'root' })
 export class OrderApi {
@@ -27,7 +27,7 @@ export class OrderApi {
   }
 }`
 
-const STORE_CODE = `import { cachedResource } from 'ziflux'
+const STORE_CODE = `import { cachedResource } from 'ngx-ziflux'
 
 @Injectable()
 export class OrderListStore {

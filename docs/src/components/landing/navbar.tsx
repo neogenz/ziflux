@@ -91,7 +91,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <a
-            href="https://www.npmjs.com/package/ziflux"
+            href="https://www.npmjs.com/package/ngx-ziflux"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

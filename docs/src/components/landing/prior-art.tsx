@@ -28,7 +28,7 @@ export function PriorArt() {
       </div>
 
       <div className="mt-10 text-center">
-        <pre className="inline-block"><code>npm install ziflux</code></pre>
+        <pre className="inline-block"><code>npm install ngx-ziflux</code></pre>
         <p className="mt-4 text-sm text-muted-foreground">
           <a
             href="https://github.com/neogenz/ziflux"

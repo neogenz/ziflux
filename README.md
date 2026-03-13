@@ -1,21 +1,21 @@
 # ziflux
 
-[![npm version](https://img.shields.io/npm/v/ziflux)](https://www.npmjs.com/package/ziflux)
-[![license](https://img.shields.io/npm/l/ziflux)](https://github.com/neogenz/ziflux/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/ngx-ziflux)](https://www.npmjs.com/package/ngx-ziflux)
+[![license](https://img.shields.io/npm/l/ngx-ziflux)](https://github.com/neogenz/ziflux/blob/main/LICENSE)
 [![Angular](https://img.shields.io/badge/Angular-21+-dd0031)](https://angular.dev)
 [![CI](https://github.com/neogenz/ziflux/actions/workflows/ci.yml/badge.svg)](https://github.com/neogenz/ziflux/actions/workflows/ci.yml)
 
 A zero-dependency, signal-native caching layer for Angular 21+.
 Stale-while-revalidate semantics for `resource()` — instant navigations, background refreshes, no spinners on return visits.
 
-**[Documentation](https://ziflux.dev)** · [npm](https://www.npmjs.com/package/ziflux) · [GitHub](https://github.com/neogenz/ziflux)
+**[Documentation](https://ziflux.dev)** · [npm](https://www.npmjs.com/package/ngx-ziflux) · [GitHub](https://github.com/neogenz/ziflux)
 
 ---
 
 ## Quick Start
 
 ```bash
-npm install ziflux
+npm install ngx-ziflux
 ```
 
 ```typescript

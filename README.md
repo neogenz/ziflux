@@ -61,29 +61,20 @@ view scope    route      root             root          remote
               mutations         invalidate()  version signal
 ```
 
-**You write** Component, Store, API Service — plain Angular `@Injectable()` classes.
-**Library provides** `DataCache`, `cachedResource()`, `cachedMutation()`, `provideZiflux()`, `withDevtools()`, `ZifluxDevtoolsComponent`, and `anyLoading()` — the cache + mutation lifecycle layer.
-
 Signals flow back from Store to Component. The cache is transparent to the Store.
 
 ---
 
-## What it is
+## Why ziflux?
 
-A **cache layer** that fills the gap Angular's `resource()` leaves open: the data lifecycle.
+`resource()` handles the **fetch lifecycle** (loading → resolved → error). It doesn't handle the **data lifecycle** — when to re-fetch, what to keep, what's stale.
 
 ```
 resource()  → fetch lifecycle  → loading  | resolved | error
 DataCache   → data lifecycle   → fresh    | stale    | expired
 ```
 
-`resource()` knows **how** to fetch. `ziflux` knows **when** to re-fetch and **what** to keep.
-
-## What it is NOT
-
-- Not a state manager — Angular signals are your state manager
-- Not a store abstraction — you write plain injectable services
-- Not another NgRx, not a TanStack port
+ziflux fills that gap. Angular signals remain your state layer — this is just the cache.
 
 ---
 
@@ -261,9 +252,9 @@ Works with both `CachedResourceRef.isLoading` and `CachedMutationRef.isPending`.
 
 ---
 
-## Architecture — Domain Pattern
+## Domain Pattern
 
-**Recommended pattern** — most features follow a 3-file structure:
+**Recommended** — most features follow a 3-file structure:
 
 ```
 1. order.api.ts          ← HTTP + cache (singleton, providedIn: 'root')

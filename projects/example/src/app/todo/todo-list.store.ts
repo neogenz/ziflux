@@ -8,7 +8,7 @@ export class TodoListStore {
   readonly #api = inject(TodoApi)
   readonly pollingEnabled = signal(false)
 
-  readonly todos = cachedResource<Todo[]>({
+  readonly todos = cachedResource<Todo[], Record<string, never>>({
     cache: this.#api.listCache,
     cacheKey: ['todos'],
     loader: () => this.#api.getAll$(),

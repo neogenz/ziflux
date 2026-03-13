@@ -50,20 +50,17 @@ readonly todos = cachedResource({
 
 All `DataCache` instances inherit defaults from `provideZiflux()`. Devtools are only active in dev mode.
 
+See the [full example app](./projects/example/) for a working Todo demo with mutations, optimistic updates, polling, and devtools.
+
 ---
 
 ## Architecture
 
-```
-Component  →  Store  →  API Service  →  DataCache  →  Server
-view scope    route      root             root          remote
-              scope      singleton        singleton
+**Component → Store → API Service → DataCache → Server**
 
-              cachedResource()  cache.set()   SWR + dedup
-              mutations         invalidate()  version signal
-```
+Each layer has a clear scope: components own the view, stores own the route state, API services (root singletons) own the cache. Signals flow back from Store to Component. The cache is transparent to the Store.
 
-Signals flow back from Store to Component. The cache is transparent to the Store.
+See the [Architecture Guide](https://ziflux.dev#guide) for the full domain pattern.
 
 ---
 
@@ -87,6 +84,7 @@ Signals flow back from Store to Component. The cache is transparent to the Store
 | Learning curve | Minutes | Hours | Days |
 | API surface | 9 exports | 50+ | 100+ |
 | Use case | SWR caching for `resource()` | Full data-fetching framework | Full state management |
+| **Best for** | SWR on `resource()` | Full data-fetching layer | Complex state + effects |
 
 **Pick ziflux when** you want caching semantics on top of Angular's built-in `resource()` — nothing more, nothing less.
 **Pick TanStack Query when** you need a comprehensive data-fetching layer with pagination, infinite queries, and devtools across frameworks.
@@ -105,6 +103,8 @@ Signals flow back from Store to Component. The cache is transparent to the Store
 | `withDevtools()` | Cache inspector + structured console logging (dev mode only) |
 | `anyLoading()` | Aggregate `Signal<boolean>` from multiple loading/pending signals |
 | `ZIFLUX_CONFIG` | Injection token for the resolved config |
+| `CacheRegistry` | Tracks all `DataCache` instances — used internally by devtools |
+| `ZifluxDevtoolsComponent` | Standalone component — renders cache inspector overlay in dev mode |
 
 Full signatures, return types, and usage examples → **[API Reference](https://ziflux.dev#api)**
 
@@ -112,17 +112,16 @@ Full signatures, return types, and usage examples → **[API Reference](https://
 
 ## Freshness Model
 
-```
-  write        staleTime          expireTime
-    │              │                 │
-    ▼              ▼                 ▼
-    ├── FRESH ─────┤──── STALE ──────┤── EVICTED ──▶
-         return          return +        fetch from
-         directly     background fetch    server
-```
+Entries move through three states: **Fresh** → **Stale** → **Evicted**. `staleTime` and `expireTime` control the transitions.
+
+- **Fresh** — returned directly from cache, no fetch
+- **Stale** — returned immediately + background fetch (SWR)
+- **Evicted** — cache miss, full fetch from server
 
 **Golden rule: `invalidate()` marks entries stale. It never deletes them.**
 Users always see data instantly — even stale — while fresh data loads.
+
+See the [Freshness Guide](https://ziflux.dev#freshness) for TTL configuration and examples.
 
 ---
 
@@ -152,7 +151,7 @@ Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation
 - **[Guide](https://ziflux.dev#guide)** — Domain pattern, 3-file structure, full usage walkthrough (API → Store → Template → Mutations → Optimistic updates)
 - **[Testing](https://ziflux.dev#testing)** — TestBed setup, store testing, standalone DataCache testing
 - **[Caching](https://ziflux.dev#freshness)** — Freshness model, loading states, cache keys, when to cache
-- **[API Reference](https://ziflux.dev#api)** — Full signatures, return types, usage examples for all 7 exports
+- **[API Reference](https://ziflux.dev#api)** — Full signatures, return types, usage examples for all 9 exports
 
 ---
 

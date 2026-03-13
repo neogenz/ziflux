@@ -211,6 +211,38 @@ describe('DataCache', () => {
     expect(cache.get(['a'])?.fresh).toBe(true)
   })
 
+  // --- invalidate + in-flight ---
+
+  it('invalidate clears matching in-flight entries', () => {
+    const pending = new Promise<string>(() => {}) // never resolves
+    void cache.deduplicate(['todos'], () => pending)
+
+    cache.invalidate(['todos'])
+
+    // New deduplicate should start fresh (not return old promise)
+    let freshCalled = false
+    void cache.deduplicate(['todos'], () => {
+      freshCalled = true
+      return Promise.resolve('fresh')
+    })
+    expect(freshCalled).toBe(true)
+  })
+
+  it('invalidate does not clear unrelated in-flight entries', () => {
+    let callCount = 0
+    const pending = new Promise<string>(() => {})
+    void cache.deduplicate(['users'], () => pending)
+
+    cache.invalidate(['todos'])
+
+    void cache.deduplicate(['users'], () => {
+      callCount++
+      return Promise.resolve('new')
+    })
+    // Should still return old promise, not call fn
+    expect(callCount).toBe(0)
+  })
+
   // --- version ---
 
   it('starts at 0', () => {

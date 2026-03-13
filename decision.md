@@ -335,6 +335,20 @@ provideZiflux({ staleTime: 60_000 }, withDevtools())
 
 ---
 
+## D-27 — Fix invalidate + in-flight race condition
+
+**Decision:** `invalidate()` now clears matching in-flight `deduplicate()` promises. `cachedResource` guards `cache.set()` with an `abortSignal.aborted` check.
+
+**Bug:** When `invalidate(['todos'])` was called while a `deduplicate(['todos'])` had a Promise in-flight, the post-invalidation loader reused the same pre-mutation Promise via deduplication. When it resolved, the stale data overwrote the cache — silently undoing the invalidation.
+
+**Fix (two parts):**
+1. `invalidate()` iterates `#inFlight` and deletes entries whose key matches the prefix. Subsequent `deduplicate()` calls start a fresh fetch instead of reusing the pre-mutation Promise.
+2. `cachedResource` checks `abortSignal.aborted` before calling `cache.set()`. Angular's `resource()` aborts the previous loader when params change (version bump), so this prevents any aborted loader from writing stale data.
+
+**Trade-off:** `invalidate()` now iterates both `#entries` and `#inFlight`. Both are small Maps in practice — negligible cost.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

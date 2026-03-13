@@ -119,7 +119,9 @@ export function cachedResource<T, P extends object>(
         return retryConfig ? retryWithBackoff(invoke, retryConfig, abortSignal) : invoke()
       })
 
-      cache.set(k, data)
+      if (!abortSignal.aborted) {
+        cache.set(k, data)
+      }
       return data
     },
   })

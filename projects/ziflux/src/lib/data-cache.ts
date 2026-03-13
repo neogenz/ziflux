@@ -134,6 +134,8 @@ export class DataCache<T> {
    *
    * Entries are not deleted; their timestamp is shifted back so that
    * `get()` returns `fresh: false`, triggering a background revalidation.
+   * In-flight `deduplicate()` promises matching the prefix are also cleared,
+   * forcing subsequent calls to start fresh fetches.
    * Bumps `version` to notify reactive consumers.
    */
   invalidate(prefix: string[]): void {
@@ -143,6 +145,13 @@ export class DataCache<T> {
       if (key.startsWith(prefixStr)) {
         // Shift timestamp backward so age exceeds staleTime → entry reads as stale
         entry.createdAt -= this.#config.staleTime + 1
+      }
+    }
+    // Clear in-flight deduplicate promises for invalidated keys
+    // so that subsequent deduplicate() calls start fresh fetches
+    for (const key of this.#inFlight.keys()) {
+      if (key.startsWith(prefixStr)) {
+        this.#inFlight.delete(key)
       }
     }
     this.#version.update(v => v + 1)

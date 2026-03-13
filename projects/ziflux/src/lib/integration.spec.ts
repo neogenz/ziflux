@@ -158,6 +158,30 @@ describe('Integration — SWR lifecycle', () => {
     expect(ref.isStale()).toBe(false)
   })
 
+  it('invalidation clears in-flight deduplication (race condition fix)', () => {
+    const cache = TestBed.runInInjectionContext(() => new DataCache<string>())
+
+    // Start an in-flight request via deduplicate
+    const pending = new Promise<string>(() => {}) // never resolves
+    void cache.deduplicate(['todos'], () => pending)
+
+    // Simulate mutation + invalidation while fetch is in-flight
+    cache.invalidate(['todos'])
+
+    // After invalidation, a fresh deduplicate should start a NEW fetch
+    // (not reuse the pre-mutation promise)
+    let freshCalled = false
+    void cache.deduplicate(['todos'], () => {
+      freshCalled = true
+      return Promise.resolve('post-mutation-data')
+    })
+
+    expect(freshCalled).toBe(true)
+
+    // Verify cache version was bumped
+    expect(cache.version()).toBe(1)
+  })
+
   it('optimistic update + rollback on error', async () => {
     const cache = TestBed.runInInjectionContext(() => new DataCache<string[]>())
 

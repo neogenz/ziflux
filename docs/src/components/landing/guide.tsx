@@ -9,12 +9,8 @@ export class OrderApi {
     return this.#http.get<Order[]>('/orders', { params: { ...filters } })
   }
 
-  getById$(id: string): Observable<Order> {
+  getById$(id: string) {
     return this.#http.get<Order>(\`/orders/\${id}\`)
-  }
-
-  delete$(id: string): Observable<void> {
-    return this.#http.delete<void>(\`/orders/\${id}\`)
   }
 }`
 

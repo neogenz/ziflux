@@ -1,13 +1,15 @@
 import { CodeBlock } from "./code-block"
 
-const CONFIG_CODE = `import { provideZiflux, withDevtools } from 'ziflux'
+const INSTALL_CODE = `npm install ziflux`
+
+const CONFIG_CODE = `import { provideZiflux } from 'ziflux'
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZiflux({
       staleTime: 30_000,   // 30s — data considered fresh
       expireTime: 300_000, // 5min — stale data evicted
-    }, withDevtools()),
+    }),
   ],
 }`
 
@@ -17,19 +19,11 @@ import { DataCache } from 'ziflux'
 
 @Injectable({ providedIn: 'root' })
 export class OrderApi {
-  readonly cache = new DataCache()
+  readonly cache = new DataCache()      // ← this is new
   readonly #http = inject(HttpClient)
 
-  getAll$(filters: OrderFilters): Observable<Order[]> {
+  getAll$(filters: OrderFilters) {
     return this.#http.get<Order[]>('/orders', { params: { ...filters } })
-  }
-
-  getById$(id: string): Observable<Order> {
-    return this.#http.get<Order>(\`/orders/\${id}\`)
-  }
-
-  delete$(id: string): Observable<void> {
-    return this.#http.delete<void>(\`/orders/\${id}\`)
   }
 }`
 
@@ -39,18 +33,14 @@ const STORE_CODE = `import { cachedResource } from 'ziflux'
 export class OrderListStore {
   readonly #api = inject(OrderApi)
 
-  readonly filters = signal<OrderFilters>({ status: 'all', search: '' })
+  readonly filters = signal<OrderFilters>({ status: 'all' })
 
   readonly orders = cachedResource({
     cache: this.#api.cache,
-    cacheKey: params => ['order', 'list', params.status, params.search],
+    cacheKey: params => ['order', 'list', params.status],
     params: () => this.filters(),
     loader: ({ params }) => this.#api.getAll$(params),
   })
-
-  setFilters(filters: Partial<OrderFilters>) {
-    this.filters.update(f => ({ ...f, ...filters }))
-  }
 }`
 
 const COMPONENT_CODE = `@Component({
@@ -58,10 +48,8 @@ const COMPONENT_CODE = `@Component({
   template: \`
     @if (store.orders.isInitialLoading()) {
       <app-spinner />
-    } @else if (store.orders.value(); as list) {
-      <app-order-list [orders]="list" [stale]="store.orders.isStale()" />
     } @else {
-      <app-empty-state />
+      <app-order-list [orders]="store.orders.value()" />
     }
   \`,
 })
@@ -76,43 +64,31 @@ export function QuickStart() {
         <a href="#quickstart" className="hover:no-underline">Quick Start <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
 
-      {/* Setup */}
-      <p className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Setup</p>
-
-      <div className="mt-4">
-        <h3 className="mb-3 text-sm font-semibold">
-          <code className="text-accent">provideZiflux()</code>
-          <span className="ml-2 font-normal text-muted-foreground">— global cache durations</span>
-        </h3>
+      {/* Step 1 */}
+      <p className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted-foreground">1 · Install & configure</p>
+      <p className="mt-2 mb-4 text-sm text-muted-foreground">One provider, two durations.</p>
+      <div className="space-y-4">
+        <CodeBlock code={INSTALL_CODE} language="bash" />
         <CodeBlock code={CONFIG_CODE} filename="app.config.ts" />
       </div>
 
-      {/* Per feature */}
-      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Per feature</p>
+      {/* Step 2 */}
+      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">2 · Add a cache to your API service</p>
+      <p className="mt-2 mb-4 text-sm text-muted-foreground">Add a DataCache instance to your existing API service. One line.</p>
+      <CodeBlock code={API_CODE} filename="order.api.ts" />
 
-      <div className="mt-4">
-        <h3 className="mb-3 text-sm font-semibold">
-          <code className="text-accent">DataCache</code> + <code className="text-accent">HttpClient</code>
-          <span className="ml-2 font-normal text-muted-foreground">— cache lives in the API service</span>
-        </h3>
-        <CodeBlock code={API_CODE} filename="order.api.ts" />
-      </div>
+      {/* Step 3 */}
+      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">3 · Use cachedResource()</p>
+      <p className="mt-2 mb-4 text-sm text-muted-foreground">Same shape as resource(), plus cache and cacheKey. Returns stale data instantly, re-fetches in background.</p>
+      <CodeBlock code={STORE_CODE} filename="order-list.store.ts" />
 
-      <div className="mt-8">
-        <h3 className="mb-3 text-sm font-semibold">
-          <code className="text-accent">cachedResource()</code>
-          <span className="ml-2 font-normal text-muted-foreground">— returns stale data instantly, re-fetches in background</span>
-        </h3>
-        <CodeBlock code={STORE_CODE} filename="order-list.store.ts" />
-      </div>
+      {/* Step 4 */}
+      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">4 · Template</p>
+      <p className="mt-2 mb-4 text-sm text-muted-foreground">isInitialLoading() is true only when there's no cached data. Subsequent visits skip the spinner entirely.</p>
+      <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
 
-      <div className="mt-8">
-        <h3 className="mb-3 text-sm font-semibold">
-          <code className="text-accent">isInitialLoading()</code> + <code className="text-accent">isStale()</code>
-          <span className="ml-2 font-normal text-muted-foreground">— spinner only on first visit</span>
-        </h3>
-        <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
-      </div>
+      {/* Closing */}
+      <p className="mt-8 text-sm text-muted-foreground">That's it. Navigate away, come back — data loads instantly from cache.</p>
 
     </section>
   )

@@ -38,7 +38,7 @@ export function cachedMutation<A = void, R = void, C = void>(
   const { mutationFn, cache, invalidateKeys, onMutate, onSuccess, onError } = options
 
   const status = signal<CachedMutationStatus>('idle')
-  const error = signal<unknown>(null)
+  const error = signal<unknown>(undefined)
   const data = signal<R | undefined>(undefined)
 
   let callCounter = 0
@@ -48,7 +48,7 @@ export function cachedMutation<A = void, R = void, C = void>(
     const thisCallId = ++callCounter
     const args = rawArgs[0] as A
     status.set('pending')
-    error.set(null)
+    error.set(undefined)
 
     let context: C | undefined
     try {
@@ -67,7 +67,7 @@ export function cachedMutation<A = void, R = void, C = void>(
 
       if (thisCallId === callCounter) {
         data.set(result)
-        error.set(null)
+        error.set(undefined)
         status.set('success')
         onSuccess?.(result, args)
       }
@@ -85,7 +85,7 @@ export function cachedMutation<A = void, R = void, C = void>(
 
   function reset(): void {
     status.set('idle')
-    error.set(null)
+    error.set(undefined)
     data.set(undefined)
   }
 

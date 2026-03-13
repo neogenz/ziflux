@@ -10,7 +10,7 @@ export class OrderApiCached {
       cache: this.#cache,
       cacheKey: p => ['order', 'list', p.status],
       params,
-      loader: ({ params: p }) => this.#http.get<Order[]>('/orders', { params: { ...p } }),
+      loader: ({ params }) => this.#http.get<Order[]>('/orders', { params: { ...params } }),
     })
   }
 
@@ -19,7 +19,7 @@ export class OrderApiCached {
       cache: this.#cache,
       cacheKey: p => ['order', 'details', p.id],
       params: () => { const v = id(); return v ? { id: v } : undefined },
-      loader: ({ params: p }) => this.#http.get<Order>(\`/orders/\${p.id}\`),
+      loader: ({ params }) => this.#http.get<Order>(\`/orders/\${params.id}\`),
     })
   }
 }`

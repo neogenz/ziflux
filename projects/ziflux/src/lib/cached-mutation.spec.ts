@@ -55,12 +55,12 @@ describe('cachedMutation', () => {
 
   // --- error signal ---
 
-  it('error is null on success, set on error', async () => {
+  it('error is undefined on success, set on error', async () => {
     const mutation = cachedMutation({
       mutationFn: () => Promise.reject(new Error('boom')),
     })
 
-    expect(mutation.error()).toBeNull()
+    expect(mutation.error()).toBeUndefined()
 
     await mutation.mutate()
     expect(mutation.error()).toBeInstanceOf(Error)
@@ -78,7 +78,7 @@ describe('cachedMutation', () => {
 
     shouldFail = false
     await mutation.mutate()
-    expect(mutation.error()).toBeNull()
+    expect(mutation.error()).toBeUndefined()
   })
 
   // --- data signal ---
@@ -291,7 +291,7 @@ describe('cachedMutation', () => {
 
     mutation.reset()
     expect(mutation.status()).toBe('idle')
-    expect(mutation.error()).toBeNull()
+    expect(mutation.error()).toBeUndefined()
     expect(mutation.data()).toBeUndefined()
   })
 
@@ -374,13 +374,13 @@ describe('cachedMutation', () => {
     rejectFirst(new Error('fail'))
     await p1
     expect(mutation.status()).toBe('pending')
-    expect(mutation.error()).toBeNull()
+    expect(mutation.error()).toBeUndefined()
 
     resolveSecond('ok')
     await p2
     expect(mutation.status()).toBe('success')
     expect(mutation.data()).toBe('ok')
-    expect(mutation.error()).toBeNull()
+    expect(mutation.error()).toBeUndefined()
   })
 
   it('outdated mutation still invalidates cache but skips signal updates', async () => {

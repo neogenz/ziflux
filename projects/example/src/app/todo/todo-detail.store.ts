@@ -27,7 +27,10 @@ export class TodoDetailStore {
     mutationFn: args => this.#api.update$(args.id, { title: args.title }),
     cache: this.#api.listCache,
     invalidateKeys: args => [['todos'], ['todos', String(args.id)]],
-    onSuccess: () => this.editing.set(false),
+    onSuccess: (_result, args) => {
+      this.#api.itemCache.invalidate(['todos', String(args.id)])
+      this.editing.set(false)
+    },
     onError: err => console.error('Edit failed:', err),
   })
 

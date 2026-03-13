@@ -6,20 +6,20 @@ import { CodeBlock } from "./code-block"
 const tabs = [
   {
     id: "data-cache",
-    label: "DataCache<T>",
+    label: "DataCache",
     description: "Own one per domain, in your API service (singleton).",
-    code: `class DataCache<T> {
+    code: `class DataCache {
   readonly version: Signal<number>  // auto-increments on invalidate()
 
-  get(key: string[], options?: { staleTime?: number; expireTime?: number }): { data: T; fresh: boolean } | null
-  set(key: string[], data: T): void
+  get<T>(key: string[], options?: { staleTime?: number; expireTime?: number }): { data: T; fresh: boolean } | null
+  set<T>(key: string[], data: T): void
   invalidate(prefix: string[]): void  // marks stale + bumps version
-  wrap(key: string[], obs$: Observable<T>): Observable<T>
-  deduplicate(key: string[], fn: () => Promise<T>): Promise<T>
-  prefetch(key: string[], fn: () => Promise<T>): Promise<void>
+  wrap<T>(key: string[], obs$: Observable<T>): Observable<T>
+  deduplicate<T>(key: string[], fn: () => Promise<T>): Promise<T>
+  prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void>
   clear(): void
 }`,
-    usage: `readonly cache = new DataCache<Order>()
+    usage: `readonly cache = new DataCache()
 
 // Read from cache
 const entry = this.cache.get(['order', 'details', '42'])
@@ -33,7 +33,7 @@ this.cache.invalidate(['order'])  // prefix match`,
     label: "cachedResource()",
     description: "resource() extended with cache awareness. Same mental model.",
     code: `function cachedResource<T, P extends object>(options: {
-  cache: DataCache<T>
+  cache: DataCache
   cacheKey: string[] | ((params: P) => string[])
   params?: () => P | undefined     // undefined = idle
   loader: (ctx: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
@@ -122,7 +122,7 @@ export const appConfig: ApplicationConfig = {
 }
 
 // Priority: constructor arg > global provider > defaults
-readonly cache = new DataCache<Order>({ staleTime: 60_000 })`,
+readonly cache = new DataCache({ staleTime: 60_000 })`,
   },
 ] as const
 

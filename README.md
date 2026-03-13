@@ -23,7 +23,7 @@ providers: [provideZiflux()]
 // todo.api.ts — singleton, owns the cache
 @Injectable({ providedIn: 'root' })
 export class TodoApi {
-  readonly cache = new DataCache<Todo>()
+  readonly cache = new DataCache()
   readonly #http = inject(HttpClient)
   getAll$() { return this.#http.get<Todo[]>('/todos') }
 }
@@ -32,7 +32,6 @@ export class TodoApi {
 readonly todos = cachedResource({
   cache: this.#api.cache,
   cacheKey: ['todos'],
-  params: () => ({}),
   loader: () => this.#api.getAll$(),
 })
 ```
@@ -104,25 +103,25 @@ One line. All `DataCache` instances in your app inherit these defaults.
 
 Nine exports.
 
-### `DataCache<T>`
+### `DataCache`
 
 Own one per domain, in your API service (singleton).
 
 ```typescript
-class DataCache<T> {
+class DataCache {
   readonly version: Signal<number> // auto-increments on invalidate()
 
   constructor(config?: Partial<ZifluxConfig>) // priority: arg > provider > defaults
 
-  get(
+  get<T>(
     key: string[],
     options?: { staleTime?: number; expireTime?: number },
   ): { data: T; fresh: boolean } | null
-  set(key: string[], data: T): void
+  set<T>(key: string[], data: T): void
   invalidate(prefix: string[]): void // marks stale + bumps version
-  wrap(key: string[], obs$: Observable<T>): Observable<T>
-  deduplicate(key: string[], fn: () => Promise<T>): Promise<T>
-  prefetch(key: string[], fn: () => Promise<T>): Promise<void>
+  wrap<T>(key: string[], obs$: Observable<T>): Observable<T>
+  deduplicate<T>(key: string[], fn: () => Promise<T>): Promise<T>
+  prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void>
   clear(): void
 }
 ```
@@ -133,7 +132,7 @@ class DataCache<T> {
 
 ```typescript
 function cachedResource<T, P extends object>(options: {
-  cache: DataCache<T>
+  cache: DataCache
   cacheKey: string[] | ((params: NoInfer<P>) => string[])
   params?: () => P | undefined
   loader: (context: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
@@ -225,7 +224,7 @@ Global registry of all `DataCache` instances. Auto-managed when `withDevtools()`
 
 ```typescript
 class CacheRegistry {
-  readonly caches: Signal<Map<string, DataCache<unknown>>>
+  readonly caches: Signal<Map<string, DataCache>>
   inspectAll(): { name: string; inspection: CacheInspection<unknown> }[]
 }
 ```
@@ -282,6 +281,8 @@ Every feature follows the same 3-file pattern. Always. No exceptions.
 3. order-list.component  ← inject(Store), read signals
 ```
 
+The cache must outlive route navigations (singleton API service), while stores stay route-scoped and components stay presentation-only.
+
 ### Rules
 
 1. A component **never** injects an API service directly
@@ -308,7 +309,7 @@ The cache lives here — it's a singleton that survives route navigations.
 ```typescript
 @Injectable({ providedIn: 'root' })
 export class OrderApi {
-  readonly cache = new DataCache<Order>()
+  readonly cache = new DataCache()
   readonly #http = inject(HttpClient)
 
   getAll$(filters: OrderFilters): Observable<Order[]> {
@@ -377,6 +378,24 @@ export class OrderDetailStore {
 ### 4. Template
 
 ```html
+@if (store.orders.isInitialLoading()) {
+  <app-spinner />
+} @else {
+  @let list = store.orders.value();
+  @if (list) {
+    <app-order-list [orders]="list" [stale]="store.orders.isStale()" />
+  } @else {
+    <app-empty-state />
+  }
+}
+```
+
+When the server fails but stale data exists, show both:
+
+```html
+@if (store.orders.error()) {
+  <div class="error-banner">Failed to refresh. Showing cached data.</div>
+}
 @if (store.orders.isInitialLoading()) {
   <app-spinner />
 } @else {
@@ -509,7 +528,7 @@ When generating code for a ziflux project, follow this pattern exactly:
 ```typescript
 @Injectable({ providedIn: 'root' })
 export class ProductApi {
-  readonly cache = new DataCache<Product>()
+  readonly cache = new DataCache()
   readonly #http = inject(HttpClient)
 
   getAll$(): Observable<Product[]> {
@@ -535,8 +554,7 @@ export class ProductListStore {
 
   readonly products = cachedResource({
     cache: this.#api.cache,
-    cacheKey: () => ['product', 'list'],
-    params: () => ({}),
+    cacheKey: ['product', 'list'],
     loader: () => this.#api.getAll$(),
   })
 
@@ -582,3 +600,9 @@ export class ProductListComponent {
 - **Angular `resource()`** — the foundation this library builds on
 
 Zero external dependencies. 100% Angular signals + `resource()` + in-memory `Map`.
+
+---
+
+## Limitations
+
+- **Client-side only** — no SSR transfer state. The cache is in-memory and does not serialize across server/client boundaries.

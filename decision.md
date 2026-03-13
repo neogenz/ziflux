@@ -367,6 +367,26 @@ provideZiflux({ staleTime: 60_000 }, withDevtools())
 
 ---
 
+## D-30 — DataCache uses per-method generics, not instance-level generic
+
+**Decision:** `DataCache` is no longer generic at the class level (`DataCache<T>`). Instead, each method that reads or writes data carries its own generic: `get<T>()`, `set<T>()`, `wrap<T>()`, `deduplicate<T>()`, `prefetch<T>()`. Internally the cache stores `unknown`; type safety comes from each call site.
+
+**Rationale:**
+
+- Real domains have mixed shapes in one cache: `Order[]` (list) + `Order` (detail). An instance-level `DataCache<Order>` forces `T` to be the same everywhere, making `loader: () => Observable<Order[]>` a type error.
+- TanStack Query, SWR, and every modern caching library use per-query generics, not per-cache-instance generics. Alignment with prior art reduces surprise.
+- The two internal casts (`entry.data as T` in `get`, `existing as Promise<T>` in `deduplicate`) are safe: the caller writes and reads the same key with the same `T`.
+- v0.0.1 — no downstream consumers yet, so this is a free breaking change.
+
+**What changed:**
+- `CachedResourceOptions.cache` is `DataCache` (not `DataCache<T>`)
+- `CacheRegistry` stores `Map<string, DataCache>` (not `DataCache<unknown>`)
+- `cachedResource` defaults `params` to `() => ({})` when omitted, eliminating boilerplate for parameterless resources
+
+**Supersedes:** D-11 (class is still `new DataCache()`, just no longer generic)
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

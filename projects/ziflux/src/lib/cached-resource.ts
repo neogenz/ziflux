@@ -73,7 +73,8 @@ function normalizeRetryConfig(retry: number | RetryConfig): Required<RetryConfig
 export function cachedResource<T, P extends object>(
   options: CachedResourceOptions<T, P>,
 ): CachedResourceRef<T> {
-  const { cache, cacheKey, params, loader, staleTime, expireTime, retry, refetchInterval } = options
+  const { cache, cacheKey, loader, staleTime, expireTime, retry, refetchInterval } = options
+  const params = options.params ?? (() => ({}) as P)
 
   const resolveKey = (p: P): string[] => (typeof cacheKey === 'function' ? cacheKey(p) : cacheKey)
 
@@ -84,14 +85,14 @@ export function cachedResource<T, P extends object>(
   // Used to display stale data during background revalidation.
   const staleSnapshot = linkedSignal({
     source: () => {
-      const p = params?.()
+      const p = params()
       if (p === undefined) return undefined
       cache.version() // react to invalidations
       return resolveKey(p)
     },
     computation: (currentKey: string[] | undefined) => {
       if (!currentKey) return NO_VALUE
-      const entry = cache.get(currentKey, cacheGetOptions)
+      const entry = cache.get<T>(currentKey, cacheGetOptions)
       return entry ? entry.data : NO_VALUE
     },
   })
@@ -100,7 +101,7 @@ export function cachedResource<T, P extends object>(
 
   const res = resource<T, P | undefined>({
     params: () => {
-      const p = params?.()
+      const p = params()
       if (p === undefined) return undefined
       cache.version() // trigger reload on invalidation
       return p
@@ -110,7 +111,7 @@ export function cachedResource<T, P extends object>(
       // so `reqParams` is guaranteed to be P at this point.
       const p = reqParams as P
       const k = resolveKey(p)
-      const entry = cache.get(k, cacheGetOptions)
+      const entry = cache.get<T>(k, cacheGetOptions)
       if (entry?.fresh) return entry.data
 
       const data = await cache.deduplicate(k, () => {
@@ -174,7 +175,8 @@ export function cachedResource<T, P extends object>(
     update: (fn: (prev: T | undefined) => T) => {
       res.update(fn)
     },
-    hasValue: () => staleSnapshot() !== NO_VALUE || res.status() === 'resolved' || res.status() === 'local',
+    hasValue: () =>
+      staleSnapshot() !== NO_VALUE || res.status() === 'resolved' || res.status() === 'local',
     isStale,
     isInitialLoading,
   }

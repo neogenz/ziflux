@@ -4,10 +4,7 @@ import { DataCache } from './data-cache'
 import { ZIFLUX_CONFIG } from './provide-ziflux'
 import type { DataCacheOptions, ZifluxConfig } from './types'
 
-function createCache<T>(
-  config?: DataCacheOptions,
-  globalConfig?: Partial<ZifluxConfig>,
-): DataCache<T> {
+function createCache(config?: DataCacheOptions, globalConfig?: Partial<ZifluxConfig>): DataCache {
   const providers: Array<{ provide: unknown; useValue: unknown }> = []
   if (globalConfig) {
     providers.push({
@@ -16,14 +13,14 @@ function createCache<T>(
     })
   }
   const injector = Injector.create({ providers })
-  return runInInjectionContext(injector, () => new DataCache<T>(config))
+  return runInInjectionContext(injector, () => new DataCache(config))
 }
 
 describe('DataCache', () => {
-  let cache: DataCache<string>
+  let cache: DataCache
 
   beforeEach(() => {
-    cache = createCache<string>()
+    cache = createCache()
   })
 
   // --- get / set ---
@@ -61,7 +58,7 @@ describe('DataCache', () => {
   })
 
   it('returns fresh: false after staleTime', () => {
-    const shortCache = createCache<string>({ staleTime: 50, expireTime: 10_000 })
+    const shortCache = createCache({ staleTime: 50, expireTime: 10_000 })
     shortCache.set(['a'], 'hello')
 
     vi.useFakeTimers()
@@ -71,7 +68,7 @@ describe('DataCache', () => {
   })
 
   it('evicts after expireTime', () => {
-    const shortCache = createCache<string>({ staleTime: 10, expireTime: 50 })
+    const shortCache = createCache({ staleTime: 10, expireTime: 50 })
     shortCache.set(['a'], 'hello')
 
     vi.useFakeTimers()
@@ -113,120 +110,120 @@ describe('DataCache', () => {
   })
 
   it('uses provided name', () => {
-    const named = createCache<string>({ name: 'orders' })
+    const named = createCache({ name: 'orders' })
     expect(named.name).toBe('orders')
   })
 
   it('generates unique names for multiple caches', () => {
-    const c1 = createCache<string>()
-    const c2 = createCache<string>()
+    const c1 = createCache()
+    const c2 = createCache()
     expect(c1.name).not.toBe(c2.name)
   })
 
   // --- config priority: arg > global > defaults ---
 
   it('uses defaults when no config', () => {
-    const c = createCache<string>()
+    const c = createCache()
     expect(c.staleTime).toBe(30_000)
     expect(c.expireTime).toBe(300_000)
   })
 
   it('global config overrides defaults', () => {
-    const c = createCache<string>(undefined, { staleTime: 5000 })
+    const c = createCache(undefined, { staleTime: 5000 })
     expect(c.staleTime).toBe(5000)
     expect(c.expireTime).toBe(300_000) // default preserved
   })
 
   it('constructor arg overrides global config', () => {
-    const c = createCache<string>({ staleTime: 1000 }, { staleTime: 5000 })
+    const c = createCache({ staleTime: 1000 }, { staleTime: 5000 })
     expect(c.staleTime).toBe(1000)
   })
 
   // --- config validation ---
 
   it('rejects NaN staleTime', () => {
-    expect(() => createCache<string>({ staleTime: NaN })).toThrow(
+    expect(() => createCache({ staleTime: NaN })).toThrow(
       'DataCache: staleTime must be a finite number ≥ 0, got NaN',
     )
   })
 
   it('rejects Infinity staleTime', () => {
-    expect(() => createCache<string>({ staleTime: Infinity })).toThrow(
+    expect(() => createCache({ staleTime: Infinity })).toThrow(
       'DataCache: staleTime must be a finite number ≥ 0, got Infinity',
     )
   })
 
   it('rejects negative staleTime', () => {
-    expect(() => createCache<string>({ staleTime: -1 })).toThrow(
+    expect(() => createCache({ staleTime: -1 })).toThrow(
       'DataCache: staleTime must be a finite number ≥ 0, got -1',
     )
   })
 
   it('rejects NaN expireTime', () => {
-    expect(() => createCache<string>({ expireTime: NaN })).toThrow(
+    expect(() => createCache({ expireTime: NaN })).toThrow(
       'DataCache: expireTime must be a finite number ≥ 0, got NaN',
     )
   })
 
   it('rejects Infinity expireTime', () => {
-    expect(() => createCache<string>({ expireTime: Infinity })).toThrow(
+    expect(() => createCache({ expireTime: Infinity })).toThrow(
       'DataCache: expireTime must be a finite number ≥ 0, got Infinity',
     )
   })
 
   it('rejects negative expireTime', () => {
-    expect(() => createCache<string>({ expireTime: -100 })).toThrow(
+    expect(() => createCache({ expireTime: -100 })).toThrow(
       'DataCache: expireTime must be a finite number ≥ 0, got -100',
     )
   })
 
   it('rejects staleTime > expireTime', () => {
-    expect(() => createCache<string>({ staleTime: 5000, expireTime: 1000 })).toThrow(
+    expect(() => createCache({ staleTime: 5000, expireTime: 1000 })).toThrow(
       'DataCache: staleTime (5000) must be ≤ expireTime (1000)',
     )
   })
 
   it('accepts staleTime === expireTime', () => {
-    expect(() => createCache<string>({ staleTime: 1000, expireTime: 1000 })).not.toThrow()
+    expect(() => createCache({ staleTime: 1000, expireTime: 1000 })).not.toThrow()
   })
 
   it('accepts staleTime === 0', () => {
-    const c = createCache<string>({ staleTime: 0 })
+    const c = createCache({ staleTime: 0 })
     expect(c.staleTime).toBe(0)
   })
 
   it('rejects NaN maxEntries', () => {
-    expect(() => createCache<string>({ maxEntries: NaN })).toThrow(
+    expect(() => createCache({ maxEntries: NaN })).toThrow(
       'DataCache: maxEntries must be a finite number ≥ 0, got NaN',
     )
   })
 
   it('rejects negative maxEntries', () => {
-    expect(() => createCache<string>({ maxEntries: -1 })).toThrow(
+    expect(() => createCache({ maxEntries: -1 })).toThrow(
       'DataCache: maxEntries must be a finite number ≥ 0, got -1',
     )
   })
 
   it('rejects fractional maxEntries', () => {
-    expect(() => createCache<string>({ maxEntries: 2.5 })).toThrow(
+    expect(() => createCache({ maxEntries: 2.5 })).toThrow(
       'DataCache: maxEntries must be an integer, got 2.5',
     )
   })
 
   it('rejects NaN cleanupInterval', () => {
-    expect(() => createCache<string>({ cleanupInterval: NaN })).toThrow(
+    expect(() => createCache({ cleanupInterval: NaN })).toThrow(
       'DataCache: cleanupInterval must be a finite number ≥ 0, got NaN',
     )
   })
 
   it('rejects negative cleanupInterval', () => {
-    expect(() => createCache<string>({ cleanupInterval: -500 })).toThrow(
+    expect(() => createCache({ cleanupInterval: -500 })).toThrow(
       'DataCache: cleanupInterval must be a finite number ≥ 0, got -500',
     )
   })
 
   it('rejects invalid global config propagated to constructor', () => {
-    expect(() => createCache<string>(undefined, { staleTime: NaN })).toThrow(
+    expect(() => createCache(undefined, { staleTime: NaN })).toThrow(
       'DataCache: staleTime must be a finite number ≥ 0, got NaN',
     )
   })
@@ -506,7 +503,7 @@ describe('DataCache', () => {
   })
 
   it('returns timeToStale and timeToExpire for entries', () => {
-    const custom = createCache<string>({ staleTime: 1000, expireTime: 5000 })
+    const custom = createCache({ staleTime: 1000, expireTime: 5000 })
     custom.set(['a'], 'data')
 
     vi.useFakeTimers()
@@ -522,7 +519,7 @@ describe('DataCache', () => {
   })
 
   it('returns state=stale when past staleTime but before expireTime', () => {
-    const custom = createCache<string>({ staleTime: 100, expireTime: 5000 })
+    const custom = createCache({ staleTime: 100, expireTime: 5000 })
     custom.set(['a'], 'data')
 
     vi.useFakeTimers()
@@ -537,7 +534,7 @@ describe('DataCache', () => {
   })
 
   it('returns state=expired when past expireTime', () => {
-    const custom = createCache<string>({ staleTime: 100, expireTime: 500 })
+    const custom = createCache({ staleTime: 100, expireTime: 500 })
     custom.set(['a'], 'data')
 
     vi.useFakeTimers()
@@ -552,7 +549,7 @@ describe('DataCache', () => {
   })
 
   it('returns correct version and config', () => {
-    const custom = createCache<string>({ staleTime: 5000, expireTime: 60_000 })
+    const custom = createCache({ staleTime: 5000, expireTime: 60_000 })
     custom.invalidate(['x'])
     custom.invalidate(['y'])
 
@@ -569,7 +566,7 @@ describe('DataCache', () => {
   })
 
   it('cleanup() evicts expired entries', () => {
-    const shortCache = createCache<string>({ staleTime: 10, expireTime: 50 })
+    const shortCache = createCache({ staleTime: 10, expireTime: 50 })
     shortCache.set(['a'], 'v1')
     shortCache.set(['b'], 'v2')
 
@@ -590,7 +587,7 @@ describe('DataCache', () => {
   })
 
   it('cleanup() preserves stale-but-not-expired entries', () => {
-    const shortCache = createCache<string>({ staleTime: 10, expireTime: 1000 })
+    const shortCache = createCache({ staleTime: 10, expireTime: 1000 })
     shortCache.set(['a'], 'data')
 
     vi.useFakeTimers()
@@ -605,7 +602,7 @@ describe('DataCache', () => {
   // --- maxEntries ---
 
   it('evicts oldest entry when maxEntries is exceeded', () => {
-    const limited = createCache<string>({ maxEntries: 2 })
+    const limited = createCache({ maxEntries: 2 })
     limited.set(['a'], 'A')
     limited.set(['b'], 'B')
     limited.set(['c'], 'C') // should evict 'a'
@@ -616,7 +613,7 @@ describe('DataCache', () => {
   })
 
   it('LRU: accessing an entry prevents its eviction', () => {
-    const limited = createCache<string>({ maxEntries: 2 })
+    const limited = createCache({ maxEntries: 2 })
     limited.set(['a'], 'A')
     limited.set(['b'], 'B')
 
@@ -630,7 +627,7 @@ describe('DataCache', () => {
   })
 
   it('overwriting an existing key does not count as a new entry', () => {
-    const limited = createCache<string>({ maxEntries: 2 })
+    const limited = createCache({ maxEntries: 2 })
     limited.set(['a'], 'v1')
     limited.set(['b'], 'v2')
     limited.set(['a'], 'v3') // overwrite, not new
@@ -640,7 +637,7 @@ describe('DataCache', () => {
   })
 
   it('maxEntries: undefined means no limit', () => {
-    const unlimited = createCache<string>()
+    const unlimited = createCache()
     for (let i = 0; i < 100; i++) {
       unlimited.set([`key-${i}`], `val-${i}`)
     }
@@ -665,7 +662,7 @@ describe('DataCache', () => {
 
     const autoGcCache = runInInjectionContext(
       injector,
-      () => new DataCache<string>({ staleTime: 10, expireTime: 50, cleanupInterval: 100 }),
+      () => new DataCache({ staleTime: 10, expireTime: 50, cleanupInterval: 100 }),
     )
 
     autoGcCache.set(['a'], 'v1')
@@ -696,7 +693,7 @@ describe('DataCache', () => {
 
     const autoGcCache = runInInjectionContext(
       injector,
-      () => new DataCache<string>({ staleTime: 10, expireTime: 50, cleanupInterval: 100 }),
+      () => new DataCache({ staleTime: 10, expireTime: 50, cleanupInterval: 100 }),
     )
 
     // Destroy before cleanup fires

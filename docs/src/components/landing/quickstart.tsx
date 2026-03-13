@@ -11,7 +11,7 @@ const CONFIG_CODE = `export const appConfig: ApplicationConfig = {
 
 const API_CODE = `@Injectable({ providedIn: 'root' })
 export class OrderApi {
-  readonly cache = new DataCache<Order>()
+  readonly cache = new DataCache()
   readonly #http = inject(HttpClient)
 
   getAll$(filters: OrderFilters): Observable<Order[]> {

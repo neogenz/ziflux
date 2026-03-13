@@ -32,14 +32,14 @@ describe('Integration — SWR lifecycle', () => {
   })
 
   it('provideZiflux() config flows to DataCache instances', () => {
-    const cache = TestBed.runInInjectionContext(() => new DataCache<string>())
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
     expect(cache.staleTime).toBe(5000)
     expect(cache.expireTime).toBe(60_000)
   })
 
   it('cold cache → loader → cache populated → fresh on revisit', async () => {
     let loaderCalls = 0
-    const cache = TestBed.runInInjectionContext(() => new DataCache<string>())
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
 
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource({
@@ -82,7 +82,7 @@ describe('Integration — SWR lifecycle', () => {
   })
 
   it('mutation → invalidation → revalidation (full SWR cycle)', async () => {
-    const cache = TestBed.runInInjectionContext(() => new DataCache<string>())
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
 
     let fetchCount = 0
     const ref = TestBed.runInInjectionContext(() =>
@@ -121,7 +121,7 @@ describe('Integration — SWR lifecycle', () => {
   })
 
   it('stale data shown during revalidation (SWR behavior)', async () => {
-    const cache = TestBed.runInInjectionContext(() => new DataCache<string>())
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
 
     // Pre-populate cache
     cache.set(['data'], 'cached-value')
@@ -159,7 +159,7 @@ describe('Integration — SWR lifecycle', () => {
   })
 
   it('invalidation clears in-flight deduplication (race condition fix)', () => {
-    const cache = TestBed.runInInjectionContext(() => new DataCache<string>())
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
 
     // Start an in-flight request via deduplicate
     const pending = new Promise<string>(() => {}) // never resolves
@@ -183,7 +183,7 @@ describe('Integration — SWR lifecycle', () => {
   })
 
   it('optimistic update + rollback on error', async () => {
-    const cache = TestBed.runInInjectionContext(() => new DataCache<string[]>())
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
 
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource({

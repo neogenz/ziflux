@@ -7,8 +7,8 @@ import type { Todo } from './todo.model'
 
 @Injectable({ providedIn: 'root' })
 export class TodoApi {
-  readonly listCache = new DataCache<Todo[]>({ name: 'todo-list', staleTime: 5_000 })
-  readonly itemCache = new DataCache<Todo>({ name: 'todo-item', staleTime: 10_000 })
+  readonly listCache = new DataCache({ name: 'todo-list', staleTime: 5_000 })
+  readonly itemCache = new DataCache({ name: 'todo-item', staleTime: 10_000 })
   readonly #http = inject(HttpClient)
 
   getAll$(): Observable<Todo[]> {

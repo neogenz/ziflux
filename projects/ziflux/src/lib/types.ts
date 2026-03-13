@@ -124,7 +124,7 @@ export interface CachedResourceRef<T> {
 /** Options passed to `cachedResource()`. */
 export interface CachedResourceOptions<T, P extends object> {
   /** The `DataCache` instance that stores and revalidates data for this resource. */
-  cache: DataCache<T>
+  cache: DataCache
   /** Static key array or a function that derives the key from current params. */
   cacheKey: string[] | ((params: NoInfer<P>) => string[])
   /** Reactive params factory. Returning `undefined` suspends the resource. */

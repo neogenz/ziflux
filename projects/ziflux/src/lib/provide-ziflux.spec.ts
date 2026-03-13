@@ -88,7 +88,7 @@ describe('withDevtools', () => {
   it('auto-registers DataCache when withDevtools is active', () => {
     const injector = createInjectorWith(undefined, withDevtools())
     const registry = injector.get(CacheRegistry)
-    runInInjectionContext(injector, () => new DataCache<string>({ name: 'test' }))
+    runInInjectionContext(injector, () => new DataCache({ name: 'test' }))
 
     expect(registry.caches().has('test')).toBe(true)
   })

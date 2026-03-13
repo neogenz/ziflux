@@ -54,13 +54,13 @@ describe('ZifluxDevtoolsComponent', () => {
     click('.toggle-btn')
   }
 
-  function registerCache(name: string, entries?: [string[], string][]): DataCache<string> {
+  function registerCache(name: string, entries?: [string[], string][]): DataCache {
     const registry = TestBed.inject(CacheRegistry)
-    const cache = TestBed.runInInjectionContext(() => new DataCache<string>({ name }))
+    const cache = TestBed.runInInjectionContext(() => new DataCache({ name }))
     for (const [key, val] of entries ?? []) {
       cache.set(key, val)
     }
-    registry.register(cache as DataCache<unknown>)
+    registry.register(cache)
     return cache
   }
 

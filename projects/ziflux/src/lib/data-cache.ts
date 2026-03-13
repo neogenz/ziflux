@@ -25,9 +25,9 @@ let cacheCounter = 0
  * Without `maxEntries`, memory is bounded only by `expireTime` and `cleanup()`.
  * Cleanup is entirely opt-in.
  */
-export class DataCache<T> {
-  readonly #entries = new Map<string, CacheEntry<T>>()
-  readonly #inFlight = new Map<string, Promise<T>>()
+export class DataCache {
+  readonly #entries = new Map<string, CacheEntry<unknown>>()
+  readonly #inFlight = new Map<string, Promise<unknown>>()
   readonly #version = signal(0)
   readonly #config: ZifluxConfig
   readonly #logger: DevtoolsLogger | null
@@ -53,9 +53,9 @@ export class DataCache<T> {
     const destroyRef = inject(DestroyRef, { optional: true })
 
     if (registry) {
-      registry.register(this as DataCache<unknown>)
+      registry.register(this)
       destroyRef?.onDestroy(() => {
-        registry.unregister(this as DataCache<unknown>)
+        registry.unregister(this)
       })
     }
 
@@ -105,7 +105,8 @@ export class DataCache<T> {
    * Per-call `staleTime`/`expireTime` overrides take precedence over the instance config.
    * An expired entry is deleted on read.
    */
-  get(
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- heterogeneous cache: caller provides T to cast from unknown
+  get<T>(
     key: string[],
     options?: { staleTime?: number; expireTime?: number },
   ): { data: T; fresh: boolean } | null {
@@ -128,11 +129,12 @@ export class DataCache<T> {
       this.#entries.set(serialized, entry)
     }
 
-    return { data: entry.data, fresh: age < staleTime }
+    return { data: entry.data as T, fresh: age < staleTime }
   }
 
   /** Writes or overwrites an entry. Resets the entry's `createdAt` timestamp. */
-  set(key: string[], data: T): void {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- heterogeneous cache: T inferred from data arg
+  set<T>(key: string[], data: T): void {
     this.#entries.set(this.#serialize(key), { data, createdAt: Date.now() })
     this.#evictOverflow()
     this.#logger?.logSet(this.name, key, data)
@@ -189,7 +191,7 @@ export class DataCache<T> {
    * data sources (e.g. `HttpClient`) into the cache without breaking the
    * Observable chain.
    */
-  wrap(key: string[], obs$: Observable<T>): Observable<T> {
+  wrap<T>(key: string[], obs$: Observable<T>): Observable<T> {
     return obs$.pipe(
       tap(data => {
         this.set(key, data)
@@ -203,12 +205,12 @@ export class DataCache<T> {
    * instead of calling `fn` again. The in-flight record is cleared when
    * the promise settles.
    */
-  deduplicate(key: string[], fn: () => Promise<T>): Promise<T> {
+  deduplicate<T>(key: string[], fn: () => Promise<T>): Promise<T> {
     const serialized = this.#serialize(key)
     const existing = this.#inFlight.get(serialized)
     if (existing) {
       this.#logger?.logDeduplicate(this.name, key, true)
-      return existing
+      return existing as Promise<T>
     }
 
     this.#logger?.logDeduplicate(this.name, key, false)
@@ -222,7 +224,7 @@ export class DataCache<T> {
    * Uses `deduplicate()` internally, so concurrent prefetch calls for the
    * same key are collapsed into one request.
    */
-  async prefetch(key: string[], fn: () => Promise<T>): Promise<void> {
+  async prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void> {
     const data = await this.deduplicate(key, fn)
     this.set(key, data)
   }
@@ -239,13 +241,17 @@ export class DataCache<T> {
    * Returns a point-in-time snapshot of cache internals.
    * Intended for devtools and debugging; do not use in production data flows.
    */
-  inspect(): CacheInspection<T> {
+  inspect(): CacheInspection<unknown> {
     const now = Date.now()
     const entries = [...this.#entries].map(([serialized, entry]) => {
       const age = now - entry.createdAt
       const fresh = age < this.#config.staleTime
       const expired = age > this.#config.expireTime
-      const state: CacheEntryInfo<T>['state'] = fresh ? 'fresh' : expired ? 'expired' : 'stale'
+      const state: CacheEntryInfo<unknown>['state'] = fresh
+        ? 'fresh'
+        : expired
+          ? 'expired'
+          : 'stale'
       return {
         key: JSON.parse(serialized) as string[],
         data: entry.data,

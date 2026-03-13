@@ -3,9 +3,9 @@ import { Injector, runInInjectionContext } from '@angular/core'
 import { CacheRegistry } from './cache-registry'
 import { DataCache } from './data-cache'
 
-function createCacheWithName(name: string): DataCache<string> {
+function createCacheWithName(name: string): DataCache {
   const injector = Injector.create({ providers: [] })
-  return runInInjectionContext(injector, () => new DataCache<string>({ name }))
+  return runInInjectionContext(injector, () => new DataCache({ name }))
 }
 
 describe('CacheRegistry', () => {
@@ -21,7 +21,7 @@ describe('CacheRegistry', () => {
 
   it('registers a cache', () => {
     const cache = createCacheWithName('orders')
-    registry.register(cache as DataCache<unknown>)
+    registry.register(cache)
     expect(registry.caches().size).toBe(1)
     expect(registry.caches().get('orders')).toBe(cache)
   })
@@ -29,30 +29,30 @@ describe('CacheRegistry', () => {
   it('registers multiple caches', () => {
     const c1 = createCacheWithName('orders')
     const c2 = createCacheWithName('users')
-    registry.register(c1 as DataCache<unknown>)
-    registry.register(c2 as DataCache<unknown>)
+    registry.register(c1)
+    registry.register(c2)
     expect(registry.caches().size).toBe(2)
   })
 
   it('unregisters a cache', () => {
     const cache = createCacheWithName('orders')
-    registry.register(cache as DataCache<unknown>)
-    registry.unregister(cache as DataCache<unknown>)
+    registry.register(cache)
+    registry.unregister(cache)
     expect(registry.caches().size).toBe(0)
   })
 
   it('creates new Map reference on register (signal reactivity)', () => {
     const before = registry.caches()
     const cache = createCacheWithName('orders')
-    registry.register(cache as DataCache<unknown>)
+    registry.register(cache)
     expect(registry.caches()).not.toBe(before)
   })
 
   it('creates new Map reference on unregister', () => {
     const cache = createCacheWithName('orders')
-    registry.register(cache as DataCache<unknown>)
+    registry.register(cache)
     const before = registry.caches()
-    registry.unregister(cache as DataCache<unknown>)
+    registry.unregister(cache)
     expect(registry.caches()).not.toBe(before)
   })
 
@@ -65,7 +65,7 @@ describe('CacheRegistry', () => {
   it('inspectAll returns named inspections', () => {
     const cache = createCacheWithName('orders')
     cache.set(['order', 'list'], 'data')
-    registry.register(cache as DataCache<unknown>)
+    registry.register(cache)
 
     const results = registry.inspectAll()
     expect(results).toHaveLength(1)
@@ -79,8 +79,8 @@ describe('CacheRegistry', () => {
     const c2 = createCacheWithName('users')
     c1.set(['order'], 'o')
     c2.set(['user'], 'u')
-    registry.register(c1 as DataCache<unknown>)
-    registry.register(c2 as DataCache<unknown>)
+    registry.register(c1)
+    registry.register(c2)
 
     const results = registry.inspectAll()
     expect(results).toHaveLength(2)

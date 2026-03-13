@@ -24,11 +24,11 @@ async function waitForStatus(
 }
 
 describe('cachedResource', () => {
-  let cache: DataCache<string>
+  let cache: DataCache
 
   beforeEach(() => {
     TestBed.configureTestingModule({})
-    cache = TestBed.runInInjectionContext(() => new DataCache<string>())
+    cache = TestBed.runInInjectionContext(() => new DataCache())
   })
 
   // --- Cold cache (initial load) ---
@@ -191,6 +191,20 @@ describe('cachedResource', () => {
     expect(ref.status()).toBe('idle')
     expect(ref.value()).toBeUndefined()
     expect(loaderCalled).toBe(false)
+  })
+
+  // --- Omitted params ---
+
+  it('loads immediately when params is omitted', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['no-params'],
+        loader: () => Promise.resolve('loaded'),
+      }),
+    )
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('loaded')
   })
 
   // --- Observable loader ---
@@ -524,7 +538,7 @@ describe('cachedResource', () => {
 
         // Short staleTime so data goes stale before poll fires
         const pollCache = TestBed.runInInjectionContext(
-          () => new DataCache<string>({ staleTime: 10, expireTime: 300_000 }),
+          () => new DataCache({ staleTime: 10, expireTime: 300_000 }),
         )
 
         TestBed.runInInjectionContext(() =>

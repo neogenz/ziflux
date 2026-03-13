@@ -1,0 +1,72 @@
+# ziflux — Instructions for AI agents
+
+When generating code for a ziflux project, follow this pattern exactly:
+
+## Creating a new domain (e.g. "product")
+
+**Step 1** — Create `product.api.ts`:
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class ProductApi {
+  readonly cache = new DataCache()
+  readonly #http = inject(HttpClient)
+
+  getAll$(): Observable<Product[]> {
+    return this.#http.get<Product[]>('/products')
+  }
+
+  getById$(id: string): Observable<Product> {
+    return this.#http.get<Product>(`/products/${id}`)
+  }
+
+  create$(body: CreateProduct): Observable<Product> {
+    return this.#http.post<Product>('/products', body)
+  }
+}
+```
+
+**Step 2** — Create `product-list.store.ts`:
+
+```typescript
+@Injectable()
+export class ProductListStore {
+  readonly #api = inject(ProductApi)
+
+  readonly products = cachedResource({
+    cache: this.#api.cache,
+    cacheKey: ['product', 'list'],
+    loader: () => this.#api.getAll$(),
+  })
+
+  readonly createProduct = cachedMutation({
+    cache: this.#api.cache,
+    mutationFn: (body: CreateProduct) => this.#api.create$(body),
+    invalidateKeys: () => [['product', 'list']],
+  })
+
+  readonly isAnythingLoading = anyLoading(
+    this.products.isLoading,
+    this.createProduct.isPending,
+  )
+}
+```
+
+**Step 3** — Use in component:
+
+```typescript
+@Component({ providers: [ProductListStore] })
+export class ProductListComponent {
+  readonly store = inject(ProductListStore)
+}
+```
+
+## What an agent must NOT do
+
+- Inject an API service directly in a component
+- Put `DataCache` inside a store
+- Call HTTP methods from a store
+- Skip the API layer and fetch directly in `cachedResource`'s loader
+- Create a new `DataCache` per store (use the one from the API service)
+- Write manual loading/error signal boilerplate — use `cachedMutation()` instead
+- Invalidate cache manually inside a store — use `cachedMutation`'s `invalidateKeys`

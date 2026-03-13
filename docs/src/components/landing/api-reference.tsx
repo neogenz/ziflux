@@ -135,7 +135,7 @@ export function ApiReference() {
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
         <a href="#api" className="hover:no-underline">API Reference <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
-      <p className="mt-2 text-muted-foreground">The complete API.</p>
+      <p className="mt-2 text-muted-foreground">Seven runtime exports, plus types.</p>
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2">

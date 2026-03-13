@@ -1,15 +1,21 @@
 import { CodeBlock } from "./code-block"
 
-const CONFIG_CODE = `export const appConfig: ApplicationConfig = {
+const CONFIG_CODE = `import { provideZiflux, withDevtools } from 'ziflux'
+
+export const appConfig: ApplicationConfig = {
   providers: [
     provideZiflux({
       staleTime: 30_000,   // 30s — data considered fresh
-      expireTime:   300_000,   // 5min — stale data evicted
-    }),
+      expireTime: 300_000, // 5min — stale data evicted
+    }, withDevtools()),
   ],
 }`
 
-const API_CODE = `@Injectable({ providedIn: 'root' })
+const API_CODE = `import { inject, Injectable } from '@angular/core'
+import { HttpClient } from '@angular/common/http'
+import { DataCache } from 'ziflux'
+
+@Injectable({ providedIn: 'root' })
 export class OrderApi {
   readonly cache = new DataCache()
   readonly #http = inject(HttpClient)
@@ -27,7 +33,9 @@ export class OrderApi {
   }
 }`
 
-const STORE_CODE = `@Injectable()
+const STORE_CODE = `import { cachedResource } from 'ziflux'
+
+@Injectable()
 export class OrderListStore {
   readonly #api = inject(OrderApi)
 

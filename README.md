@@ -17,8 +17,18 @@ npm install ziflux
 ```
 
 ```typescript
+import { provideZiflux, withDevtools } from 'ziflux'
+
 // app.config.ts
-providers: [provideZiflux()]
+export const appConfig: ApplicationConfig = {
+  providers: [provideZiflux({ staleTime: 30_000, expireTime: 300_000 }, withDevtools())],
+}
+```
+
+```typescript
+import { inject, Injectable } from '@angular/core'
+import { HttpClient } from '@angular/common/http'
+import { DataCache, cachedResource } from 'ziflux'
 
 // todo.api.ts — singleton, owns the cache
 @Injectable({ providedIn: 'root' })
@@ -35,6 +45,8 @@ readonly todos = cachedResource({
   loader: () => this.#api.getAll$(),
 })
 ```
+
+All `DataCache` instances inherit defaults from `provideZiflux()`. Devtools are only active in dev mode.
 
 ---
 
@@ -75,37 +87,13 @@ DataCache   → data lifecycle   → fresh    | stale    | expired
 
 ---
 
-## Installation
-
-```bash
-npm install ziflux
-```
-
-## Setup
-
-```typescript
-// app.config.ts
-export const appConfig: ApplicationConfig = {
-  providers: [provideZiflux({ staleTime: 30_000, expireTime: 300_000, maxEntries: 500 })],
-}
-```
-
-```typescript
-// With devtools (dev mode only)
-providers: [provideZiflux({ staleTime: 30_000, expireTime: 300_000 }, withDevtools())]
-```
-
-One line. All `DataCache` instances in your app inherit these defaults.
-
----
-
 ## API
 
-Nine exports.
+Seven runtime exports, plus types.
 
 ### `DataCache`
 
-Own one per domain, in your API service (singleton).
+Own one per domain, in your API service (singleton). Must be instantiated inside an **injection context** (constructor, field initializer, or `runInInjectionContext()`).
 
 ```typescript
 class DataCache {
@@ -128,7 +116,7 @@ class DataCache {
 
 ### `cachedResource<T, P>()`
 
-`resource()` extended with cache awareness. Same mental model.
+`resource()` extended with cache awareness. Same mental model. Must be called inside an **injection context** (constructor, field initializer, or `runInInjectionContext()`).
 
 ```typescript
 function cachedResource<T, P extends object>(options: {
@@ -220,6 +208,8 @@ Toggle with **Ctrl+Shift+Z** (Cmd+Shift+Z on Mac). Shows per-cache entries, fres
 
 ### `CacheRegistry`
 
+*Advanced — most apps won't need this directly.*
+
 Global registry of all `DataCache` instances. Auto-managed when `withDevtools()` is enabled.
 
 ```typescript
@@ -273,7 +263,7 @@ Works with both `CachedResourceRef.isLoading` and `CachedMutationRef.isPending`.
 
 ## Architecture — Domain Pattern
 
-Every feature follows the same 3-file pattern. Always. No exceptions.
+**Recommended pattern** — most features follow a 3-file structure:
 
 ```
 1. order.api.ts          ← HTTP + cache (singleton, providedIn: 'root')
@@ -283,11 +273,13 @@ Every feature follows the same 3-file pattern. Always. No exceptions.
 
 The cache must outlive route navigations (singleton API service), while stores stay route-scoped and components stay presentation-only.
 
-### Rules
+These are recommendations. The library works without a store layer — you can use `cachedResource` directly in a component if your use case is simple.
 
-1. A component **never** injects an API service directly
-2. HTTP logic is in the API service, **never** in the store
-3. The store **never** instantiates a `DataCache` — it reads `this.#api.cache`
+### Guidelines
+
+1. Components **shouldn't** inject an API service directly
+2. Keep HTTP logic in the API service, not the store
+3. The store **shouldn't** instantiate a `DataCache` — it reads `this.#api.cache`
 4. Mutations in the store call the API → the API invalidates the cache
 
 ### Naming conventions
@@ -437,7 +429,7 @@ export class OrderListStore {
 Use `onMutate` to apply optimistic changes, return rollback context, revert on error.
 
 ```typescript
-readonly updateOrder = cachedMutation<{ id: string; data: Partial<Order> }, Order, Order[]>({
+readonly updateOrder = cachedMutation({
   cache: this.#api.cache,
   mutationFn: (args) => this.#api.update$(args.id, args.data),
   invalidateKeys: (args) => [['order', 'details', args.id], ['order', 'list']],
@@ -493,6 +485,69 @@ Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation
 
 ---
 
+## Gotchas
+
+- **`invalidate([])` is a no-op.** An empty prefix matches nothing. Use `cache.clear()` to wipe everything.
+- **`invalidate()` is prefix-based, not exact-match.** `invalidate(['order', 'details', '42'])` also matches `['order', 'details', '42', 'comments']` if it exists.
+- **`ref.set()` / `ref.update()` are local-only.** They update the component's view but do NOT write to the cache. Call `invalidate()` to trigger a fresh server fetch.
+- **Cache keys are untyped at the boundary.** `DataCache` stores `unknown` internally. Type correctness depends on consistent key→type pairings in your code.
+
+---
+
+## Testing
+
+`DataCache` and `cachedResource` require an Angular injection context. Use `TestBed`:
+
+### Testing a store
+
+```typescript
+describe('OrderListStore', () => {
+  let store: OrderListStore
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideZiflux(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        OrderApi,
+        OrderListStore,
+      ],
+    })
+    store = TestBed.inject(OrderListStore)
+  })
+
+  it('loads orders', async () => {
+    const httpTesting = TestBed.inject(HttpTestingController)
+
+    // Flush the HTTP request
+    httpTesting.expectOne('/orders').flush([{ id: '1', status: 'pending' }])
+    await flushMicrotasks()
+    TestBed.tick()
+
+    expect(store.orders.value()).toHaveLength(1)
+  })
+})
+```
+
+### Testing with a standalone DataCache
+
+```typescript
+let cache: DataCache
+
+beforeEach(() => {
+  TestBed.configureTestingModule({})
+  cache = TestBed.runInInjectionContext(() => new DataCache())
+})
+
+it('stores and retrieves data', () => {
+  cache.set(['key'], 'value')
+  expect(cache.get<string>(['key'])?.data).toBe('value')
+})
+```
+
+---
+
 ## Loading states
 
 | Situation                 | Cache | Resource status        | isInitialLoading | Display               |
@@ -517,81 +572,6 @@ Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation
 
 ---
 
-## For AI agents
-
-When generating code for a ziflux project, follow this pattern exactly:
-
-### Creating a new domain (e.g. "product")
-
-**Step 1** — Create `product.api.ts`:
-
-```typescript
-@Injectable({ providedIn: 'root' })
-export class ProductApi {
-  readonly cache = new DataCache()
-  readonly #http = inject(HttpClient)
-
-  getAll$(): Observable<Product[]> {
-    return this.#http.get<Product[]>('/products')
-  }
-
-  getById$(id: string): Observable<Product> {
-    return this.#http.get<Product>(`/products/${id}`)
-  }
-
-  create$(body: CreateProduct): Observable<Product> {
-    return this.#http.post<Product>('/products', body)
-  }
-}
-```
-
-**Step 2** — Create `product-list.store.ts`:
-
-```typescript
-@Injectable()
-export class ProductListStore {
-  readonly #api = inject(ProductApi)
-
-  readonly products = cachedResource({
-    cache: this.#api.cache,
-    cacheKey: ['product', 'list'],
-    loader: () => this.#api.getAll$(),
-  })
-
-  readonly createProduct = cachedMutation({
-    cache: this.#api.cache,
-    mutationFn: (body: CreateProduct) => this.#api.create$(body),
-    invalidateKeys: () => [['product', 'list']],
-  })
-
-  readonly isAnythingLoading = anyLoading(
-    this.products.isLoading,
-    this.createProduct.isPending,
-  )
-}
-```
-
-**Step 3** — Use in component:
-
-```typescript
-@Component({ providers: [ProductListStore] })
-export class ProductListComponent {
-  readonly store = inject(ProductListStore)
-}
-```
-
-### What an agent must NOT do
-
-- Inject an API service directly in a component
-- Put `DataCache` inside a store
-- Call HTTP methods from a store
-- Skip the API layer and fetch directly in `cachedResource`'s loader
-- Create a new `DataCache` per store (use the one from the API service)
-- Write manual loading/error signal boilerplate — use `cachedMutation()` instead
-- Invalidate cache manually inside a store — use `cachedMutation`'s `invalidateKeys`
-
----
-
 ## Prior art
 
 - **RFC 5861** — stale-while-revalidate HTTP cache-control extension
@@ -600,6 +580,8 @@ export class ProductListComponent {
 - **Angular `resource()`** — the foundation this library builds on
 
 Zero external dependencies. 100% Angular signals + `resource()` + in-memory `Map`.
+
+AI code generation instructions: [llms.txt](./llms.txt)
 
 ---
 

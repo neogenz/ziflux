@@ -41,7 +41,7 @@ export interface CacheEntryInfo<T> {
   age: number
   /** `true` when `age < staleTime`. */
   fresh: boolean
-  /** `true` when `age >= expireTime`. */
+  /** `true` when `age > expireTime`. */
   expired: boolean
   /** Milliseconds until the entry transitions from fresh to stale. Negative when already stale. */
   timeToStale: number

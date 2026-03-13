@@ -291,6 +291,21 @@ describe('DataCache', () => {
     expect(cache.get(['orderDetails', '1'])?.fresh).toBe(true)
   })
 
+  it('repeated invalidate() does not push entry past expiry (idempotent)', () => {
+    cache.set(['a'], 'data')
+
+    // Invalidate 10 times rapidly — must NOT expire the entry
+    for (let i = 0; i < 10; i++) {
+      cache.invalidate(['a'])
+    }
+
+    const entry = cache.get(['a'])
+    expect(entry).not.toBeNull()
+    if (!entry) return
+    expect(entry.data).toBe('data')
+    expect(entry.fresh).toBe(false) // stale, not expired
+  })
+
   it('invalidate with empty prefix is a no-op', () => {
     cache.set(['a'], 'data')
     cache.invalidate([])
@@ -519,10 +534,10 @@ describe('DataCache', () => {
   })
 
   it('returns state=stale when past staleTime but before expireTime', () => {
+    vi.useFakeTimers()
     const custom = createCache({ staleTime: 100, expireTime: 5000 })
     custom.set(['a'], 'data')
 
-    vi.useFakeTimers()
     vi.advanceTimersByTime(200)
 
     const entry = custom.inspect().entries[0]

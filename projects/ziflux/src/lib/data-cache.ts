@@ -11,6 +11,11 @@ import type {
   ZifluxConfig,
 } from './types'
 
+/**
+ * Module-scoped counter for auto-generating cache names.
+ * Not stable across test runs or SSR requests — use the `name` option
+ * in the `DataCache` constructor for deterministic names.
+ */
 let cacheCounter = 0
 
 /**
@@ -169,8 +174,9 @@ export class DataCache {
     const prefixStr = JSON.stringify(prefix).slice(0, -1)
     for (const [key, entry] of this.#entries) {
       if (key.startsWith(prefixStr)) {
-        // Shift timestamp backward so age exceeds staleTime → entry reads as stale
-        entry.createdAt -= this.#config.staleTime + 1
+        // Set timestamp so age is exactly staleTime + 1 → entry reads as stale but never expired.
+        // Uses absolute positioning so repeated invalidate() calls are idempotent.
+        entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
       }
     }
     // Clear in-flight deduplicate promises for invalidated keys
@@ -223,6 +229,11 @@ export class DataCache {
    * Eagerly fetches and stores data before it is requested.
    * Uses `deduplicate()` internally, so concurrent prefetch calls for the
    * same key are collapsed into one request.
+   *
+   * @remarks
+   * If a `cachedResource` with the same key resolves after this prefetch,
+   * it writes the same data again, resetting the entry's `createdAt` timestamp.
+   * This is harmless but restarts the freshness timer.
    */
   async prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void> {
     const data = await this.deduplicate(key, fn)

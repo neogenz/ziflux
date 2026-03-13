@@ -361,7 +361,12 @@ export class CacheInspectorComponent {
 
   invalidateAll(cacheName: string): void {
     const cache = this.#registry.caches().get(cacheName)
-    cache?.invalidate([])
+    if (!cache) return
+    const entries = cache.inspect().entries
+    const roots = new Set(entries.filter(e => e.key.length > 0).map(e => e.key[0]))
+    for (const root of roots) {
+      cache.invalidate([root])
+    }
     this.refresh()
   }
 

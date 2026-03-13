@@ -526,6 +526,112 @@ describe('cachedResource', () => {
       // Should have only attempted once before abort stopped it
       expect(attempt).toBe(1)
     })
+
+    it('abort during retry delay does not surface original error as resolved value', async () => {
+      let attempt = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['retry-abort-error'],
+          params: () => ({}),
+          loader: () => {
+            attempt++
+            return Promise.reject(new Error('fetch-error'))
+          },
+          retry: { maxRetries: 10, baseDelay: 50_000, maxDelay: 50_000 },
+        }),
+      )
+
+      // Let first attempt fail and enter retry delay
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      // Destroy triggers abort during retry delay
+      ref.destroy()
+      await flushMicrotasks()
+      TestBed.tick()
+
+      // Should have only attempted once — abort stops retries
+      expect(attempt).toBe(1)
+      // Value should never have been set (abort kills the retry chain)
+      expect(ref.value()).toBeUndefined()
+    })
+
+    it('pre-aborted signal stops retry immediately (no orphaned retries)', async () => {
+      // Regression: if abortSignal is already aborted when the retry delay
+      // Promise constructor runs, addEventListener('abort') never fires.
+      // The guard at the top of the constructor must catch this.
+      let attempt = 0
+
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['retry-pre-aborted'],
+          params: () => ({}),
+          loader: () => {
+            attempt++
+            return Promise.reject(new Error('fail'))
+          },
+          retry: { maxRetries: 10, baseDelay: 0, maxDelay: 0 },
+        }),
+      )
+
+      // Let first attempt fail — baseDelay:0 means retry delay is 0ms,
+      // so the abort guard in the Promise constructor is the only defense
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      // Destroy triggers abort — subsequent retries must not fire
+      ref.destroy()
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      // With baseDelay:0 and 10 retries, without the guard ALL retries would fire.
+      // With the guard, only a small number should have executed before abort propagated.
+      expect(attempt).toBeLessThanOrEqual(3)
+    })
+
+    it('clears retry timer on abort — no further attempts after destroy', async () => {
+      vi.useFakeTimers()
+      try {
+        let attempt = 0
+
+        const ref = TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache,
+            cacheKey: ['retry-timer-cleared'],
+            params: () => ({}),
+            loader: () => {
+              attempt++
+              return Promise.reject(new Error('fail'))
+            },
+            retry: { maxRetries: 10, baseDelay: 10_000, maxDelay: 10_000 },
+          }),
+        )
+
+        // Let first attempt fail and enter retry delay
+        await vi.advanceTimersByTimeAsync(0)
+        TestBed.tick()
+        await vi.advanceTimersByTimeAsync(0)
+
+        const attemptAfterFirst = attempt
+
+        // Destroy while still in the retry delay window
+        ref.destroy()
+
+        // Advance past the full delay — timer should have been cleared, no further attempts
+        await vi.advanceTimersByTimeAsync(20_000)
+        TestBed.tick()
+
+        expect(attempt).toBe(attemptAfterFirst)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   // --- Background polling ---

@@ -18,9 +18,9 @@ export default function HomePage() {
         <Hero />
         <QuickStart />
         <Guide />
-        <Testing />
-        <AdvancedUsage />
         <Freshness />
+        <AdvancedUsage />
+        <Testing />
         <ApiReference />
         <Gotchas />
         <PriorArt />

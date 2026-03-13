@@ -34,14 +34,14 @@ export const metadata: Metadata = {
     description:
       "Instant navigations, background refreshes, zero spinners. SWR caching for Angular resource().",
     type: "website",
-    images: [{ url: "/og.svg", width: 1200, height: 630 }],
+    images: [{ url: "/og.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "ziflux — SWR caching for Angular resource()",
     description:
       "Instant navigations, background refreshes, zero spinners. SWR caching for Angular resource().",
-    images: ["/og.svg"],
+    images: ["/og.png"],
   },
 }
 

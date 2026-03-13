@@ -1,6 +1,6 @@
 export function PriorArt() {
   return (
-    <section className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
+    <section id="prior-art" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">How ziflux compares</h2>
       <p className="mt-2 text-center text-muted-foreground">
         You&apos;ll compare anyway — here&apos;s the honest positioning.

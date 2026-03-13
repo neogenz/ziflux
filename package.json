@@ -12,6 +12,7 @@
     "format": "prettier --write \"projects/**/*.ts\"",
     "format:check": "prettier --check \"projects/**/*.ts\"",
     "changelog": "changelogen --dry",
+    "example": "ng serve example",
     "release:prepare": "changelogen --bump --release"
   },
   "type": "module",

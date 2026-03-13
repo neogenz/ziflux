@@ -21,8 +21,7 @@ const STORE_TEST_CODE = `describe('OrderListStore', () => {
 
     // Flush the HTTP request
     httpTesting.expectOne('/orders').flush([{ id: '1', status: 'pending' }])
-    await flushMicrotasks()
-    TestBed.tick()
+    await new Promise(r => setTimeout(r, 0)); TestBed.tick()
 
     expect(store.orders.value()).toHaveLength(1)
   })

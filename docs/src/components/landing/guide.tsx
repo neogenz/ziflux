@@ -215,7 +215,7 @@ export function Guide() {
         <div className="grid gap-3 sm:grid-cols-3">
           <DomainCard step={1} file="order.api.ts" role="HTTP + cache" scope="singleton" />
           <DomainCard step={2} file="order-list.store.ts" role="cachedResource + mutations" scope="route-scoped" />
-          <DomainCard step={3} file="order-list.component" role="inject(Store), read signals" scope="view scope" />
+          <DomainCard step={3} file="order-list.component.ts" role="inject(Store), read signals" scope="view scope" />
         </div>
 
         {/* Why singleton */}

@@ -9,7 +9,18 @@ const tabs = [
     label: "DataCache",
     description: "Own one per domain, in your API service (singleton).",
     code: `class DataCache {
-  readonly version: Signal<number>  // auto-increments on invalidate()
+  readonly name: string                   // devtools label (auto-generated if omitted)
+  readonly version: Signal<number>        // auto-increments on invalidate()
+  readonly staleTime: number              // resolved config value
+  readonly expireTime: number             // resolved config value
+
+  constructor(options?: {
+    name?: string
+    staleTime?: number
+    expireTime?: number
+    cleanupInterval?: number              // ms between auto-eviction sweeps
+    maxEntries?: number                   // LRU cap, oldest evicted on write
+  })
 
   get<T>(key: string[], options?: { staleTime?: number; expireTime?: number }): { data: T; fresh: boolean } | null
   set<T>(key: string[], data: T): void
@@ -18,8 +29,10 @@ const tabs = [
   deduplicate<T>(key: string[], fn: () => Promise<T>): Promise<T>
   prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void>
   clear(): void
+  cleanup(): number                       // evict expired entries, return count
+  inspect(): CacheInspection<unknown>     // point-in-time snapshot for devtools
 }`,
-    usage: `readonly cache = new DataCache()
+    usage: `readonly cache = new DataCache({ name: 'orders', maxEntries: 100 })
 
 // Read from cache
 const entry = this.cache.get(['order', 'details', '42'])
@@ -168,6 +181,15 @@ export class ZifluxDevtoolsComponent`,
 
 // Toggle with Ctrl+Shift+Z (Cmd+Shift+Z on Mac)
 // Shows per-cache entries, freshness state, TTL, and in-flight requests`,
+  },
+  {
+    id: "ziflux-config",
+    label: "ZIFLUX_CONFIG",
+    description: "Injection token holding the resolved global config. Useful for reading config at runtime.",
+    code: `const ZIFLUX_CONFIG: InjectionToken<ZifluxConfig>`,
+    usage: `// Read global config in any injection context
+const config = inject(ZIFLUX_CONFIG)
+console.log(config.staleTime, config.expireTime)`,
   },
   {
     id: "cache-registry",

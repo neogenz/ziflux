@@ -77,6 +77,23 @@ Signals flow back from Store to Component. The cache is transparent to the Store
 
 ---
 
+## How is this different?
+
+| | ziflux | TanStack Query | NgRx |
+| --- | --- | --- | --- |
+| Mental model | `resource()` + cache | Query client | Actions + reducers + effects |
+| Angular signals | Native | Adapter | Adapter (SignalStore) |
+| Dependencies | 0 | 3+ | 5+ |
+| Learning curve | Minutes | Hours | Days |
+| API surface | 9 exports | 50+ | 100+ |
+| Use case | SWR caching for `resource()` | Full data-fetching framework | Full state management |
+
+**Pick ziflux when** you want caching semantics on top of Angular's built-in `resource()` — nothing more, nothing less.
+**Pick TanStack Query when** you need a comprehensive data-fetching layer with pagination, infinite queries, and devtools across frameworks.
+**Pick NgRx when** you need full-blown state management with time-travel debugging, entity adapters, and complex side-effect orchestration.
+
+---
+
 ## API at a Glance
 
 | Export | Description |
@@ -155,3 +172,13 @@ AI code generation instructions: [llms.txt](./llms.txt)
 ## Limitations
 
 - **Client-side only** — no SSR transfer state. The cache is in-memory and does not serialize across server/client boundaries.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

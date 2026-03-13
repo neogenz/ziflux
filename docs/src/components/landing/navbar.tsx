@@ -7,9 +7,9 @@ import { Github, ExternalLink, Menu, X, Sun, Moon, Monitor } from "lucide-react"
 const NAV_LINKS = [
   { href: "#quickstart", label: "Quick Start" },
   { href: "#guide", label: "Guide" },
-  { href: "#testing", label: "Testing" },
   { href: "#freshness", label: "Caching" },
   { href: "#advanced-usage", label: "Patterns" },
+  { href: "#testing", label: "Testing" },
   { href: "#api", label: "API" },
   { href: "#gotchas", label: "Gotchas" },
 ]

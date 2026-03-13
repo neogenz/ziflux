@@ -16,6 +16,10 @@ import type { CachedMutationOptions, CachedMutationRef, CachedMutationStatus } f
  * callbacks. Cache invalidation runs for all successful mutations regardless.
  * Capture the `mutate()` return value if you need an earlier call's result.
  *
+ * In-flight mutations are not cancellable — there is no `AbortSignal` support.
+ * If a component is destroyed while a mutation is pending, the mutation runs
+ * to completion and lifecycle callbacks (`onSuccess`, `onError`) still fire.
+ *
  * @example
  * ```ts
  * readonly createTodo = cachedMutation({

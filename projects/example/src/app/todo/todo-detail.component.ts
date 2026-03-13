@@ -30,7 +30,7 @@ import { TodoDetailStore } from './todo-detail.store'
               <input
                 class="edit-input"
                 [value]="store.editTitle()"
-                (input)="store.editTitle.set($any($event.target).value)"
+                (input)="onTitleInput($event)"
               />
             } @else {
               <h1 class="todo-title">{{ t.title }}</h1>
@@ -241,5 +241,9 @@ export class TodoDetailComponent {
 
   constructor() {
     effect(() => this.store.load(this.id()))
+  }
+
+  onTitleInput(event: Event): void {
+    this.store.editTitle.set((event.target as HTMLInputElement).value)
   }
 }

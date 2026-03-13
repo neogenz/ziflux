@@ -43,7 +43,12 @@ import { TodoListStore } from './todo-list.store'
 
     <!-- Todo list -->
     <div class="card todo-card">
-      @if (store.todos.isInitialLoading()) {
+      @if (store.todos.error() && !store.todos.hasValue()) {
+        <div class="card error-card">
+          <p>Failed to load todos.</p>
+          <button (click)="store.todos.reload()">Retry</button>
+        </div>
+      } @else if (store.todos.isInitialLoading()) {
         <div class="skeleton-list">
           <div class="skeleton-item"></div>
           <div class="skeleton-item"></div>
@@ -73,6 +78,8 @@ import { TodoListStore } from './todo-list.store'
                 {{ store.isDeleting() ? '...' : 'Delete' }}
               </button>
             </li>
+          } @empty {
+            <li class="empty-state">No todos yet — add one above.</li>
           }
         </ul>
       }
@@ -208,6 +215,22 @@ import { TodoListStore } from './todo-list.store'
     .delete-btn {
       padding: 4px 10px;
       font-size: 0.8rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+
+    .error-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
     }
 
     .footer {

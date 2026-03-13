@@ -4,10 +4,10 @@ import { NavigationDemo } from "./navigation-demo"
 const INSTALL_CODE = `npm install ziflux`
 
 const USAGE_CODE = `const todos = cachedResource({
-  cache: this.api.cache,
+  cache: this.#api.cache,
   cacheKey: params => ['todos', params.status],
   params: () => this.filters(),
-  loader: ({ params }) => this.api.getAll$(params),
+  loader: ({ params }) => this.#api.getAll$(params),
 })`
 
 export function Hero() {
@@ -18,7 +18,7 @@ export function Hero() {
 
       <div className="relative">
         <p className="mb-6 inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-          Angular 21+ &middot; Zero dependencies &middot; Signal-native
+          Angular 21+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
         </p>
 
         {/* Headline */}

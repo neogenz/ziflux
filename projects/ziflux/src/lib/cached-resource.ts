@@ -16,6 +16,12 @@ function retryWithBackoff<T>(
       }
       const delay = Math.random() * Math.min(config.maxDelay, config.baseDelay * 2 ** n)
       return new Promise<T>((resolve, reject) => {
+        // Guard: signal may already be aborted before the listener is registered
+        if (abortSignal.aborted) {
+          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- DOMException is the standard AbortError type
+          reject(abortSignal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
+          return
+        }
         const timer = setTimeout(() => {
           resolve(attempt(n + 1))
         }, delay)
@@ -23,7 +29,10 @@ function retryWithBackoff<T>(
           'abort',
           () => {
             clearTimeout(timer)
-            reject(error as Error)
+            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- DOMException is the standard AbortError type
+            reject(
+              abortSignal.reason ?? new DOMException('The operation was aborted', 'AbortError'),
+            )
           },
           { once: true },
         )

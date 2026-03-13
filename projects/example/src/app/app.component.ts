@@ -84,11 +84,7 @@ import { networkDelay } from './todo/fake-todo.interceptor'
       </div>
       <div class="latency-control">
         <label for="latency">Latency</label>
-        <select
-          id="latency"
-          [value]="networkDelay()"
-          (change)="networkDelay.set(+$any($event.target).value)"
-        >
+        <select id="latency" [value]="networkDelay()" (change)="onLatencyChange($event)">
           <option value="0">0ms</option>
           <option value="300">300ms</option>
           <option value="500">500ms</option>
@@ -105,4 +101,8 @@ import { networkDelay } from './todo/fake-todo.interceptor'
 })
 export class AppComponent {
   readonly networkDelay = networkDelay
+
+  onLatencyChange(event: Event): void {
+    networkDelay.set(+(event.target as HTMLSelectElement).value)
+  }
 }

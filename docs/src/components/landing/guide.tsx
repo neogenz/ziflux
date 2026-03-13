@@ -5,7 +5,7 @@ export class OrderApi {
   readonly cache = new DataCache()
   readonly #http = inject(HttpClient)
 
-  getAll$(filters: OrderFilters): Observable<Order[]> {
+  getAll$(filters: OrderFilters) {
     return this.#http.get<Order[]>('/orders', { params: { ...filters } })
   }
 
@@ -18,18 +18,14 @@ const LIST_STORE_CODE = `@Injectable()
 export class OrderListStore {
   readonly #api = inject(OrderApi)
 
-  readonly filters = signal<OrderFilters>({ status: 'all', search: '' })
+  readonly filters = signal<OrderFilters>({ status: 'all' })
 
   readonly orders = cachedResource({
     cache: this.#api.cache,
-    cacheKey: params => ['order', 'list', params.status, params.search],
+    cacheKey: params => ['order', 'list', params.status],
     params: () => this.filters(),
     loader: ({ params }) => this.#api.getAll$(params),
   })
-
-  setFilters(filters: Partial<OrderFilters>) {
-    this.filters.update(f => ({ ...f, ...filters }))
-  }
 }`
 
 const DETAIL_STORE_CODE = `@Injectable()
@@ -56,12 +52,7 @@ export class OrderDetailStore {
 const TEMPLATE_CODE = `@if (store.orders.isInitialLoading()) {
   <app-spinner />
 } @else {
-  @let list = store.orders.value();
-  @if (list) {
-    <app-order-list [orders]="list" [stale]="store.orders.isStale()" />
-  } @else {
-    <app-empty-state />
-  }
+  <app-order-list [orders]="store.orders.value()" />
 }`
 
 const ERROR_TEMPLATE_CODE = `@if (store.orders.error()) {
@@ -321,6 +312,9 @@ export function Guide() {
       {/* Usage walkthrough */}
       <div className="mt-10">
         <h3 className="mb-2 text-lg font-semibold">Usage</h3>
+        <p className="mt-2 mb-4 text-sm text-muted-foreground">
+          Walkthrough of the 3-file pattern from Quick Start, then mutations and optimistic updates.
+        </p>
 
         {/* 1. API Service */}
         <div className="mt-6">

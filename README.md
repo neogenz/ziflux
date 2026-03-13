@@ -67,14 +67,11 @@ Signals flow back from Store to Component. The cache is transparent to the Store
 
 ## Why ziflux?
 
-`resource()` handles the **fetch lifecycle** (loading → resolved → error). It doesn't handle the **data lifecycle** — when to re-fetch, what to keep, what's stale.
+- **Instant navigations** — cached data appears immediately, fresh data loads in the background. No spinners on return visits.
+- **Optimistic updates in 5 lines** — `cachedMutation` handles the snapshot → mutate → rollback-on-error lifecycle for you.
+- **Zero plumbing** — you stop hand-rolling stale-while-revalidate logic, duplicating it across projects, and maintaining it forever.
 
-```
-resource()  → fetch lifecycle  → loading  | resolved | error
-DataCache   → data lifecycle   → fresh    | stale    | expired
-```
-
-ziflux fills that gap. Angular signals remain your state layer — this is just the cache.
+`resource()` handles the fetch lifecycle. ziflux handles the data lifecycle — when to re-fetch, what to keep, what's stale. Angular signals remain your state layer.
 
 ---
 

@@ -45,6 +45,7 @@ export class DataCache<T> {
     const globalConfig = inject(ZIFLUX_CONFIG, { optional: true })
     const defaults: ZifluxConfig = { staleTime: 30_000, expireTime: 300_000 }
     this.#config = { ...defaults, ...globalConfig, ...config }
+    this.#validateConfig()
     this.name = config?.name ?? `cache-${cacheCounter++}`
 
     this.#logger = inject(DevtoolsLogger, { optional: true })
@@ -63,6 +64,29 @@ export class DataCache<T> {
       destroyRef?.onDestroy(() => {
         clearInterval(id)
       })
+    }
+  }
+
+  #validateConfig(): void {
+    const { staleTime, expireTime, cleanupInterval, maxEntries } = this.#config
+    this.#assertPositiveFinite('staleTime', staleTime)
+    this.#assertPositiveFinite('expireTime', expireTime)
+    if (cleanupInterval !== undefined)
+      this.#assertPositiveFinite('cleanupInterval', cleanupInterval)
+    if (maxEntries !== undefined) {
+      this.#assertPositiveFinite('maxEntries', maxEntries)
+      if (!Number.isInteger(maxEntries)) {
+        throw new Error(`DataCache: maxEntries must be an integer, got ${maxEntries}`)
+      }
+    }
+    if (staleTime > expireTime) {
+      throw new Error(`DataCache: staleTime (${staleTime}) must be ≤ expireTime (${expireTime})`)
+    }
+  }
+
+  #assertPositiveFinite(name: string, value: number): void {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new Error(`DataCache: ${name} must be a finite number ≥ 0, got ${value}`)
     }
   }
 

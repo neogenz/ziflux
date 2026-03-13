@@ -142,6 +142,95 @@ describe('DataCache', () => {
     expect(c.staleTime).toBe(1000)
   })
 
+  // --- config validation ---
+
+  it('rejects NaN staleTime', () => {
+    expect(() => createCache<string>({ staleTime: NaN })).toThrow(
+      'DataCache: staleTime must be a finite number ≥ 0, got NaN',
+    )
+  })
+
+  it('rejects Infinity staleTime', () => {
+    expect(() => createCache<string>({ staleTime: Infinity })).toThrow(
+      'DataCache: staleTime must be a finite number ≥ 0, got Infinity',
+    )
+  })
+
+  it('rejects negative staleTime', () => {
+    expect(() => createCache<string>({ staleTime: -1 })).toThrow(
+      'DataCache: staleTime must be a finite number ≥ 0, got -1',
+    )
+  })
+
+  it('rejects NaN expireTime', () => {
+    expect(() => createCache<string>({ expireTime: NaN })).toThrow(
+      'DataCache: expireTime must be a finite number ≥ 0, got NaN',
+    )
+  })
+
+  it('rejects Infinity expireTime', () => {
+    expect(() => createCache<string>({ expireTime: Infinity })).toThrow(
+      'DataCache: expireTime must be a finite number ≥ 0, got Infinity',
+    )
+  })
+
+  it('rejects negative expireTime', () => {
+    expect(() => createCache<string>({ expireTime: -100 })).toThrow(
+      'DataCache: expireTime must be a finite number ≥ 0, got -100',
+    )
+  })
+
+  it('rejects staleTime > expireTime', () => {
+    expect(() => createCache<string>({ staleTime: 5000, expireTime: 1000 })).toThrow(
+      'DataCache: staleTime (5000) must be ≤ expireTime (1000)',
+    )
+  })
+
+  it('accepts staleTime === expireTime', () => {
+    expect(() => createCache<string>({ staleTime: 1000, expireTime: 1000 })).not.toThrow()
+  })
+
+  it('accepts staleTime === 0', () => {
+    const c = createCache<string>({ staleTime: 0 })
+    expect(c.staleTime).toBe(0)
+  })
+
+  it('rejects NaN maxEntries', () => {
+    expect(() => createCache<string>({ maxEntries: NaN })).toThrow(
+      'DataCache: maxEntries must be a finite number ≥ 0, got NaN',
+    )
+  })
+
+  it('rejects negative maxEntries', () => {
+    expect(() => createCache<string>({ maxEntries: -1 })).toThrow(
+      'DataCache: maxEntries must be a finite number ≥ 0, got -1',
+    )
+  })
+
+  it('rejects fractional maxEntries', () => {
+    expect(() => createCache<string>({ maxEntries: 2.5 })).toThrow(
+      'DataCache: maxEntries must be an integer, got 2.5',
+    )
+  })
+
+  it('rejects NaN cleanupInterval', () => {
+    expect(() => createCache<string>({ cleanupInterval: NaN })).toThrow(
+      'DataCache: cleanupInterval must be a finite number ≥ 0, got NaN',
+    )
+  })
+
+  it('rejects negative cleanupInterval', () => {
+    expect(() => createCache<string>({ cleanupInterval: -500 })).toThrow(
+      'DataCache: cleanupInterval must be a finite number ≥ 0, got -500',
+    )
+  })
+
+  it('rejects invalid global config propagated to constructor', () => {
+    expect(() => createCache<string>(undefined, { staleTime: NaN })).toThrow(
+      'DataCache: staleTime must be a finite number ≥ 0, got NaN',
+    )
+  })
+
   // --- invalidate ---
 
   it('marks matching entries as stale', () => {

@@ -39,6 +39,8 @@ this.cache.invalidate(['order'])  // prefix match`,
   loader: (ctx: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
   staleTime?: number
   expireTime?: number
+  retry?: number | RetryConfig          // auto-retry with exponential backoff
+  refetchInterval?: number | (() => number | false)  // polling
 }): CachedResourceRef<T>`,
     usage: `interface CachedResourceRef<T> {
   readonly value: Signal<T | undefined>
@@ -52,6 +54,13 @@ this.cache.invalidate(['order'])  // prefix match`,
   destroy(): void
   set(value: T): void
   update(updater: (prev: T | undefined) => T): void
+}
+
+interface RetryConfig {
+  maxRetries: number
+  baseDelay?: number              // default: 1_000 ms
+  maxDelay?: number               // default: 30_000 ms
+  retryIf?: (error: unknown) => boolean  // default: retry all
 }`,
   },
   {
@@ -124,6 +133,56 @@ export const appConfig: ApplicationConfig = {
 // Priority: constructor arg > global provider > defaults
 readonly cache = new DataCache({ staleTime: 60_000 })`,
   },
+  {
+    id: "with-devtools",
+    label: "withDevtools()",
+    description: "Enables cache inspector and structured console logging. Only active in dev mode.",
+    code: `function withDevtools(config?: DevtoolsConfig): ZifluxFeature
+
+interface DevtoolsConfig {
+  logOperations?: boolean  // default: true in dev mode
+}`,
+    usage: `// app.config.ts
+provideZiflux(
+  { staleTime: 30_000, expireTime: 300_000 },
+  withDevtools()                    // no config needed
+)
+
+// Or with custom config
+provideZiflux(
+  { staleTime: 30_000 },
+  withDevtools({ logOperations: false })
+)`,
+  },
+  {
+    id: "devtools-component",
+    label: "ZifluxDevtoolsComponent",
+    description: "Floating overlay for inspecting live cache state. Standalone component.",
+    code: `@Component({
+  selector: 'ziflux-devtools',
+  standalone: true,
+})
+export class ZifluxDevtoolsComponent`,
+    usage: `// In your root component template
+<ziflux-devtools />
+
+// Toggle with Ctrl+Shift+Z (Cmd+Shift+Z on Mac)
+// Shows per-cache entries, freshness state, TTL, and in-flight requests`,
+  },
+  {
+    id: "cache-registry",
+    label: "CacheRegistry",
+    description: "Advanced — most apps won't need this directly. Global registry of all DataCache instances.",
+    code: `class CacheRegistry {
+  readonly caches: Signal<Map<string, DataCache>>
+  inspectAll(): { name: string; inspection: CacheInspection<unknown> }[]
+}`,
+    usage: `// Auto-managed when withDevtools() is enabled
+// Useful for building custom monitoring dashboards
+
+const registry = inject(CacheRegistry)
+const allCaches = registry.inspectAll()`,
+  },
 ] as const
 
 export function ApiReference() {
@@ -135,7 +194,7 @@ export function ApiReference() {
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
         <a href="#api" className="hover:no-underline">API Reference <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
-      <p className="mt-2 text-muted-foreground">Seven runtime exports, plus types.</p>
+      <p className="mt-2 text-muted-foreground">All runtime exports — signatures and usage examples.</p>
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2">

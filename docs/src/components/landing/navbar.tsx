@@ -6,8 +6,10 @@ import { Github, ExternalLink, Menu, X, Sun, Moon, Monitor } from "lucide-react"
 
 const NAV_LINKS = [
   { href: "#quickstart", label: "Quick Start" },
-  { href: "#api", label: "API" },
+  { href: "#guide", label: "Guide" },
+  { href: "#testing", label: "Testing" },
   { href: "#freshness", label: "Caching" },
+  { href: "#api", label: "API" },
 ]
 
 function ThemeToggle() {

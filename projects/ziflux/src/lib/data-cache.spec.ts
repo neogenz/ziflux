@@ -518,10 +518,10 @@ describe('DataCache', () => {
   })
 
   it('returns timeToStale and timeToExpire for entries', () => {
+    vi.useFakeTimers()
     const custom = createCache({ staleTime: 1000, expireTime: 5000 })
     custom.set(['a'], 'data')
 
-    vi.useFakeTimers()
     vi.advanceTimersByTime(300)
 
     const info = custom.inspect()

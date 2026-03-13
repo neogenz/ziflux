@@ -50,7 +50,7 @@ readonly todos = cachedResource({
 
 All `DataCache` instances inherit defaults from `provideZiflux()`. Devtools are only active in dev mode.
 
-See the [full example app](./projects/example/) for a working Todo demo with mutations, optimistic updates, polling, and devtools.
+See the [full example app](https://github.com/neogenz/ziflux/tree/main/projects/example) for a working Todo demo with mutations, optimistic updates, polling, and devtools.
 
 ---
 
@@ -164,7 +164,7 @@ Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation
 
 Zero external dependencies. 100% Angular signals + `resource()` + in-memory `Map`.
 
-AI code generation instructions: [llms.txt](./llms.txt)
+AI code generation instructions: [llms.txt](https://github.com/neogenz/ziflux/blob/main/llms.txt)
 
 ---
 
@@ -176,8 +176,8 @@ AI code generation instructions: [llms.txt](./llms.txt)
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/neogenz/ziflux/blob/main/CONTRIBUTING.md).
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](https://github.com/neogenz/ziflux/blob/main/LICENSE).

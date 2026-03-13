@@ -3,6 +3,7 @@ import { Hero } from "@/components/landing/hero"
 import { QuickStart } from "@/components/landing/quickstart"
 import { Guide } from "@/components/landing/guide"
 import { Testing } from "@/components/landing/testing"
+import { AdvancedUsage } from "@/components/landing/advanced-usage"
 import { Freshness } from "@/components/landing/freshness"
 import { ApiReference } from "@/components/landing/api-reference"
 import { Gotchas } from "@/components/landing/gotchas"
@@ -18,6 +19,7 @@ export default function HomePage() {
         <QuickStart />
         <Guide />
         <Testing />
+        <AdvancedUsage />
         <Freshness />
         <ApiReference />
         <Gotchas />

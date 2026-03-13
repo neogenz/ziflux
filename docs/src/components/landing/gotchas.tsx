@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { CodeBlock } from "./code-block"
 
 const INVALIDATE_EMPTY_WRONG = `// This does nothing — empty prefix matches nothing
@@ -28,17 +29,21 @@ const entry = cache.get<Order[]>(['user', '1'])    // reads as Order[]
 
 // Convention: one key prefix per type, enforced in your API service`
 
-const GOTCHAS: {
-  title: string
+interface Gotcha {
+  title: ReactNode
+  key: string
   description: string
   wrong?: string
   wrongLabel?: string
   right?: string
   rightLabel?: string
   code?: string
-}[] = [
+}
+
+const GOTCHAS: Gotcha[] = [
   {
-    title: "invalidate([]) is a no-op",
+    key: "invalidate-empty",
+    title: <><code>invalidate([])</code> is a no-op</>,
     description: "An empty prefix matches nothing. Use cache.clear() to wipe everything.",
     wrong: INVALIDATE_EMPTY_WRONG,
     wrongLabel: "No effect",
@@ -46,12 +51,14 @@ const GOTCHAS: {
     rightLabel: "Correct",
   },
   {
-    title: "invalidate() is prefix-based, not exact-match",
+    key: "invalidate-prefix",
+    title: <><code>invalidate()</code> is prefix-based, not exact-match</>,
     description: "A prefix matches all keys that start with it — including nested sub-keys.",
     code: INVALIDATE_PREFIX_CODE,
   },
   {
-    title: "ref.set() / ref.update() are local-only",
+    key: "set-update-local",
+    title: <><code>ref.set()</code> / <code>ref.update()</code> are local-only</>,
     description: "They update the component's view but do NOT write to the cache. Call invalidate() to trigger a fresh server fetch.",
     wrong: SET_UPDATE_WRONG,
     wrongLabel: "Local only",
@@ -59,6 +66,7 @@ const GOTCHAS: {
     rightLabel: "Triggers fetch",
   },
   {
+    key: "untyped-keys",
     title: "Cache keys are untyped at the boundary",
     description: "DataCache stores unknown internally. Type correctness depends on consistent key→type pairings in your code.",
     code: UNTYPED_KEYS_CODE,
@@ -75,27 +83,32 @@ export function Gotchas() {
         Common pitfalls and how to avoid them.
       </p>
 
-      <div className="mt-8 space-y-8">
+      <div className="mt-8 space-y-4">
         {GOTCHAS.map((gotcha) => (
-          <div key={gotcha.title} className="border-l-2 border-amber-500 pl-4">
-            <h3 className="text-sm font-semibold">{gotcha.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{gotcha.description}</p>
+          <div key={gotcha.key} className="rounded-xl border border-border bg-muted/30 p-5">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600 dark:text-amber-400">!</span>
+              <div>
+                <h3 className="text-sm font-semibold">{gotcha.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{gotcha.description}</p>
+              </div>
+            </div>
 
             {gotcha.wrong && gotcha.right && (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 space-y-3">
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-red-400">{gotcha.wrongLabel}</p>
+                  <span className="mb-1.5 inline-block rounded-md bg-red-400/10 px-2 py-0.5 font-mono text-[11px] text-red-400">{gotcha.wrongLabel}</span>
                   <CodeBlock code={gotcha.wrong} />
                 </div>
                 <div>
-                  <p className="mb-1.5 text-xs font-semibold text-emerald-500">{gotcha.rightLabel}</p>
+                  <span className="mb-1.5 inline-block rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-500">{gotcha.rightLabel}</span>
                   <CodeBlock code={gotcha.right} />
                 </div>
               </div>
             )}
 
             {gotcha.code && (
-              <div className="mt-3">
+              <div className="mt-4">
                 <CodeBlock code={gotcha.code} />
               </div>
             )}

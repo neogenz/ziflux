@@ -72,23 +72,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
-        <a href="#" className="flex items-center gap-2 text-lg font-bold tracking-tight">
-          <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" aria-hidden="true">
-            <rect x="110" y="110" width="45" height="45" fill="currentColor"/>
-            <rect x="165" y="110" width="45" height="45" fill="currentColor"/>
-            <rect x="220" y="110" width="45" height="45" fill="currentColor"/>
-            <rect x="275" y="110" width="45" height="45" fill="currentColor"/>
-            <rect x="330" y="110" width="45" height="45" fill="currentColor"/>
-            <rect x="275" y="165" width="45" height="45" fill="currentColor"/>
-            <rect x="220" y="220" width="45" height="45" fill="currentColor"/>
-            <rect x="165" y="275" width="45" height="45" fill="currentColor"/>
-            <rect x="110" y="330" width="45" height="45" fill="currentColor"/>
-            <rect x="110" y="385" width="45" height="45" fill="currentColor"/>
-            <rect x="165" y="385" width="45" height="45" fill="currentColor"/>
-            <rect x="220" y="385" width="45" height="45" fill="currentColor"/>
-            <rect x="275" y="385" width="45" height="45" fill="currentColor"/>
-            <rect x="330" y="385" width="45" height="45" fill="currentColor"/>
-          </svg>
+        <a href="#" className="text-lg font-bold tracking-tight">
           ziflux<span className="font-normal text-muted-foreground">.docs</span>
         </a>
 

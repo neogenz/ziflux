@@ -1,6 +1,30 @@
 # Changelog
 
 
+## v0.0.4
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.2...v0.0.4)
+
+### Features
+
+- **docs:** Add Vercel analytics ([d4d21fe](https://github.com/neogenz/ziflux/commit/d4d21fe))
+- **skills:** Publish ziflux-expert skill ([7531d17](https://github.com/neogenz/ziflux/commit/7531d17))
+- **docs:** Add "Copy page" dropdown for markdown export ([e070c64](https://github.com/neogenz/ziflux/commit/e070c64))
+- **docs:** Add "Copy page" dropdown for markdown export ([718e1d0](https://github.com/neogenz/ziflux/commit/718e1d0))
+
+### Bug Fixes
+
+- **docs:** Update npm package references from ziflux to ngx-ziflux ([cd019b8](https://github.com/neogenz/ziflux/commit/cd019b8))
+- **test:** Use fake timers before cache.set to prevent flaky timing ([59f19c3](https://github.com/neogenz/ziflux/commit/59f19c3))
+
+### Chores
+
+- **release:** V0.0.3 ([75df94a](https://github.com/neogenz/ziflux/commit/75df94a))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.3
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.2...v0.0.3)

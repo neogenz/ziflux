@@ -15,7 +15,7 @@ export default function HomePage() {
   return (
     <>
       <Navbar />
-      <main id="main">
+      <main id="main" className="relative">
         <Hero />
         <QuickStart />
         <Guide />

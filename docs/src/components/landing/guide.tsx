@@ -130,7 +130,7 @@ export function Guide() {
       <div className="mt-10">
         <h3 className="mb-6 text-lg font-semibold">Architecture</h3>
 
-        <div className="overflow-x-auto">
+        <div data-md-visual className="overflow-x-auto">
           <div
             className="grid min-w-[580px] items-center"
             style={{
@@ -212,7 +212,7 @@ export function Guide() {
           A recommended structure for most features:
         </p>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div data-md-visual className="grid gap-3 sm:grid-cols-3">
           <DomainCard step={1} file="order.api.ts" role="HTTP + cache" scope="singleton" />
           <DomainCard step={2} file="order-list.store.ts" role="cachedResource + mutations" scope="route-scoped" />
           <DomainCard step={3} file="order-list.component.ts" role="inject(Store), read signals" scope="view scope" />

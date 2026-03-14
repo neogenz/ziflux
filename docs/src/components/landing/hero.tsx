@@ -1,5 +1,6 @@
 import { CodeBlock } from "./code-block"
 import { NavigationDemo } from "./navigation-demo"
+import { CopyPageDropdown } from "./copy-page-dropdown"
 
 const INSTALL_CODE = `npm install ngx-ziflux`
 
@@ -17,9 +18,14 @@ export function Hero() {
       <div className="pointer-events-none absolute inset-x-0 -top-20 h-[500px] bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,115,22,0.08)_0%,transparent_60%)]" />
 
       <div className="relative">
-        <p className="mb-6 inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-          Angular 21+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
-        </p>
+        <div className="mb-6 flex items-start justify-between">
+          <p className="inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
+            Angular 21+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
+          </p>
+          <div className="hidden sm:block">
+            <CopyPageDropdown />
+          </div>
+        </div>
 
         {/* Headline */}
         <h1 className="text-4xl font-bold leading-[1.15] tracking-tight sm:text-5xl">

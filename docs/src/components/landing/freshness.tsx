@@ -13,7 +13,7 @@ export function Freshness() {
       </p>
 
       {/* Timeline — phase bars */}
-      <div className="mt-8 flex gap-1">
+      <div data-md-visual className="mt-8 flex gap-1">
         <div className="flex-[3] rounded-l-md bg-emerald-500/80 py-3 px-4">
           <p className="text-sm font-bold text-white">FRESH</p>
         </div>
@@ -24,7 +24,7 @@ export function Freshness() {
           <p className="text-sm font-bold text-white">EVICTED</p>
         </div>
       </div>
-      <div className="mt-3 flex gap-1 text-xs">
+      <div data-md-visual className="mt-3 flex gap-1 text-xs">
         <div className="flex-[3]">
           <p className="font-semibold text-emerald-500">Return cached data</p>
           <p className="mt-0.5 text-muted-foreground">No network request</p>
@@ -38,7 +38,7 @@ export function Freshness() {
           <p className="mt-0.5 text-muted-foreground">Cache entry removed</p>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+      <div data-md-visual className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
         <div className="flex-[3]">Data written to cache</div>
         <div className="flex-[3]"><code className="font-semibold text-foreground">staleTime</code> elapsed &mdash; data may be outdated</div>
         <div className="flex-[2]"><code className="font-semibold text-foreground">expireTime</code> elapsed &mdash; entry evicted</div>
@@ -97,7 +97,7 @@ export function Freshness() {
         </p>
 
         {/* Visual tree */}
-        <div className="font-mono text-sm">
+        <div data-md-visual className="font-mono text-sm">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="text-accent font-bold">{`['order']`}</span>

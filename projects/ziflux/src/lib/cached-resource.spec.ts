@@ -293,6 +293,230 @@ describe('cachedResource', () => {
     expect(ref.value()).toBe('hello world')
   })
 
+  // --- update / set during non-resolved states ---
+
+  it('update() receives stale data during SWR revalidation (not undefined)', async () => {
+    cache.set(['test'], 'stale-data')
+    cache.invalidate(['test'])
+
+    let resolveLoader!: (v: string) => void
+    const loaderPromise = new Promise<string>(r => {
+      resolveLoader = r
+    })
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => loaderPromise,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Verify SWR state: stale data visible, resource is loading
+    expect(ref.value()).toBe('stale-data')
+    expect(ref.isStale()).toBe(true)
+
+    // Core bug assertion: updater must receive 'stale-data', not undefined
+    let receivedValue: string | undefined
+    ref.update(current => {
+      receivedValue = current
+      return (current ?? '') + '-updated'
+    })
+    TestBed.tick()
+
+    expect(receivedValue).toBe('stale-data')
+    expect(ref.value()).toBe('stale-data-updated')
+    expect(ref.status()).toBe('local')
+
+    // Cleanup: resolve the pending loader
+    resolveLoader('fresh-data')
+  })
+
+  it('update() receives undefined during initial loading (cold cache)', async () => {
+    let resolveLoader!: (v: string) => void
+    const loaderPromise = new Promise<string>(r => {
+      resolveLoader = r
+    })
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => loaderPromise,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    expect(ref.isInitialLoading()).toBe(true)
+
+    let receivedValue: string | undefined = 'sentinel'
+    ref.update(current => {
+      receivedValue = current
+      return current ?? 'fallback'
+    })
+    TestBed.tick()
+
+    expect(receivedValue).toBeUndefined()
+    expect(ref.value()).toBe('fallback')
+    expect(ref.status()).toBe('local')
+
+    // Cleanup: resolve the pending loader
+    resolveLoader('data')
+  })
+
+  it('update() after invalidate() on resolved resource works', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => Promise.resolve('original'),
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('original')
+
+    // Invalidate — resource transitions to loading, stale data available
+    cache.invalidate(['test'])
+    await flushMicrotasks()
+    TestBed.tick()
+
+    ref.update(current => (current ?? '') + '-updated')
+    TestBed.tick()
+
+    expect(ref.value()).toBe('original-updated')
+  })
+
+  it('set() works during SWR revalidation', async () => {
+    cache.set(['test'], 'stale-data')
+    cache.invalidate(['test'])
+
+    let resolveLoader!: (v: string) => void
+    const loaderPromise = new Promise<string>(r => {
+      resolveLoader = r
+    })
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => loaderPromise,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    expect(ref.isStale()).toBe(true)
+
+    ref.set('optimistic-value')
+    TestBed.tick()
+
+    expect(ref.value()).toBe('optimistic-value')
+    expect(ref.status()).toBe('local')
+
+    // Cleanup: resolve the pending loader
+    resolveLoader('fresh-data')
+  })
+
+  it('update() during error state with stale snapshot receives stale data', async () => {
+    cache.set(['test'], 'cached-data')
+    cache.invalidate(['test'])
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => Promise.reject(new Error('network error')),
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+
+    // value() should return stale data on error
+    expect(ref.value()).toBe('cached-data')
+
+    // update() should also receive stale data
+    let receivedValue: string | undefined
+    ref.update(current => {
+      receivedValue = current
+      return (current ?? '') + '-patched'
+    })
+    TestBed.tick()
+
+    expect(receivedValue).toBe('cached-data')
+    expect(ref.value()).toBe('cached-data-patched')
+  })
+
+  it('multiple update() calls during revalidation chain correctly', async () => {
+    cache.set(['test'], 'v0')
+    cache.invalidate(['test'])
+
+    let resolveLoader!: (v: string) => void
+    const loaderPromise = new Promise<string>(r => {
+      resolveLoader = r
+    })
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => loaderPromise,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    ref.update(v => (v ?? '') + '-a')
+    TestBed.tick()
+    ref.update(v => (v ?? '') + '-b')
+    TestBed.tick()
+
+    expect(ref.value()).toBe('v0-a-b')
+    expect(ref.status()).toBe('local')
+
+    // Cleanup: resolve the pending loader
+    resolveLoader('fresh')
+  })
+
+  it('update() on idle resource (undefined params) receives undefined', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, { id: string }>({
+        cache,
+        cacheKey: p => ['item', p.id],
+        params: () => undefined,
+        loader: () => Promise.resolve('data'),
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    expect(ref.status()).toBe('idle')
+
+    let receivedValue: string | undefined = 'sentinel'
+    ref.update(current => {
+      receivedValue = current
+      return current ?? 'idle-fallback'
+    })
+    TestBed.tick()
+
+    expect(receivedValue).toBeUndefined()
+    expect(ref.value()).toBe('idle-fallback')
+  })
+
   // --- hasValue ---
 
   it('hasValue() returns false before load, true after', async () => {

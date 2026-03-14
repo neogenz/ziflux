@@ -183,7 +183,7 @@ export function cachedResource<T, P extends object>(
       res.set(v)
     },
     update: (fn: (prev: T | undefined) => T) => {
-      res.update(fn)
+      res.set(fn(value()))
     },
     hasValue: () =>
       staleSnapshot() !== NO_VALUE || res.status() === 'resolved' || res.status() === 'local',

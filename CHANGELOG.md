@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.0.5
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.4...v0.0.5)
+
+### Bug Fixes
+
+- **core:** Read SWR-enhanced value in cachedResource.update() ([f479b10](https://github.com/neogenz/ziflux/commit/f479b10))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.4
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.2...v0.0.4)

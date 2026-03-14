@@ -56,7 +56,7 @@ this.cache.invalidate(['order'])  // prefix match`,
   refetchInterval?: number | (() => number | false)  // polling
 }): CachedResourceRef<T>`,
     usage: `interface CachedResourceRef<T> {
-  readonly value: Signal<T | undefined>
+  readonly value: Signal<T | undefined>        // preserves last cached value on error
   readonly status: Signal<ResourceStatus>
   readonly error: Signal<unknown>
   readonly isLoading: Signal<boolean>

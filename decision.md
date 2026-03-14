@@ -387,6 +387,18 @@ provideZiflux({ staleTime: 60_000 }, withDevtools())
 
 ---
 
+## D-31 — Return stale snapshot on error status
+
+**Date:** 2026-03-14
+
+The `value` computed in `cachedResource` now returns the stale snapshot when `status === 'error'` and cached data exists, instead of falling through to `res.value()` (which Angular sets to `undefined` on error).
+
+This is standard SWR behavior — TanStack Query preserves previous data on error. Without this, users lose displayed data when background revalidation fails: the screen goes blank instead of keeping the last good data with an error banner.
+
+The fix adds `|| status === 'error'` to the existing status check (line 156). `isStale` and `isInitialLoading` are unchanged — they describe "revalidation in progress", not data freshness. Users detect error-with-cached-data via `error()` + `hasValue()`.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

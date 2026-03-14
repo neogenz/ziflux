@@ -142,6 +142,7 @@ Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation
 - **`invalidate([])` is a no-op.** An empty prefix matches nothing. Use `cache.clear()` to wipe everything.
 - **`invalidate()` is prefix-based, not exact-match.** `invalidate(['order', 'details', '42'])` also matches `['order', 'details', '42', 'comments']`.
 - **`ref.set()` / `ref.update()` are local-only.** They don't write to the cache. Call `invalidate()` to trigger a fresh server fetch.
+- **`value()` preserves cached data on error.** When a background revalidation fails, `value()` returns the last cached value (not `undefined`). Check `error()` to detect the failure and show an error banner alongside the stale data.
 - **Cache keys are untyped at the boundary.** Type correctness depends on consistent key→type pairings in your code.
 
 ---

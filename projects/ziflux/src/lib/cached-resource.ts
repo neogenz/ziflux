@@ -150,12 +150,13 @@ export function cachedResource<T, P extends object>(
     })
   }
 
-  // SWR value: stale data during loading, otherwise resource value.
+  // SWR value: stale data during loading/error, otherwise resource value.
   const value = computed(() => {
     const status = res.status()
-    if (status === 'loading' || status === 'reloading') {
+    if (status === 'loading' || status === 'reloading' || status === 'error') {
       const snapshot = staleSnapshot()
       if (snapshot !== NO_VALUE) return snapshot
+      if (status === 'error') return undefined as T
     }
     return res.value()
   })

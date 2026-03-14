@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import type { ResourceStatus } from '@angular/core'
+import { signal, type ResourceStatus } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
 import { of } from 'rxjs'
 import { cachedResource } from './cached-resource'
@@ -382,6 +382,134 @@ describe('cachedResource', () => {
     await waitForStatus(ref, 'error')
     expect(ref.error()).toBeInstanceOf(Error)
     expect((ref.error() as Error).message).toBe('network error')
+  })
+
+  it('preserves stale value on revalidation error', async () => {
+    cache.set(['test'], 'cached-data')
+    cache.invalidate(['test'])
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => Promise.reject(new Error('network error')),
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect(ref.value()).toBe('cached-data')
+    expect(ref.error()).toBeInstanceOf(Error)
+    expect(ref.hasValue()).toBe(true)
+  })
+
+  it('returns undefined on error with cold cache', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => Promise.reject(new Error('network error')),
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect(ref.value()).toBeUndefined()
+    expect(ref.error()).toBeInstanceOf(Error)
+    expect(ref.hasValue()).toBe(false)
+  })
+
+  it('shows stale data during revalidation then preserves it on error', async () => {
+    cache.set(['test'], 'cached-data')
+    cache.invalidate(['test'])
+
+    let rejectLoader!: (e: Error) => void
+    let loaderPromise = new Promise<string>((_resolve, reject) => {
+      rejectLoader = reject
+    })
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => loaderPromise,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // During revalidation: stale data visible
+    expect(ref.value()).toBe('cached-data')
+
+    // Reject → error state
+    rejectLoader(new Error('network error'))
+    await waitForStatus(ref, 'error')
+
+    // After error: stale data still visible
+    expect(ref.value()).toBe('cached-data')
+
+    // Reload with a succeeding loader
+    loaderPromise = Promise.resolve('fresh-data')
+    ref.reload()
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('fresh-data')
+    expect(ref.error()).toBeUndefined()
+  })
+
+  it('error then successful reload transitions to fresh data', async () => {
+    cache.set(['test'], 'cached-data')
+    cache.invalidate(['test'])
+
+    let shouldReject = true
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () =>
+          shouldReject ? Promise.reject(new Error('network error')) : Promise.resolve('fresh-data'),
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect(ref.value()).toBe('cached-data')
+
+    shouldReject = false
+    ref.reload()
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('fresh-data')
+    expect(ref.error()).toBeUndefined()
+    expect(ref.isStale()).toBe(false)
+  })
+
+  it('params change during error state transitions to new key', async () => {
+    cache.set(['item', 'A'], 'data-A')
+    cache.invalidate(['item', 'A'])
+
+    const activeId = signal('A')
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, { id: string }>({
+        cache,
+        cacheKey: p => ['item', p.id],
+        params: () => ({ id: activeId() }),
+        loader: ({ params }) =>
+          params.id === 'A' ? Promise.reject(new Error('fail-A')) : Promise.resolve('fresh-B'),
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect(ref.value()).toBe('data-A')
+
+    // Switch params to key B (cold cache)
+    activeId.set('B')
+    TestBed.tick()
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('fresh-B')
+    expect(ref.error()).toBeUndefined()
   })
 
   // --- destroy ---

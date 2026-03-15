@@ -63,7 +63,11 @@ export function cachedMutation<A = void, R = void, C = void>(
         data.set(result)
         error.set(undefined)
         status.set('success')
-        onSuccess?.(result, args)
+        try {
+          onSuccess?.(result, args)
+        } catch {
+          /* callback error — mutation succeeded, invalidation must still run */
+        }
       }
 
       if (invalidateKeys && cache) {
@@ -77,13 +81,18 @@ export function cachedMutation<A = void, R = void, C = void>(
       if (thisCallId === callCounter) {
         error.set(err)
         status.set('error')
-        onError?.(err, args, context)
+        try {
+          onError?.(err, args, context)
+        } catch {
+          /* callback error — original mutation error already captured */
+        }
       }
       return undefined
     }
   }
 
   function reset(): void {
+    callCounter++
     status.set('idle')
     error.set(undefined)
     data.set(undefined)

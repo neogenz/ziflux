@@ -115,7 +115,7 @@ export function cachedResource<T, P extends object>(
       cache.version() // trigger reload on invalidation
       return p
     },
-    loader: async ({ params: reqParams, abortSignal }) => {
+    loader: async ({ params: reqParams, abortSignal }): Promise<T> => {
       // Safe cast: when params() returns undefined the loader never runs,
       // so `reqParams` is guaranteed to be P at this point.
       const p = reqParams as P
@@ -132,6 +132,9 @@ export function cachedResource<T, P extends object>(
       })
 
       if (!abortSignal.aborted) {
+        if (res.status() === 'local') {
+          return res.value() as T
+        }
         cache.set(k, data)
       }
       return data

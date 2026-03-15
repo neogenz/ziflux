@@ -284,6 +284,36 @@ describe('cachedMutation', () => {
     expect(items()).toEqual(['a', 'b', 'c-real'])
   })
 
+  it('onSuccess throwing does not prevent invalidateKeys', async () => {
+    const cache = { invalidate: vi.fn() }
+
+    const mutation = cachedMutation({
+      mutationFn: () => Promise.resolve('result'),
+      cache,
+      invalidateKeys: () => [['key']],
+      onSuccess: () => {
+        throw new Error('callback-error')
+      },
+    })
+
+    await mutation.mutate()
+    expect(cache.invalidate).toHaveBeenCalledWith(['key'])
+    expect(mutation.status()).toBe('success')
+  })
+
+  it('onError throwing does not reject the mutate() promise', async () => {
+    const mutation = cachedMutation({
+      mutationFn: () => Promise.reject(new Error('mutation-error')),
+      onError: () => {
+        throw new Error('callback-error')
+      },
+    })
+
+    await mutation.mutate()
+    expect(mutation.status()).toBe('error')
+    expect((mutation.error() as Error).message).toBe('mutation-error')
+  })
+
   it('error path: onMutate context is passed to onError, cache is not invalidated', async () => {
     const cache = { invalidate: vi.fn() }
     const items = signal(['a', 'b'])
@@ -364,6 +394,27 @@ describe('cachedMutation', () => {
   })
 
   // --- reset ---
+
+  it('reset() cancels in-flight mutation ownership', async () => {
+    let resolve!: (v: string) => void
+
+    const mutation = cachedMutation({
+      mutationFn: () => new Promise<string>(r => (resolve = r)),
+    })
+
+    const promise = mutation.mutate()
+    expect(mutation.status()).toBe('pending')
+
+    mutation.reset()
+    expect(mutation.status()).toBe('idle')
+
+    resolve('result')
+    await promise
+
+    // Status should still be 'idle', not overwritten to 'success'
+    expect(mutation.status()).toBe('idle')
+    expect(mutation.data()).toBeUndefined()
+  })
 
   it('reset() clears status, error, and data', async () => {
     const mutation = cachedMutation({

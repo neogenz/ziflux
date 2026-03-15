@@ -395,6 +395,48 @@ describe('cachedResource', () => {
     expect(ref.value()).toBe('original-updated')
   })
 
+  it('in-flight loader does not overwrite optimistic cache entry', async () => {
+    cache.set(['test'], 'cached-data')
+    cache.invalidate(['test'])
+
+    let resolveLoader!: (v: string) => void
+    const loaderPromise = new Promise<string>(r => {
+      resolveLoader = r
+    })
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['test'],
+        params: () => ({}),
+        loader: () => loaderPromise,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // During SWR: stale data visible, loader in-flight
+    expect(ref.isStale()).toBe(true)
+
+    // Optimistic update while loader is in-flight
+    ref.set('optimistic')
+    TestBed.tick()
+    expect(ref.value()).toBe('optimistic')
+
+    // Loader resolves with pre-mutation data
+    resolveLoader('old-server-data')
+    await flushMicrotasks()
+    TestBed.tick()
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Cache should still have 'optimistic', not 'old-server-data'
+    expect(cache.get(['test'])?.data).toBe('optimistic')
+    // Value should still be 'optimistic'
+    expect(ref.value()).toBe('optimistic')
+  })
+
   it('set() works during SWR revalidation', async () => {
     cache.set(['test'], 'stale-data')
     cache.invalidate(['test'])

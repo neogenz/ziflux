@@ -94,7 +94,8 @@ export interface RetryConfig {
  * and adds SWR-specific signals: `isStale` and `isInitialLoading`.
  *
  * `value` is read-only — use `set()` / `update()` to write local optimistic state.
- * Writing does NOT persist to the cache; call `invalidate()` to trigger a fresh fetch.
+ * Both methods write through to the `DataCache`, so optimistic values survive
+ * cache version bumps from unrelated invalidations.
  */
 export interface CachedResourceRef<T> {
   /** Current cached value. `undefined` before the first successful load. */
@@ -115,9 +116,9 @@ export interface CachedResourceRef<T> {
   reload(): boolean
   /** Destroys the underlying Angular resource and cancels any in-flight request. */
   destroy(): void
-  /** Optimistically overwrites the local value without touching the cache. */
+  /** Optimistically overwrites the value and writes through to the `DataCache`. */
   set(value: T): void
-  /** Optimistically updates the local value without touching the cache. */
+  /** Optimistically updates the value and writes through to the `DataCache`. */
   update(updater: (value: T | undefined) => T): void
 }
 
@@ -182,6 +183,6 @@ export interface CachedMutationRef<A, R> {
   readonly error: Signal<unknown>
   /** Result of the last successful mutation, or `undefined`. */
   readonly data: Signal<R | undefined>
-  /** Resets `status`, `error`, and `data` back to their initial idle state. */
+  /** Resets `status`, `error`, and `data` back to their initial idle state. Cancels ownership of any in-flight mutation. */
   reset(): void
 }

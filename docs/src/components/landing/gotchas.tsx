@@ -16,11 +16,12 @@ const INVALIDATE_PREFIX_CODE = `// invalidate(['order', 'details', '42']) also m
 //   ['order', 'details', '43']
 //   ['order', 'list']`
 
-const SET_UPDATE_WRONG = `// Local only — the cache doesn't know about this
+const SET_UPDATE_CODE = `// set() and update() write to both the Angular resource AND the DataCache.
+// Optimistic values survive cache version bumps from unrelated invalidations.
 ref.set(newValue)
-ref.update(prev => ({ ...prev, name: 'updated' }))`
+ref.update(prev => ({ ...prev, name: 'updated' }))
 
-const SET_UPDATE_RIGHT = `// To trigger a fresh server fetch, invalidate the cache
+// To trigger a fresh server fetch after an optimistic update:
 cache.invalidate(['order', 'details', '42'])`
 
 const UNTYPED_KEYS_CODE = `// Nothing prevents this — both compile fine
@@ -57,13 +58,10 @@ const GOTCHAS: Gotcha[] = [
     code: INVALIDATE_PREFIX_CODE,
   },
   {
-    key: "set-update-local",
-    title: <><code>ref.set()</code> / <code>ref.update()</code> are local-only</>,
-    description: "They update the component's view but do NOT write to the cache. Call invalidate() to trigger a fresh server fetch.",
-    wrong: SET_UPDATE_WRONG,
-    wrongLabel: "Local only",
-    right: SET_UPDATE_RIGHT,
-    rightLabel: "Triggers fetch",
+    key: "set-update-cache",
+    title: <><code>ref.set()</code> / <code>ref.update()</code> write to the cache</>,
+    description: "They update both the Angular resource and the DataCache. Optimistic values survive version bumps from unrelated invalidations. Call invalidate() to trigger a fresh server fetch.",
+    code: SET_UPDATE_CODE,
   },
   {
     key: "untyped-keys",

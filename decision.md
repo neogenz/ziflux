@@ -419,6 +419,22 @@ Fixed by writing the new value to `cache.set(resolveKey(params()), value)` befor
 
 ---
 
+## D-34 — Audit-driven robustness: mutation callbacks, reset, loader guard
+
+**Date:** 2026-03-15
+
+Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` and `cachedResource`. All verified against TanStack Query v5 behavior — our fixes are stricter than TanStack's defaults.
+
+**Bug 1 — `onSuccess` throw prevents `invalidateKeys`:** If `onSuccess` threw, the exception jumped to the catch block and `invalidateKeys` never ran. The mutation succeeded on the server but the cache stayed stale. Fixed by wrapping `onSuccess` in try/catch. TanStack Query has the same issue — they recommend `onSettled` or global callbacks as workaround. We guarantee invalidation always runs.
+
+**Bug 2 — `onError` throw → unhandled rejection:** Violated the "`mutate()` never rejects" contract. Fixed by wrapping `onError` in try/catch. The original mutation error is already captured in the `error` signal.
+
+**Bug 3 — `reset()` doesn't cancel in-flight mutations:** `reset()` set signals to idle but didn't increment `callCounter`. When the in-flight mutation resolved, it overwrote the reset state. Fixed with `callCounter++` at the top of `reset()`. TanStack Query has the same race condition.
+
+**Bug 4 — Stale loader overwrites optimistic cache entry:** When a loader was in-flight and `set()`/`update()` wrote an optimistic value (D-33), the loader's `cache.set(k, data)` could overwrite the optimistic entry on resolution. Fixed by checking `res.status() === 'local'` before the cache write and returning the optimistic value to Angular. This aligns with TanStack's `cancelQueries()` pattern but is automatic — zero ceremony for the developer. Angular 21's `resource.set()` also aborts in-flight loaders natively, making this a defense-in-depth guard.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

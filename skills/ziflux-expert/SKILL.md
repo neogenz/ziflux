@@ -134,8 +134,8 @@ Returns `CachedResourceRef<T>`:
 - `error: Signal<unknown>`
 - `hasValue(): boolean`
 - `reload(): boolean`
-- `set(value: T): void` — optimistic update (status becomes `'local'`)
-- `update(updater: (T | undefined) => T): void` — optimistic update
+- `set(value: T): void` — optimistic update, writes through to DataCache (status becomes `'local'`)
+- `update(updater: (T | undefined) => T): void` — optimistic update, writes through to DataCache
 - `destroy(): void`
 
 ### `cachedMutation<A, R, C>(options)`

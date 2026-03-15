@@ -203,7 +203,7 @@ interface CachedResourceRef<T> {
 - `isLoading` — true during any fetch (initial or revalidation)
 - `isStale` — true when stale data is displayed while background fetch runs
 - `isInitialLoading` — true ONLY on cold cache (no prior data). **Use this for spinners.**
-- `set()`/`update()` — optimistic updates. Status becomes `'local'`. Does NOT write to cache.
+- `set()`/`update()` — optimistic updates. Status becomes `'local'`. Writes through to DataCache so values survive version bumps.
 
 **CachedResourceRef does NOT extend ResourceRef** — `value` is `Signal<T>` (read-only), not `WritableSignal<T>`.
 
@@ -211,7 +211,7 @@ interface CachedResourceRef<T> {
 
 1. `linkedSignal` captures stale snapshot when `params()` or `cache.version()` changes
 2. `resource()` params factory reads both user params and `cache.version()` → cache invalidation triggers reload
-3. Loader: checks `cache.get(key)` — fresh? return immediately. Otherwise `cache.deduplicate(key, loaderFn)` → on resolve, `cache.set(key, data)` only if `!abortSignal.aborted`
+3. Loader: checks `cache.get(key)` — fresh? return immediately. Otherwise `cache.deduplicate(key, loaderFn)` → on resolve, `cache.set(key, data)` only if `!abortSignal.aborted` and `res.status() !== 'local'` (preserves optimistic values)
 4. `value` computed: during loading/reloading, returns stale snapshot if available
 
 ---

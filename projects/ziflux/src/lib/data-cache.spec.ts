@@ -314,19 +314,26 @@ describe('DataCache', () => {
 
   // --- invalidate + in-flight ---
 
-  it('invalidate clears matching in-flight entries', () => {
-    const pending = new Promise<string>(() => {}) // never resolves
-    void cache.deduplicate(['todos'], () => pending)
+  it('invalidate preserves in-flight entries for dedup', () => {
+    let resolvePromise!: (v: string) => void
+    const pending = new Promise<string>(r => {
+      resolvePromise = r
+    })
+    const p1 = cache.deduplicate(['todos'], () => pending)
 
     cache.invalidate(['todos'])
 
-    // New deduplicate should start fresh (not return old promise)
+    // After invalidation, dedup should return the SAME promise (DEDUP HIT)
     let freshCalled = false
-    void cache.deduplicate(['todos'], () => {
+    const p2 = cache.deduplicate(['todos'], () => {
       freshCalled = true
       return Promise.resolve('fresh')
     })
-    expect(freshCalled).toBe(true)
+
+    expect(freshCalled).toBe(false) // fn should NOT be called
+    expect(p2).toBe(p1) // same promise reference
+
+    resolvePromise('done')
   })
 
   it('invalidate does not clear unrelated in-flight entries', () => {
@@ -342,6 +349,202 @@ describe('DataCache', () => {
     })
     // Should still return old promise, not call fn
     expect(callCount).toBe(0)
+  })
+
+  it('rapid sequential invalidations reuse in-flight fetch (no redundant fetches)', async () => {
+    let fetchCount = 0
+    let resolvePromise!: (v: string) => void
+
+    // First dedup starts a fetch
+    const p1 = cache.deduplicate(['items'], () => {
+      fetchCount++
+      return new Promise<string>(r => {
+        resolvePromise = r
+      })
+    })
+
+    // Simulate 5 rapid invalidations (like 5 mutations completing quickly)
+    for (let i = 0; i < 5; i++) {
+      cache.invalidate(['items'])
+
+      // After each invalidation, dedup should find the existing in-flight fetch
+      const pN = cache.deduplicate(['items'], () => {
+        fetchCount++
+        return Promise.resolve(`fetch-${fetchCount}`)
+      })
+      expect(pN).toBe(p1)
+    }
+
+    // Only 1 actual fetch, not 6
+    expect(fetchCount).toBe(1)
+
+    resolvePromise('result')
+    const result = await p1
+    expect(result).toBe('result')
+  })
+
+  it('in-flight promise cleanup still works after invalidation', async () => {
+    let resolvePromise!: (v: string) => void
+    const pending = new Promise<string>(r => {
+      resolvePromise = r
+    })
+
+    void cache.deduplicate(['key'], () => pending)
+    cache.invalidate(['key'])
+
+    // In-flight still tracked
+    const info = cache.inspect()
+    expect(info.inFlightKeys).toEqual([['key']])
+
+    // Resolve the promise — .finally() should clean up the in-flight entry
+    resolvePromise('data')
+    await pending
+
+    // Wait for .finally() microtask
+    await new Promise(r => setTimeout(r, 0))
+
+    const infoAfter = cache.inspect()
+    expect(infoAfter.inFlightKeys).toEqual([])
+  })
+
+  it('pre-invalidation in-flight (started while fresh) is discarded after invalidation', () => {
+    // Warm cache — entry is fresh
+    cache.set(['key'], 'old-data')
+    expect(cache.get(['key'])?.fresh).toBe(true)
+
+    // Start a fetch while entry is fresh (e.g., polling or initial load)
+    let resolveFirst!: (v: string) => void
+    void cache.deduplicate(
+      ['key'],
+      () =>
+        new Promise<string>(r => {
+          resolveFirst = r
+        }),
+    )
+
+    // Mutation happens → invalidate while fetch is in-flight
+    cache.invalidate(['key'])
+    expect(cache.get(['key'])?.fresh).toBe(false)
+
+    // New dedup should NOT reuse the pre-invalidation fetch
+    let freshCalled = false
+    void cache.deduplicate(['key'], () => {
+      freshCalled = true
+      return Promise.resolve('post-mutation-data')
+    })
+
+    expect(freshCalled).toBe(true) // DEDUP MISS — fresh fetch started
+
+    resolveFirst('pre-mutation-data')
+  })
+
+  it('post-invalidation in-flight (started while stale) IS reused after re-invalidation', () => {
+    // Warm cache — make entry stale via invalidation
+    cache.set(['key'], 'old-data')
+    cache.invalidate(['key'])
+    expect(cache.get(['key'])?.fresh).toBe(false)
+
+    // Start a fetch in response to staleness (post-invalidation)
+    void cache.deduplicate(['key'], () => new Promise<string>(() => {}))
+
+    // Another invalidation while fetch is in-flight (rapid mutations)
+    cache.invalidate(['key'])
+
+    // New dedup SHOULD reuse the post-invalidation fetch
+    let freshCalled = false
+    void cache.deduplicate(['key'], () => {
+      freshCalled = true
+      return Promise.resolve('should-not-reach')
+    })
+
+    expect(freshCalled).toBe(false) // DEDUP HIT — reuses existing
+  })
+
+  it('cold cache in-flight IS reused after invalidation (no entry to be stale)', () => {
+    // Cold cache — no entry exists
+    void cache.deduplicate(['key'], () => new Promise<string>(() => {}))
+
+    // Invalidation while fetch is in-flight (nothing to mark stale)
+    cache.invalidate(['key'])
+
+    // New dedup should reuse (cold cache has no "pre-mutation data" concern)
+    let freshCalled = false
+    void cache.deduplicate(['key'], () => {
+      freshCalled = true
+      return Promise.resolve('should-not-reach')
+    })
+
+    expect(freshCalled).toBe(false) // DEDUP HIT
+  })
+
+  it('after in-flight rejects with AbortError, new dedup starts fresh fetch', async () => {
+    const abortController = new AbortController()
+
+    // Create a fetch that rejects when aborted
+    const p1 = cache.deduplicate(
+      ['key'],
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          const onAbort = () => {
+            reject(new DOMException('Aborted', 'AbortError'))
+          }
+          abortController.signal.addEventListener('abort', onAbort, { once: true })
+        }),
+    )
+
+    // Abort the signal — the promise rejects
+    abortController.abort()
+    await expect(p1).rejects.toThrow('Aborted')
+
+    // Wait for .finally() cleanup
+    await new Promise(r => setTimeout(r, 0))
+
+    // Now a new dedup should start fresh
+    let freshCalled = false
+    const p2 = cache.deduplicate(['key'], () => {
+      freshCalled = true
+      return Promise.resolve('fresh-data')
+    })
+
+    expect(freshCalled).toBe(true)
+    expect(await p2).toBe('fresh-data')
+  })
+
+  it('after in-flight resolves post-invalidation, new dedup starts fresh fetch', async () => {
+    let fetchCount = 0
+    let resolveFirst!: (v: string) => void
+
+    // First fetch
+    const p1 = cache.deduplicate(['key'], () => {
+      fetchCount++
+      return new Promise<string>(r => {
+        resolveFirst = r
+      })
+    })
+
+    cache.invalidate(['key'])
+
+    // Still dedup-hits the existing fetch
+    const p2 = cache.deduplicate(['key'], () => {
+      fetchCount++
+      return Promise.resolve('should-not-reach')
+    })
+    expect(p2).toBe(p1)
+    expect(fetchCount).toBe(1)
+
+    // Resolve the first fetch
+    resolveFirst('first-data')
+    await p1
+    await new Promise(r => setTimeout(r, 0)) // wait for .finally()
+
+    // Now a new dedup should start a fresh fetch (in-flight was cleaned up)
+    const p3 = cache.deduplicate(['key'], () => {
+      fetchCount++
+      return Promise.resolve('second-data')
+    })
+    expect(p3).not.toBe(p1)
+    expect(fetchCount).toBe(2)
+    expect(await p3).toBe('second-data')
   })
 
   // --- version ---

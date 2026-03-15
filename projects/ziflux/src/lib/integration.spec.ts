@@ -158,28 +158,55 @@ describe('Integration — SWR lifecycle', () => {
     expect(ref.isStale()).toBe(false)
   })
 
-  it('invalidation clears in-flight deduplication (race condition fix)', () => {
+  it('invalidation preserves in-flight deduplication (avoids redundant fetches)', () => {
     const cache = TestBed.runInInjectionContext(() => new DataCache())
 
     // Start an in-flight request via deduplicate
     const pending = new Promise<string>(() => {}) // never resolves
-    void cache.deduplicate(['todos'], () => pending)
+    const p1 = cache.deduplicate(['todos'], () => pending)
 
     // Simulate mutation + invalidation while fetch is in-flight
     cache.invalidate(['todos'])
 
-    // After invalidation, a fresh deduplicate should start a NEW fetch
-    // (not reuse the pre-mutation promise)
+    // After invalidation, deduplicate should reuse the existing in-flight fetch
     let freshCalled = false
-    void cache.deduplicate(['todos'], () => {
+    const p2 = cache.deduplicate(['todos'], () => {
       freshCalled = true
       return Promise.resolve('post-mutation-data')
     })
 
-    expect(freshCalled).toBe(true)
+    expect(freshCalled).toBe(false) // DEDUP HIT — reuses existing promise
+    expect(p2).toBe(p1) // same promise
 
     // Verify cache version was bumped
     expect(cache.version()).toBe(1)
+  })
+
+  it('rapid sequential invalidations deduplicate fetches (no redundant fetches)', () => {
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
+    let fetchCount = 0
+
+    // Start initial fetch
+    const p1 = cache.deduplicate(['budget', 'dashboard', '03', '2026'], () => {
+      fetchCount++
+      return new Promise<string>(() => {}) // slow network — never resolves in test
+    })
+
+    // Simulate 6 mutations completing rapidly, each invalidating the same prefix
+    for (let i = 0; i < 6; i++) {
+      cache.invalidate(['budget', 'dashboard'])
+
+      const pN = cache.deduplicate(['budget', 'dashboard', '03', '2026'], () => {
+        fetchCount++
+        return Promise.resolve(`fetch-${fetchCount}`)
+      })
+
+      // Each subsequent dedup should reuse the same in-flight promise
+      expect(pN).toBe(p1)
+    }
+
+    // Only 1 actual network request, not 7
+    expect(fetchCount).toBe(1)
   })
 
   it('optimistic update via cachedMutation survives invalidateKeys on same cache', async () => {

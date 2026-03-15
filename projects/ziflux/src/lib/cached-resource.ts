@@ -123,12 +123,23 @@ export function cachedResource<T, P extends object>(
       const entry = cache.get<T>(k, cacheGetOptions)
       if (entry?.fresh) return entry.data
 
-      const data = await cache.deduplicate(k, () => {
+      const doFetch = () => {
         const invoke = () => {
           const result = loader({ params: p, abortSignal })
           return isObservable(result) ? firstValueFrom(result) : result
         }
         return retryConfig ? retryWithBackoff(invoke, retryConfig, abortSignal) : invoke()
+      }
+
+      // When invalidate() preserves in-flight promises, a dedup hit may return
+      // a promise whose underlying fetch was aborted by Angular (previous loader
+      // abort on param change). Catch that stale AbortError and retry with the
+      // current loader's (non-aborted) signal.
+      const data = await cache.deduplicate(k, doFetch).catch((err: unknown) => {
+        if (!abortSignal.aborted && err instanceof DOMException && err.name === 'AbortError') {
+          return cache.deduplicate(k, doFetch)
+        }
+        throw err
       })
 
       if (!abortSignal.aborted) {

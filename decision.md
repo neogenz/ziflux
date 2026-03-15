@@ -435,6 +435,23 @@ Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` an
 
 ---
 
+## D-35 — Preserve in-flight promises across invalidation (reverses D-27 clearing)
+
+**Date:** 2026-03-15
+
+**Bug:** Rapid sequential invalidations from `cachedMutation` caused O(n×k) redundant network requests instead of O(k). When multiple mutations for the same resource completed in rapid succession (~150-250ms apart), each `invalidate()` call deleted the in-flight dedup promise, forcing a redundant fetch on the next `deduplicate()` call.
+
+**Root cause (D-27):** D-27 made `invalidate()` clear matching `#inFlight` entries to prevent pre-mutation data from persisting via dedup. This was correct for a single invalidation but caused a dedup miss storm under rapid sequential invalidations.
+
+**Fix (three parts):**
+1. `invalidate()` no longer clears `#inFlight` entries. The `.finally()` on the promise still cleans up after settlement.
+2. `deduplicate()` tracks `staleAtCreation` — whether the cache entry was already stale when the fetch started. On dedup hit: if the in-flight was started while stale (`staleAtCreation: true`) or the entry is still fresh (`!isStale`), reuse it. If the in-flight was started while fresh but the entry is now stale (invalidated during fetch), discard it and start a new fetch. This prevents pre-mutation data from being served as fresh while still allowing rapid post-invalidation dedup.
+3. `cachedResource` loader catches `AbortError` on dedup hits. When Angular's `resource()` aborts the previous loader (on param change from version bump), the dedup'd promise may reject with `AbortError` if the user's loader honors `abortSignal`. The loader retries via `deduplicate()` with the current (non-aborted) signal.
+
+**Trade-off:** None — this approach handles both the pre-mutation and rapid-invalidation cases correctly. Pre-mutation in-flight fetches are discarded (MISS), post-invalidation fetches are reused (HIT).
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

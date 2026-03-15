@@ -32,7 +32,7 @@ let cacheCounter = 0
  */
 export class DataCache {
   readonly #entries = new Map<string, CacheEntry<unknown>>()
-  readonly #inFlight = new Map<string, Promise<unknown>>()
+  readonly #inFlight = new Map<string, { promise: Promise<unknown>; staleAtCreation: boolean }>()
   readonly #version = signal(0)
   readonly #config: ZifluxConfig
   readonly #logger: DevtoolsLogger | null
@@ -165,8 +165,9 @@ export class DataCache {
    *
    * Entries are not deleted; their timestamp is shifted back so that
    * `get()` returns `fresh: false`, triggering a background revalidation.
-   * In-flight `deduplicate()` promises matching the prefix are also cleared,
-   * forcing subsequent calls to start fresh fetches.
+   * In-flight `deduplicate()` promises are preserved so that subsequent
+   * `deduplicate()` calls can reuse an already-running fetch (dedup hit)
+   * instead of starting redundant parallel requests.
    * Bumps `version` to notify reactive consumers.
    */
   invalidate(prefix: string[]): void {
@@ -177,13 +178,6 @@ export class DataCache {
         // Set timestamp so age is exactly staleTime + 1 → entry reads as stale but never expired.
         // Uses absolute positioning so repeated invalidate() calls are idempotent.
         entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
-      }
-    }
-    // Clear in-flight deduplicate promises for invalidated keys
-    // so that subsequent deduplicate() calls start fresh fetches
-    for (const key of this.#inFlight.keys()) {
-      if (key.startsWith(prefixStr)) {
-        this.#inFlight.delete(key)
       }
     }
     this.#version.update(v => v + 1)
@@ -214,14 +208,31 @@ export class DataCache {
   deduplicate<T>(key: string[], fn: () => Promise<T>): Promise<T> {
     const serialized = this.#serialize(key)
     const existing = this.#inFlight.get(serialized)
+
     if (existing) {
-      this.#logger?.logDeduplicate(this.name, key, true)
-      return existing as Promise<T>
+      // A fetch started while the entry was already stale (response to invalidation)
+      // is always safe to reuse. A fetch started while fresh (pre-mutation) should be
+      // discarded if the entry has since been invalidated.
+      const entry = this.#entries.get(serialized)
+      const isStale = !!entry && Date.now() - entry.createdAt >= this.#config.staleTime
+
+      if (existing.staleAtCreation || !isStale) {
+        this.#logger?.logDeduplicate(this.name, key, true)
+        return existing.promise as Promise<T>
+      }
     }
 
     this.#logger?.logDeduplicate(this.name, key, false)
-    const promise = fn().finally(() => this.#inFlight.delete(serialized))
-    this.#inFlight.set(serialized, promise)
+    const entry = this.#entries.get(serialized)
+    const staleAtCreation = !!entry && Date.now() - entry.createdAt >= this.#config.staleTime
+
+    const promise = fn().finally(() => {
+      const current = this.#inFlight.get(serialized)
+      if (current?.promise === promise) {
+        this.#inFlight.delete(serialized)
+      }
+    })
+    this.#inFlight.set(serialized, { promise, staleAtCreation })
     return promise
   }
 

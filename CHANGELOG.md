@@ -1,6 +1,23 @@
 # Changelog
 
 
+## v0.0.7
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.5...v0.0.7)
+
+### Bug Fixes
+
+- **core:** Run onSuccess before invalidateKeys in cachedMutation ([1224088](https://github.com/neogenz/ziflux/commit/1224088))
+- **core:** Sync set() and update() writes to DataCache ([41e941b](https://github.com/neogenz/ziflux/commit/41e941b))
+
+### Chores
+
+- **release:** V0.0.6 ([9f4ab3b](https://github.com/neogenz/ziflux/commit/9f4ab3b))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.6
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.5...v0.0.6)

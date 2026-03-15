@@ -1,6 +1,23 @@
 # Changelog
 
 
+## v0.0.9
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.8...v0.0.9)
+
+### Bug Fixes
+
+- **core:** Preserve in-flight dedup promises across invalidation ([d4db220](https://github.com/neogenz/ziflux/commit/d4db220))
+
+### Documentation
+
+- **api-reference:** Correct lifecycle order and callback isolation details ([e9fd4f4](https://github.com/neogenz/ziflux/commit/e9fd4f4))
+- **landing:** Clarify mutation lifecycle and optimistic update flow ([05d697b](https://github.com/neogenz/ziflux/commit/05d697b))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.8
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.7...v0.0.8)

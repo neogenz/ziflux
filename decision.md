@@ -399,6 +399,16 @@ The fix adds `|| status === 'error'` to the existing status check (line 156). `i
 
 ---
 
+## D-32 — `invalidateKeys` runs after `onSuccess` in `cachedMutation`
+
+**Date:** 2026-03-14
+
+`invalidateKeys` was firing before `onSuccess` in `cachedMutation.mutate()`, destroying optimistic data set by `onMutate` before `onSuccess` could reconcile it with the server response. This made the standard `onMutate → onSuccess → invalidate` pattern (from TanStack Query) impossible to use with `invalidateKeys`.
+
+Fixed by swapping the two blocks: `onSuccess` (inside the `thisCallId === callCounter` guard) now runs first, then `invalidateKeys` (unconditional, preserving outdated-mutation invalidation behavior per D-28).
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

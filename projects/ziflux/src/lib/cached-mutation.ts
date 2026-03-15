@@ -59,17 +59,17 @@ export function cachedMutation<A = void, R = void, C = void>(
       const result$ = mutationFn(args)
       const result = isObservable(result$) ? await firstValueFrom(result$) : await result$
 
-      if (invalidateKeys && cache) {
-        for (const key of invalidateKeys(args, result)) {
-          cache.invalidate(key)
-        }
-      }
-
       if (thisCallId === callCounter) {
         data.set(result)
         error.set(undefined)
         status.set('success')
         onSuccess?.(result, args)
+      }
+
+      if (invalidateKeys && cache) {
+        for (const key of invalidateKeys(args, result)) {
+          cache.invalidate(key)
+        }
       }
 
       return result

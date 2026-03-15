@@ -189,7 +189,7 @@ describe('cachedMutation', () => {
     expect(onMutate).toHaveBeenCalled()
   })
 
-  it('onSuccess is called after cache invalidation', async () => {
+  it('onSuccess is called before cache invalidation', async () => {
     const order: string[] = []
     const cache = {
       invalidate: () => {
@@ -207,7 +207,7 @@ describe('cachedMutation', () => {
     })
 
     await mutation.mutate()
-    expect(order).toEqual(['invalidate', 'onSuccess'])
+    expect(order).toEqual(['onSuccess', 'invalidate'])
   })
 
   it('onError is called with context from onMutate', async () => {
@@ -221,6 +221,91 @@ describe('cachedMutation', () => {
 
     await mutation.mutate('args')
     expect(onError).toHaveBeenCalledWith(expect.any(Error), 'args', ['rollback-data'])
+  })
+
+  it('lifecycle order: onMutate → mutationFn → onSuccess → invalidateKeys', async () => {
+    const order: string[] = []
+    const cache = {
+      invalidate: () => {
+        order.push('invalidate')
+      },
+    }
+
+    const mutation = cachedMutation({
+      mutationFn: () => {
+        order.push('mutationFn')
+        return Promise.resolve('result')
+      },
+      cache,
+      invalidateKeys: () => [['key']],
+      onMutate: () => {
+        order.push('onMutate')
+      },
+      onSuccess: () => {
+        order.push('onSuccess')
+      },
+    })
+
+    await mutation.mutate()
+    expect(order).toEqual(['onMutate', 'mutationFn', 'onSuccess', 'invalidate'])
+  })
+
+  it('onSuccess can access optimistic data before invalidateKeys destroys it', async () => {
+    const items = signal(['a', 'b'])
+    const order: string[] = []
+    const cache = {
+      invalidate: () => {
+        order.push('invalidate')
+      },
+    }
+
+    const mutation = cachedMutation<string, string, string[]>({
+      mutationFn: () => Promise.resolve('c-real'),
+      cache,
+      invalidateKeys: () => [['items']],
+      onMutate: () => {
+        const prev = items()
+        items.update(v => [...v, 'c-temp'])
+        order.push('onMutate')
+        return prev
+      },
+      onSuccess: result => {
+        order.push('onSuccess')
+        // This must run BEFORE invalidateKeys so items still has the optimistic data
+        items.update(v => v.map(i => (i === 'c-temp' ? result : i)))
+      },
+      onError: (_err, _args, context) => {
+        if (context) items.set(context)
+      },
+    })
+
+    await mutation.mutate('new-item')
+    expect(order).toEqual(['onMutate', 'onSuccess', 'invalidate'])
+    expect(items()).toEqual(['a', 'b', 'c-real'])
+  })
+
+  it('error path: onMutate context is passed to onError, cache is not invalidated', async () => {
+    const cache = { invalidate: vi.fn() }
+    const items = signal(['a', 'b'])
+
+    const mutation = cachedMutation<string, string, string[]>({
+      mutationFn: () => Promise.reject(new Error('server error')),
+      cache,
+      invalidateKeys: () => [['items']],
+      onMutate: () => {
+        const prev = items()
+        items.update(v => [...v, 'c-temp'])
+        return prev
+      },
+      onError: (_err, _args, context) => {
+        if (context) items.set(context)
+      },
+    })
+
+    await mutation.mutate('new-item')
+    expect(cache.invalidate).not.toHaveBeenCalled()
+    expect(items()).toEqual(['a', 'b'])
+    expect(mutation.status()).toBe('error')
   })
 
   // --- Optimistic update + rollback ---

@@ -1,6 +1,6 @@
 {
   "name": "ziflux",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "scripts": {
     "ng": "ng",
     "build": "ng build ziflux && cp README.md LICENSE dist/ziflux/",

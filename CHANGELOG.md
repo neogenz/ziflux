@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.0.8
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.7...v0.0.8)
+
+### Bug Fixes
+
+- **core:** Prevent mutation callback errors and state races ([e48c4f8](https://github.com/neogenz/ziflux/commit/e48c4f8))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.7
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.5...v0.0.7)

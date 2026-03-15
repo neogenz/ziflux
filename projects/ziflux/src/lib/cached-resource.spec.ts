@@ -491,6 +491,38 @@ describe('cachedResource', () => {
     resolveLoader('fresh')
   })
 
+  it('update() survives cache version bump from unrelated invalidation', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, { id: string }>({
+        cache,
+        cacheKey: p => ['details', p.id],
+        params: () => ({ id: '1' }),
+        loader: () => Promise.resolve('original'),
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('original')
+
+    // Optimistic update
+    ref.update(v => (v ?? '') + '-optimistic')
+    TestBed.tick()
+    expect(ref.value()).toBe('original-optimistic')
+
+    // Seed an unrelated key and invalidate it → bumps cache.version()
+    cache.set(['list'], 'list-data')
+    cache.invalidate(['list'])
+
+    // Flush so the resource reacts to the version bump
+    await flushMicrotasks()
+    TestBed.tick()
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Value must still be the optimistic value, not reverted to 'original'
+    expect(ref.value()).toBe('original-optimistic')
+  })
+
   it('update() on idle resource (undefined params) receives undefined', async () => {
     const ref = TestBed.runInInjectionContext(() =>
       cachedResource<string, { id: string }>({

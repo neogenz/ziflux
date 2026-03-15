@@ -180,10 +180,15 @@ export function cachedResource<T, P extends object>(
       res.destroy()
     },
     set: (v: T) => {
+      const p = params()
+      if (p !== undefined) cache.set(resolveKey(p), v)
       res.set(v)
     },
     update: (fn: (prev: T | undefined) => T) => {
-      res.set(fn(value()))
+      const newValue = fn(value())
+      const p = params()
+      if (p !== undefined) cache.set(resolveKey(p), newValue)
+      res.set(newValue)
     },
     hasValue: () =>
       staleSnapshot() !== NO_VALUE || res.status() === 'resolved' || res.status() === 'local',

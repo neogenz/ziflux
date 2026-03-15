@@ -182,6 +182,60 @@ describe('Integration — SWR lifecycle', () => {
     expect(cache.version()).toBe(1)
   })
 
+  it('optimistic update via cachedMutation survives invalidateKeys on same cache', async () => {
+    const cache = TestBed.runInInjectionContext(() => new DataCache())
+
+    let listFetchCount = 0
+    const listRef = TestBed.runInInjectionContext(() =>
+      cachedResource({
+        cache,
+        cacheKey: ['list'],
+        params: () => ({}),
+        loader: () => {
+          listFetchCount++
+          return Promise.resolve(['item-1', 'item-2'])
+        },
+      }),
+    )
+
+    const detailRef = TestBed.runInInjectionContext(() =>
+      cachedResource({
+        cache,
+        cacheKey: ['details', '1'],
+        params: () => ({}),
+        loader: () => Promise.resolve('detail-original'),
+      }),
+    )
+
+    await waitForStatus(listRef, 'resolved')
+    await waitForStatus(detailRef, 'resolved')
+    expect(detailRef.value()).toBe('detail-original')
+    expect(listFetchCount).toBe(1)
+
+    // Mutation: optimistically update detail, invalidate list
+    const mutation = cachedMutation({
+      cache,
+      mutationFn: () => Promise.resolve('server-result'),
+      onMutate: () => {
+        detailRef.update(() => 'detail-optimistic')
+      },
+      invalidateKeys: () => [['list']],
+    })
+
+    await mutation.mutate()
+
+    // Flush to let invalidation propagate
+    await flushMicrotasks()
+    TestBed.tick()
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Detail must still have the optimistic value — not reverted by version bump
+    expect(detailRef.value()).toBe('detail-optimistic')
+    // List should have been refetched
+    expect(listFetchCount).toBe(2)
+  })
+
   it('optimistic update + rollback on error', async () => {
     const cache = TestBed.runInInjectionContext(() => new DataCache())
 

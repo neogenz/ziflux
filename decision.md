@@ -409,6 +409,16 @@ Fixed by swapping the two blocks: `onSuccess` (inside the `thisCallId === callCo
 
 ---
 
+## D-33 — `set()` and `update()` write to DataCache, not just Angular resource
+
+**Date:** 2026-03-15
+
+`cachedResource.set()` and `update()` only wrote to the Angular `resource` (`res.set()`), not to the `DataCache`. When `cache.version()` bumped from invalidating *any* key on that cache, the `staleSnapshot` `linkedSignal` re-ran, read the OLD data from the DataCache, and overwrote the optimistic value — causing a UI flicker back to stale data.
+
+Fixed by writing the new value to `cache.set(resolveKey(params()), value)` before `res.set()`. When the loader re-runs after a version bump, `cache.get(key)` finds the optimistic value with a fresh timestamp and returns it — the UI stays stable. Guarded with `params() !== undefined` so idle-state `set()`/`update()` still works without a cache key.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

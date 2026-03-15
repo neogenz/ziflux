@@ -238,14 +238,16 @@ interface CachedMutationOptions<A = void, R = void, C = void> {
   cache?: { invalidate(prefix: string[]): void }            // optional, structurally typed
   invalidateKeys?: (args: A, result: R) => string[][]       // after success
   onMutate?: (args: A) => C | Promise<C>                    // before mutationFn, return = context
-  onSuccess?: (result: R, args: A) => void                  // after invalidation
+  onSuccess?: (result: R, args: A) => void                  // before invalidation
   onError?: (error: unknown, args: A, context: C | undefined) => void  // receives context for rollback
 }
 ```
 
 **Lifecycle order:**
-- Success: `onMutate` → `mutationFn` → cache invalidation → signal updates → `onSuccess`
+- Success: `onMutate` → `mutationFn` → signal updates → `onSuccess` → cache invalidation
 - Error: `onMutate` → `mutationFn` (throws) → signal updates → `onError(err, args, context)`
+
+**Callback isolation:** `onSuccess` and `onError` are wrapped in try/catch internally. A throwing callback never prevents cache invalidation (success path) and never causes an unhandled rejection (preserving the "never rejects" contract).
 
 `cache` is structurally typed — any `{ invalidate(prefix: string[]): void }` works, not just `DataCache`.
 
@@ -258,7 +260,7 @@ interface CachedMutationRef<A, R> {
   readonly isPending: Signal<boolean>
   readonly error: Signal<unknown>
   readonly data: Signal<R | undefined>
-  reset(): void
+  reset(): void  // also cancels ownership of any in-flight mutation (increments call counter)
 }
 ```
 

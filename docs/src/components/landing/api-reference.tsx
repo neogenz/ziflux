@@ -84,10 +84,13 @@ interface RetryConfig {
   mutationFn: (args: A) => Observable<R> | Promise<R>
   cache?: { invalidate(prefix: string[]): void }
   invalidateKeys?: (args: A, result: R) => string[][]
-  onMutate?: (args: A) => C | Promise<C>       // snapshot for rollback
+  onMutate?: (args: A) => C | Promise<C>       // runs before API call — return value → "context" in onError
   onSuccess?: (result: R, args: A) => void
   onError?: (error: unknown, args: A, context: C | undefined) => void
-}): CachedMutationRef<A, R>`,
+}): CachedMutationRef<A, R>
+
+// Lifecycle: onMutate → mutationFn → onSuccess | onError → invalidateKeys
+// mutate() never rejects — errors are captured in the error signal`,
     usage: `interface CachedMutationRef<A, R> {
   mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
   readonly status: Signal<CachedMutationStatus>  // 'idle' | 'pending' | 'success' | 'error'
@@ -97,17 +100,19 @@ interface RetryConfig {
   reset(): void
 }
 
-// Usage — optimistic delete with rollback
+// Optimistic delete with rollback
 readonly deleteMutation = cachedMutation({
   mutationFn: (id: string) => this.#api.delete$(id),
   cache: this.#api.cache,
   invalidateKeys: (id) => [['order']],
   onMutate: (id) => {
-    const prev = this.orders.value()
-    this.orders.update(list => list?.filter(o => o.id !== id))
-    return prev
+    const prev = this.orders.value()                    // 1. snapshot
+    this.orders.update(list => list?.filter(o => o.id !== id))  // 2. optimistic update
+    return prev                                         // 3. → becomes "context" in onError
   },
-  onError: (_err, _id, prev) => { if (prev) this.orders.set(prev) },
+  onError: (_err, _id, prev) => {
+    if (prev) this.orders.set(prev)                     // 4. rollback on failure
+  },
 })`,
   },
   {

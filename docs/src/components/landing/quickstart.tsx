@@ -65,7 +65,7 @@ export function QuickStart() {
       </h2>
 
       {/* Step 1 */}
-      <p className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted-foreground">1 · Install & configure</p>
+      <p className="mt-8 text-sm font-semibold tracking-wide text-muted-foreground">1 · Install & configure</p>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">One provider, two durations.</p>
       <div className="space-y-4">
         <CodeBlock code={INSTALL_CODE} language="bash" />
@@ -73,17 +73,17 @@ export function QuickStart() {
       </div>
 
       {/* Step 2 */}
-      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">2 · Add a cache to your API service</p>
+      <p className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">2 · Add a cache to your API service</p>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">Add a DataCache instance to your existing API service. One line.</p>
       <CodeBlock code={API_CODE} filename="order.api.ts" />
 
       {/* Step 3 */}
-      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">3 · Use cachedResource()</p>
+      <p className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">3 · Use cachedResource()</p>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">Same shape as resource(), plus cache and cacheKey. Returns stale data instantly, re-fetches in background.</p>
       <CodeBlock code={STORE_CODE} filename="order-list.store.ts" />
 
       {/* Step 4 */}
-      <p className="mt-10 text-sm font-semibold uppercase tracking-wider text-muted-foreground">4 · Template</p>
+      <p className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">4 · Template</p>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">isInitialLoading() is true only when there's no cached data. Subsequent visits skip the spinner entirely.</p>
       <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
 

@@ -61,15 +61,19 @@ const OPTIMISTIC_CODE = `readonly updateOrder = cachedMutation({
   cache: this.#api.cache,
   mutationFn: (args) => this.#api.update$(args.id, args.data),
   invalidateKeys: (args) => [['order', 'details', args.id], ['order', 'list']],
+
+  // 1. Runs BEFORE the API call
   onMutate: (args) => {
-    const prev = this.orders.value()
-    this.orders.update(list =>
+    const prev = this.orders.value()              // snapshot current state
+    this.orders.update(list =>                     // apply change to UI immediately
       list?.map(o => (o.id === args.id ? { ...o, ...args.data } : o)),
     )
-    return prev // rollback context
+    return prev                                    // → becomes "context" in onError
   },
+
+  // 2. Only runs if the API call fails
   onError: (_err, _args, context) => {
-    if (context) this.orders.set(context)
+    if (context) this.orders.set(context)          // restore the snapshot → UI rolls back
   },
 })`
 
@@ -329,8 +333,27 @@ export function Guide() {
         <div className="mt-8">
           <h4 className="mb-2 text-sm font-semibold">4. Optimistic Updates + Rollback</h4>
           <p className="mb-3 text-sm text-muted-foreground">
-            Use <code>onMutate</code> to apply optimistic changes, return rollback context, revert on error.
+            Optimistic updates make the UI feel instant: update the screen <em>before</em> the server responds, then roll back if it fails.
           </p>
+
+          <div className="mb-4 rounded-lg border border-border bg-muted/30 px-5 py-4">
+            <p className="text-sm font-semibold">Mutation lifecycle</p>
+            <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
+              <li>
+                <code className="text-foreground">onMutate(args)</code> — Runs <strong>before</strong> the API call. Snapshot the current state, apply the optimistic change, and <strong>return the snapshot</strong>.
+              </li>
+              <li>
+                <code className="text-foreground">mutationFn(args)</code> — The actual API call.
+              </li>
+              <li>
+                <strong className="text-foreground">Success:</strong> <code>onSuccess</code> fires, then <code>invalidateKeys</code> marks cache entries stale so <code>cachedResource</code> refetches from the server.
+              </li>
+              <li>
+                <strong className="text-foreground">Error:</strong> <code>onError</code> receives the snapshot as its third argument (<code>context</code>). Use it to restore the UI.
+              </li>
+            </ol>
+          </div>
+
           <CodeBlock code={OPTIMISTIC_CODE} filename="order-list.store.ts" />
         </div>
 

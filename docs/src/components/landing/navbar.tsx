@@ -5,13 +5,14 @@ import { useTheme } from "next-themes"
 import { Github, ExternalLink, Menu, X, Sun, Moon, Monitor } from "lucide-react"
 
 const NAV_LINKS = [
-  { href: "#quickstart", label: "Quick Start" },
+  { href: "#quickstart", label: "Quick start" },
+  { href: "#prior-art", label: "Compare" },
   { href: "#guide", label: "Guide" },
   { href: "#freshness", label: "Caching" },
   { href: "#advanced-usage", label: "Patterns" },
   { href: "#testing", label: "Testing" },
   { href: "#api", label: "API" },
-  { href: "#ai-skills", label: "AI Skills" },
+  { href: "#gotchas", label: "Gotchas" },
 ]
 
 function ThemeToggle() {

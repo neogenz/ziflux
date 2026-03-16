@@ -38,6 +38,15 @@ export function Hero() {
           Instant navigations, background refreshes, zero spinners.
         </p>
 
+        {/* Value proposition */}
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          Every time your user navigates back to a page they already visited, they see a spinner.
+          ziflux eliminates that. One cache layer with{" "}
+          <strong className="text-foreground">stale-while-revalidate</strong> (SWR) semantics:
+          return visits are instant, background refreshes are silent.
+          3 functions, zero dependencies, ~2KB.
+        </p>
+
         {/* Install */}
         <div className="mt-8">
           <CodeBlock code={INSTALL_CODE} language="bash" />
@@ -50,6 +59,7 @@ export function Hero() {
 
         {/* Animated comparison */}
         <h2 className="mt-10 text-lg font-semibold">What it feels like</h2>
+
         <p className="mt-1 text-sm text-muted-foreground">Same app, same actions. One caches.</p>
         <NavigationDemo />
       </div>

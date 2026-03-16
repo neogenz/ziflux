@@ -1,4 +1,5 @@
 import { CodeBlock } from "./code-block"
+import { Callout } from "./callout"
 
 const DETAIL_STORE_CODE = `@Injectable()
 export class OrderDetailStore {
@@ -177,9 +178,15 @@ export function Guide() {
         Quick Start gave you the basics. Now: detail views, error handling, mutations, and optimistic updates.
       </p>
 
-      {/* Architecture overview */}
-      <div className="mt-10">
-        <h3 className="mb-6 text-lg font-semibold">Architecture</h3>
+      {/* Architecture overview — collapsible */}
+      <details className="group/arch mt-10" open>
+        <summary className="mb-6 flex cursor-pointer list-none items-center gap-2 text-lg font-semibold [&::-webkit-details-marker]:hidden">
+          <svg className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open/arch:rotate-90" viewBox="0 0 16 16" fill="none">
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Architecture
+          <span className="text-sm font-normal text-muted-foreground">(skip if you just want recipes <a href="#usage" className="underline underline-offset-4 transition-colors hover:text-foreground">&darr;</a>)</span>
+        </summary>
 
         <div data-md-visual className="overflow-x-auto">
           <div
@@ -254,11 +261,10 @@ export function Guide() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Domain pattern */}
       <div className="mt-14">
-        <h3 className="mb-3 text-lg font-semibold">Domain Pattern</h3>
+        <h3 className="mb-3 text-lg font-semibold">Domain pattern</h3>
         <p className="mb-4 text-sm text-muted-foreground">
           A recommended structure for most features:
         </p>
@@ -270,28 +276,29 @@ export function Guide() {
         </div>
 
         {/* Why singleton */}
-        <div className="mt-6 rounded-lg border border-border bg-muted/30 px-5 py-4">
-          <p className="text-sm font-semibold">Why the cache must be a singleton</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Two things need different lifetimes, and that tension drives the architecture:
-          </p>
-          <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
-            <li>
-              <strong className="text-foreground">Cache</strong> must be <code>providedIn: &apos;root&apos;</code> &mdash; it survives route navigations so SWR works across pages.
-            </li>
-            <li>
-              <strong className="text-foreground">Reactive params</strong> (filters, IDs) are route-scoped &mdash; each route instance gets its own independent state.
-            </li>
-          </ul>
-          <p className="mt-2 text-sm text-muted-foreground">
-            You can&apos;t merge both lifetimes without losing one or the other. The 3-file pattern solves this by separating the cache host (API service, root) from the reactive state (Store, route-scoped).
-            The API service is a natural choice — but <code>DataCache</code> works anywhere with an injection context. A dedicated <code>OrderCache</code> service works just as well.
-          </p>
+        <div className="mt-6">
+          <Callout variant="important" title="Why the cache must be a singleton">
+            <p>Two things need different lifetimes, and that tension drives the architecture:</p>
+            <ul className="mt-2 space-y-1.5">
+              <li>
+                <strong className="text-foreground">Cache</strong> must be <code>providedIn: &apos;root&apos;</code> &mdash; it survives route navigations so SWR works across pages.
+              </li>
+              <li>
+                <strong className="text-foreground">Reactive params</strong> (filters, IDs) are route-scoped &mdash; each route instance gets its own independent state.
+              </li>
+            </ul>
+            <p className="mt-2">
+              You can&apos;t merge both lifetimes without losing one or the other. The 3-file pattern solves this by separating the cache host (API service, root) from the reactive state (Store, route-scoped).
+              The API service is a natural choice — but <code>DataCache</code> works anywhere with an injection context. A dedicated <code>OrderCache</code> service works just as well.
+            </p>
+          </Callout>
         </div>
 
-        <p className="mt-4 text-sm text-muted-foreground italic">
-          The library works without a store layer — use <code>cachedResource</code> directly in a component if your use case is simple.
-        </p>
+        <div className="mt-4">
+          <Callout variant="tip">
+            The library works without a store layer — use <code>cachedResource</code> directly in a component if your use case is simple.
+          </Callout>
+        </div>
 
         {/* Guidelines */}
         <div className="mt-6">
@@ -306,7 +313,7 @@ export function Guide() {
 
         {/* Naming conventions */}
         <div className="mt-6">
-          <p className="mb-3 text-sm font-semibold">Naming Conventions</p>
+          <p className="mb-3 text-sm font-semibold">Naming conventions</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="sr-only">Recommended naming conventions for API services, list stores, and detail stores</caption>
@@ -338,23 +345,24 @@ export function Guide() {
           </div>
         </div>
       </div>
+      </details>
 
       {/* Usage walkthrough */}
-      <div className="mt-10">
-        <h3 className="mb-2 text-lg font-semibold">Usage</h3>
+      <div id="usage" className="mt-10">
+        <h3 className="mb-2 text-lg font-semibold">Recipes</h3>
         <p className="mt-2 mb-4 text-sm text-muted-foreground">
           Picks up where Quick Start left off — using the same API service and list store from there.
         </p>
 
         {/* 1. Detail Store */}
         <div className="mt-6">
-          <h4 className="mb-2 text-sm font-semibold">1. Store — Detail by ID</h4>
+          <h4 className="mb-2 text-sm font-semibold">1. Fetch a single resource by ID</h4>
           <CodeBlock code={DETAIL_STORE_CODE} filename="order-detail.store.ts" />
         </div>
 
         {/* 2. Templates */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">2. Templates</h4>
+          <h4 className="mb-2 text-sm font-semibold">2. Display cached data in templates</h4>
           <CodeBlock code={TEMPLATE_CODE} filename="order-list.component.html" />
           <p className="mt-3 text-sm text-muted-foreground">
             When the server fails but stale data exists, show both:
@@ -366,7 +374,7 @@ export function Guide() {
 
         {/* 3. Mutations */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">3. Mutations with cachedMutation()</h4>
+          <h4 className="mb-2 text-sm font-semibold">3. Invalidate cache after a mutation</h4>
           <p className="mb-3 text-sm text-muted-foreground">
             Replaces ~13 lines of boilerplate per mutation with a declarative definition.
           </p>
@@ -384,27 +392,28 @@ export function Guide() {
 
         {/* 4. Optimistic updates */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">4. Optimistic Updates + Rollback</h4>
+          <h4 className="mb-2 text-sm font-semibold">4. Update the UI before the server responds</h4>
           <p className="mb-3 text-sm text-muted-foreground">
             Optimistic updates make the UI feel instant: update the screen <em>before</em> the server responds, then roll back if it fails.
           </p>
 
-          <div className="mb-4 rounded-lg border border-border bg-muted/30 px-5 py-4">
-            <p className="text-sm font-semibold">Mutation lifecycle</p>
-            <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li>
-                <code className="text-foreground">onMutate(args)</code> — Runs <strong>before</strong> the API call. Snapshot the current state, apply the optimistic change, and <strong>return the snapshot</strong>.
-              </li>
-              <li>
-                <code className="text-foreground">mutationFn(args)</code> — The actual API call.
-              </li>
-              <li>
-                <strong className="text-foreground">Success:</strong> <code>onSuccess</code> fires, then <code>invalidateKeys</code> marks cache entries stale so <code>cachedResource</code> refetches from the server.
-              </li>
-              <li>
-                <strong className="text-foreground">Error:</strong> <code>onError</code> receives the snapshot as its third argument (<code>context</code>). Use it to restore the UI.
-              </li>
-            </ol>
+          <div className="mb-4">
+            <Callout variant="important" title="Mutation lifecycle">
+              <ol className="mt-1 space-y-2">
+                <li>
+                  <code className="text-foreground">onMutate(args)</code> — Runs <strong>before</strong> the API call. Snapshot the current state, apply the optimistic change, and <strong>return the snapshot</strong>.
+                </li>
+                <li>
+                  <code className="text-foreground">mutationFn(args)</code> — The actual API call.
+                </li>
+                <li>
+                  <strong className="text-foreground">Success:</strong> <code>onSuccess</code> fires, then <code>invalidateKeys</code> marks cache entries stale so <code>cachedResource</code> refetches from the server.
+                </li>
+                <li>
+                  <strong className="text-foreground">Error:</strong> <code>onError</code> receives the snapshot as its third argument (<code>context</code>). Use it to restore the UI.
+                </li>
+              </ol>
+            </Callout>
           </div>
 
           <CodeBlock code={OPTIMISTIC_CODE} filename="order-list.store.ts" />
@@ -418,7 +427,7 @@ export function Guide() {
 
         {/* 5. Aggregate loading */}
         <div className="mt-8">
-          <h4 className="mb-2 text-sm font-semibold">5. Aggregate Loading State</h4>
+          <h4 className="mb-2 text-sm font-semibold">5. Combine loading states</h4>
           <CodeBlock code={ANY_LOADING_CODE} filename="order-list.store.ts" />
           <p className="mt-3 text-sm text-muted-foreground">
             <code>isLoading</code> is for <code>cachedResource</code> — true while fetching data (initial load or background revalidation).{" "}

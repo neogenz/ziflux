@@ -32,7 +32,7 @@ export function AdvancedUsage() {
   return (
     <section id="advanced-usage" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#advanced-usage" className="hover:no-underline">Alternative Patterns <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
+        <a href="#advanced-usage" className="hover:no-underline">Alternative patterns <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
       <p className="mt-2 text-muted-foreground">
         The Guide shows the recommended 3-file pattern. Here&apos;s a leaner alternative for simpler use cases.
@@ -40,7 +40,7 @@ export function AdvancedUsage() {
 
       {/* Factory Pattern */}
       <div className="mt-10">
-        <h3 className="mb-2 text-lg font-semibold">Factory Pattern</h3>
+        <h3 className="mb-2 text-lg font-semibold">Factory pattern</h3>
         <p className="mb-4 text-sm text-muted-foreground">
           A singleton service that owns HTTP + cache + factory methods, returning <code>CachedResourceRef</code> directly. The consumer provides reactive params, Angular manages lifecycle. No separate Store needed.
         </p>
@@ -62,7 +62,7 @@ export function AdvancedUsage() {
 
       {/* When to Use Which */}
       <div className="mt-10">
-        <h3 className="mb-4 text-lg font-semibold">When to Use Which</h3>
+        <h3 className="mb-4 text-lg font-semibold">When to use which</h3>
         <div className="grid gap-x-8 gap-y-6 text-sm sm:grid-cols-2">
           <div className="border-l-2 border-accent pl-4">
             <p className="mb-2 font-semibold text-accent">3-file pattern (API + Store + Component)</p>

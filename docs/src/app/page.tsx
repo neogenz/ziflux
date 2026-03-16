@@ -18,13 +18,13 @@ export default function HomePage() {
       <main id="main" className="relative">
         <Hero />
         <QuickStart />
+        <PriorArt />
         <Guide />
         <Freshness />
         <AdvancedUsage />
         <Testing />
         <ApiReference />
         <Gotchas />
-        <PriorArt />
         <AiSkills />
       </main>
       <Footer />

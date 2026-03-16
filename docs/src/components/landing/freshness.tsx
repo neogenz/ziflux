@@ -6,7 +6,7 @@ export function Freshness() {
   return (
     <section id="freshness" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#freshness" className="hover:no-underline">How Caching Works <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
+        <a href="#freshness" className="hover:no-underline">How caching works <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
       <p className="mt-2 text-muted-foreground">
         Every cached entry goes through three phases. <code>invalidate()</code> marks entries stale &mdash; it never deletes them.
@@ -47,6 +47,7 @@ export function Freshness() {
       {/* Loading states table */}
       <div className="mt-10">
         <h3 className="mb-4 text-lg font-semibold">What the user sees</h3>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">Cache state and corresponding UI behavior for each navigation scenario</caption>
@@ -90,7 +91,7 @@ export function Freshness() {
 
       {/* Cache keys */}
       <div className="mt-10">
-        <h3 className="mb-2 text-lg font-semibold">Cache Keys</h3>
+        <h3 className="mb-2 text-lg font-semibold">Cache keys</h3>
         <p className="mb-4 text-sm text-muted-foreground">
           You delete an order. The list, the detail page, every filtered view — all need to refresh.
           Cache keys make this one line:
@@ -130,7 +131,7 @@ export function Freshness() {
 
       {/* When to cache */}
       <div className="mt-10">
-        <h3 className="mb-4 text-lg font-semibold">When to Cache</h3>
+        <h3 className="mb-4 text-lg font-semibold">When to cache</h3>
         <div className="grid gap-x-8 gap-y-6 text-sm sm:grid-cols-2">
           <div className="border-l-2 border-emerald-500 pl-4">
             <p className="mb-2 font-semibold text-emerald-500">Cache</p>

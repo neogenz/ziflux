@@ -5,7 +5,7 @@ const INSTALL_CODE = `npx skills add neogenz/ziflux`
 export function AiSkills() {
   return (
     <section id="ai-skills" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">AI Skills</h2>
+      <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">AI skills</h2>
       <p className="mt-2 text-center text-muted-foreground">
         Give your AI coding agent deep ziflux expertise — works with Claude Code, Cursor, Windsurf, and any{" "}
         <a

@@ -51,13 +51,13 @@ export function Testing() {
 
       {/* Testing a store */}
       <div className="mt-8">
-        <h3 className="mb-2 text-lg font-semibold">Testing a Store</h3>
+        <h3 className="mb-2 text-lg font-semibold">Testing a store</h3>
         <CodeBlock code={STORE_TEST_CODE} filename="order-list.store.spec.ts" />
       </div>
 
       {/* Testing with standalone DataCache */}
       <div className="mt-8">
-        <h3 className="mb-2 text-lg font-semibold">Testing a Standalone DataCache</h3>
+        <h3 className="mb-2 text-lg font-semibold">Testing a standalone DataCache</h3>
         <p className="mb-3 text-sm text-muted-foreground">
           Use <code>runInInjectionContext</code> when you need a bare cache without the full store setup.
         </p>

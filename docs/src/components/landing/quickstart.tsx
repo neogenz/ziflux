@@ -61,7 +61,7 @@ export function QuickStart() {
   return (
     <section id="quickstart" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#quickstart" className="hover:no-underline">Quick Start <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
+        <a href="#quickstart" className="hover:no-underline">Quick start <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
 
       {/* Step 1 */}
@@ -89,6 +89,13 @@ export function QuickStart() {
 
       {/* Closing */}
       <p className="mt-8 text-sm text-muted-foreground">That's it. Navigate away, come back — data loads instantly from cache.</p>
+
+      <p className="mt-4 text-sm text-muted-foreground italic">
+        For read-only use cases, you can skip the Store layer entirely — see{" "}
+        <a href="#advanced-usage" className="underline underline-offset-4 transition-colors hover:text-foreground">
+          Factory pattern
+        </a>.
+      </p>
 
     </section>
   )

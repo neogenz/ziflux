@@ -1,6 +1,23 @@
 # Changelog
 
 
+## v0.0.10
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.9...v0.0.10)
+
+### Bug Fixes
+
+- **core:** Mark prefetch as stale when cache invalidated during fetch ([9cf4746](https://github.com/neogenz/ziflux/commit/9cf4746))
+
+### Documentation
+
+- **landing:** Add comprehensive guide with architecture, patterns, and examples ([e1f4def](https://github.com/neogenz/ziflux/commit/e1f4def))
+- **landing:** Audit Diátaxis – move Prior Art up, add value prop, collapsible architecture ([7f06f17](https://github.com/neogenz/ziflux/commit/7f06f17))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.9
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.8...v0.0.9)

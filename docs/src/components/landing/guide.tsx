@@ -54,8 +54,39 @@ export class OrderListStore {
   })
 }`
 
-const MUTATION_TEMPLATE_CODE = `<button (click)="store.deleteOrder.mutate(order.id)">Delete</button>
-@if (store.deleteOrder.isPending()) { <app-spinner /> }`
+const MUTATION_TEMPLATE_CODE = `<button
+  (click)="store.deleteOrder.mutate(order.id)"
+  [disabled]="store.deleteOrder.isPending()"
+>
+  @if (store.deleteOrder.isPending()) { Deleting... } @else { Delete }
+</button>
+
+@if (store.deleteOrder.error()) {
+  <div class="error-banner">
+    Delete failed. Please try again.
+    <button (click)="store.deleteOrder.reset()">Dismiss</button>
+  </div>
+}`
+
+const MUTATION_COMPONENT_CODE = `@Component({
+  template: \`
+    <button (click)="onDelete(order.id)" [disabled]="store.deleteOrder.isPending()">
+      Delete
+    </button>
+  \`,
+})
+export class OrderListComponent {
+  readonly store = inject(OrderListStore)
+
+  async onDelete(id: string) {
+    const result = await this.store.deleteOrder.mutate(id)
+
+    if (result !== undefined) {
+      this.toast.show('Order deleted')
+    }
+    // No try/catch needed — errors land in store.deleteOrder.error()
+  }
+}`
 
 const OPTIMISTIC_CODE = `readonly updateOrder = cachedMutation({
   cache: this.#api.cache,
@@ -76,6 +107,22 @@ const OPTIMISTIC_CODE = `readonly updateOrder = cachedMutation({
     if (context) this.orders.set(context)          // restore the snapshot → UI rolls back
   },
 })`
+
+const OPTIMISTIC_TEMPLATE_CODE = `@for (order of store.orders.value(); track order.id) {
+  <div class="order-row">
+    <span>{{ order.name }}</span>
+    <button
+      (click)="store.updateOrder.mutate({ id: order.id, data: { name: newName } })"
+      [disabled]="store.updateOrder.isPending()"
+    >
+      Save
+    </button>
+  </div>
+}
+
+@if (store.updateOrder.error()) {
+  <div class="error-banner">Update failed — changes have been rolled back.</div>
+}`
 
 const ANY_LOADING_CODE = `readonly isAnythingLoading = anyLoading(
   this.orders.isLoading,
@@ -327,6 +374,12 @@ export function Guide() {
           <div className="mt-3">
             <CodeBlock code={MUTATION_TEMPLATE_CODE} filename="order-list.component.html" />
           </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            When you need to react to the result in TypeScript:
+          </p>
+          <div className="mt-2">
+            <CodeBlock code={MUTATION_COMPONENT_CODE} filename="order-list.component.ts" />
+          </div>
         </div>
 
         {/* 4. Optimistic updates */}
@@ -355,12 +408,23 @@ export function Guide() {
           </div>
 
           <CodeBlock code={OPTIMISTIC_CODE} filename="order-list.store.ts" />
+          <p className="mt-3 text-sm text-muted-foreground">
+            In the template:
+          </p>
+          <div className="mt-2">
+            <CodeBlock code={OPTIMISTIC_TEMPLATE_CODE} filename="order-list.component.html" />
+          </div>
         </div>
 
         {/* 5. Aggregate loading */}
         <div className="mt-8">
           <h4 className="mb-2 text-sm font-semibold">5. Aggregate Loading State</h4>
           <CodeBlock code={ANY_LOADING_CODE} filename="order-list.store.ts" />
+          <p className="mt-3 text-sm text-muted-foreground">
+            <code>isLoading</code> is for <code>cachedResource</code> — true while fetching data (initial load or background revalidation).{" "}
+            <code>isPending</code> is for <code>cachedMutation</code> — true while the mutation is in-flight.{" "}
+            Both are <code>Signal&lt;boolean&gt;</code>, so <code>anyLoading()</code> combines them seamlessly.
+          </p>
         </div>
       </div>
     </section>

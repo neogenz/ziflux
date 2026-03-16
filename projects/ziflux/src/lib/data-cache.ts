@@ -241,14 +241,25 @@ export class DataCache {
    * Uses `deduplicate()` internally, so concurrent prefetch calls for the
    * same key are collapsed into one request.
    *
+   * If the cache is invalidated while the fetch is in-flight, the data is
+   * still written but marked as stale so that `cachedResource` triggers a
+   * background revalidation instead of serving potentially outdated data.
+   *
    * @remarks
    * If a `cachedResource` with the same key resolves after this prefetch,
    * it writes the same data again, resetting the entry's `createdAt` timestamp.
    * This is harmless but restarts the freshness timer.
    */
   async prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void> {
+    const versionBefore = this.#version()
     const data = await this.deduplicate(key, fn)
     this.set(key, data)
+    if (this.#version() !== versionBefore) {
+      const entry = this.#entries.get(this.#serialize(key))
+      if (entry) {
+        entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
+      }
+    }
   }
 
   /** Removes all entries and cancels in-flight deduplication. Bumps `version`. */

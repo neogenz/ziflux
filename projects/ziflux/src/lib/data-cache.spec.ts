@@ -646,6 +646,65 @@ describe('DataCache', () => {
     expect(cache.get(['key'])?.data).toBe('data')
   })
 
+  it('marks entry as stale when cache was invalidated during in-flight prefetch (cold cache)', async () => {
+    let resolveFetch!: (v: string) => void
+    const slowFetch = new Promise<string>(r => {
+      resolveFetch = r
+    })
+
+    // Start prefetch on cold cache (no entry exists)
+    const prefetchPromise = cache.prefetch(['budget', '2026-04'], () => slowFetch)
+
+    // Mutation completes → invalidate the key (no-op on entries, but bumps version)
+    cache.invalidate(['budget', '2026-04'])
+
+    // Prefetch resolves with pre-mutation data
+    resolveFetch('pre-mutation-data')
+    await prefetchPromise
+
+    // Entry should exist with the data, but should NOT be fresh
+    const result = cache.get(['budget', '2026-04'])
+    expect(result).not.toBeNull()
+    expect(result?.data).toBe('pre-mutation-data')
+    expect(result?.fresh).toBe(false) // ← THIS IS THE BUG: currently returns true
+  })
+
+  it('marks entry as stale when cache was invalidated during in-flight prefetch (warm cache)', async () => {
+    // Warm cache — entry exists and is fresh
+    cache.set(['key'], 'old-data')
+
+    let resolveFetch!: (v: string) => void
+    const slowFetch = new Promise<string>(r => {
+      resolveFetch = r
+    })
+
+    // Start prefetch (refetch pattern)
+    const prefetchPromise = cache.prefetch(['key'], () => slowFetch)
+
+    // Mutation invalidates while prefetch is in-flight
+    cache.invalidate(['key'])
+
+    // Prefetch resolves with pre-mutation data
+    resolveFetch('pre-mutation-data')
+    await prefetchPromise
+
+    // Entry should be stale — not written as fresh by prefetch
+    const result = cache.get(['key'])
+    expect(result).not.toBeNull()
+    expect(result?.data).toBe('pre-mutation-data')
+    expect(result?.fresh).toBe(false)
+  })
+
+  it('writes entry as fresh when no invalidation happens during prefetch', async () => {
+    // Regression guard: normal prefetch should still write fresh entries
+    await cache.prefetch(['key'], () => Promise.resolve('data'))
+
+    const result = cache.get(['key'])
+    expect(result).not.toBeNull()
+    expect(result?.data).toBe('data')
+    expect(result?.fresh).toBe(true)
+  })
+
   // --- clear ---
 
   it('removes all entries and in-flight', () => {

@@ -147,6 +147,7 @@ export function cachedResource<T, P extends object>(
           return res.value() as T
         }
         cache.set(k, data)
+        cache.clearDirty(k)
       }
       return data
     },

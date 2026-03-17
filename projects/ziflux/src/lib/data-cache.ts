@@ -33,6 +33,7 @@ let cacheCounter = 0
 export class DataCache {
   readonly #entries = new Map<string, CacheEntry<unknown>>()
   readonly #inFlight = new Map<string, { promise: Promise<unknown>; staleAtCreation: boolean }>()
+  readonly #dirtyKeys = new Set<string>()
   readonly #version = signal(0)
   readonly #config: ZifluxConfig
   readonly #logger: DevtoolsLogger | null
@@ -180,6 +181,7 @@ export class DataCache {
         entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
       }
     }
+    this.#dirtyKeys.add(prefixStr)
     this.#version.update(v => v + 1)
     this.#logger?.logInvalidate(this.name, prefix)
   }
@@ -241,9 +243,11 @@ export class DataCache {
    * Uses `deduplicate()` internally, so concurrent prefetch calls for the
    * same key are collapsed into one request.
    *
-   * If the cache is invalidated while the fetch is in-flight, the data is
-   * still written but marked as stale so that `cachedResource` triggers a
-   * background revalidation instead of serving potentially outdated data.
+   * If the key was invalidated (dirty), the data is still written but marked
+   * as stale so that `cachedResource` triggers a background revalidation
+   * instead of serving potentially outdated data. The dirty flag persists
+   * across cascading prefetches — only `clearDirty()` (called by the
+   * `cachedResource` loader on real navigation) can remove it.
    *
    * @remarks
    * If a `cachedResource` with the same key resolves after this prefetch,
@@ -251,21 +255,34 @@ export class DataCache {
    * This is harmless but restarts the freshness timer.
    */
   async prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void> {
-    const versionBefore = this.#version()
     const data = await this.deduplicate(key, fn)
+    const serialized = this.#serialize(key)
+    const dirty = this.#isDirty(serialized)
     this.set(key, data)
-    if (this.#version() !== versionBefore) {
-      const entry = this.#entries.get(this.#serialize(key))
+    if (dirty) {
+      const entry = this.#entries.get(serialized)
       if (entry) {
         entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
       }
     }
   }
 
+  /**
+   * Removes the dirty flag for `key`, allowing `prefetch()` to write it as fresh again.
+   * Called by `cachedResource` after the loader fetches genuinely fresh data from the server.
+   * `prefetch()` never clears dirty flags — only this method and `clear()` do.
+   *
+   * @internal
+   */
+  clearDirty(key: string[]): void {
+    this.#dirtyKeys.delete(JSON.stringify(key).slice(0, -1))
+  }
+
   /** Removes all entries and cancels in-flight deduplication. Bumps `version`. */
   clear(): void {
     this.#entries.clear()
     this.#inFlight.clear()
+    this.#dirtyKeys.clear()
     this.#version.update(v => v + 1)
     this.#logger?.logClear(this.name)
   }
@@ -323,6 +340,13 @@ export class DataCache {
       }
     }
     return evicted
+  }
+
+  #isDirty(serialized: string): boolean {
+    for (const prefix of this.#dirtyKeys) {
+      if (serialized.startsWith(prefix)) return true
+    }
+    return false
   }
 
   #serialize(key: string[]): string {

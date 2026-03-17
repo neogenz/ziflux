@@ -705,6 +705,86 @@ describe('DataCache', () => {
     expect(result?.fresh).toBe(true)
   })
 
+  it('cascading prefetch after invalidation should STILL be stale (Race 3)', async () => {
+    // Race 3: constructor effect cascade
+    // prefetch1 starts → invalidate → prefetch1 completes (stale ✓)
+    // → version bump → prefetch2 starts (captures versionBefore AFTER all bumps)
+    // → prefetch2 completes → should STILL be stale
+
+    let resolveFetch1!: (v: string) => void
+    const slowFetch1 = new Promise<string>(r => {
+      resolveFetch1 = r
+    })
+
+    const prefetch1 = cache.prefetch(['a'], () => slowFetch1)
+    cache.invalidate(['a'])
+    resolveFetch1('old-data')
+    await prefetch1
+    expect(cache.get(['a'])?.fresh).toBe(false) // v0.0.10 handles this ✓
+
+    // Cascading prefetch (simulates constructor effect re-fire after version bumps)
+    await cache.prefetch(['a'], () => Promise.resolve('still-old'))
+    expect(cache.get(['a'])?.fresh).toBe(false) // v0.0.10 FAILS this ✗
+  })
+
+  it('prefetch stays stale through multiple cascades after invalidation', async () => {
+    // Even 3+ cascading prefetches should all remain stale
+    let resolveFetch!: (v: string) => void
+    const slowFetch = new Promise<string>(r => {
+      resolveFetch = r
+    })
+
+    const prefetch1 = cache.prefetch(['key'], () => slowFetch)
+    cache.invalidate(['key'])
+    resolveFetch('pre-mutation')
+    await prefetch1
+    expect(cache.get(['key'])?.fresh).toBe(false)
+
+    // 2nd cascade
+    await cache.prefetch(['key'], () => Promise.resolve('cascade-2'))
+    expect(cache.get(['key'])?.fresh).toBe(false)
+
+    // 3rd cascade
+    await cache.prefetch(['key'], () => Promise.resolve('cascade-3'))
+    expect(cache.get(['key'])?.fresh).toBe(false)
+  })
+
+  it('dirty flag cleared by clearDirty, not by prefetch', async () => {
+    cache.set(['a'], 'initial')
+    cache.invalidate(['a'])
+
+    // Prefetch writes but stays stale (dirty flag persists)
+    await cache.prefetch(['a'], () => Promise.resolve('prefetched'))
+    expect(cache.get(['a'])?.fresh).toBe(false)
+
+    // clearDirty removes the dirty flag → next set() writes a fresh entry
+    cache.clearDirty(['a'])
+    cache.set(['a'], 'from-loader')
+    expect(cache.get(['a'])?.fresh).toBe(true)
+  })
+
+  it('cold cache: prefetch after invalidate should be stale even with no prior entry', async () => {
+    // invalidate on cold cache (no entry exists) → prefetch should still be stale
+    cache.invalidate(['cold'])
+    await cache.prefetch(['cold'], () => Promise.resolve('data'))
+    expect(cache.get(['cold'])?.fresh).toBe(false)
+  })
+
+  it('prefix invalidation marks child key prefetch as stale (cold cache)', async () => {
+    // invalidate(['budget']) on cold cache → prefetch(['budget', 'details', '123']) should be stale
+    cache.invalidate(['budget'])
+    await cache.prefetch(['budget', 'details', '123'], () => Promise.resolve('data'))
+    expect(cache.get(['budget', 'details', '123'])?.fresh).toBe(false)
+  })
+
+  it('clear() removes dirty flags', async () => {
+    cache.invalidate(['a'])
+    cache.clear()
+    // After clear, prefetch should write fresh (dirty flag removed)
+    await cache.prefetch(['a'], () => Promise.resolve('data'))
+    expect(cache.get(['a'])?.fresh).toBe(true)
+  })
+
   // --- clear ---
 
   it('removes all entries and in-flight', () => {

@@ -777,6 +777,34 @@ describe('DataCache', () => {
     expect(cache.get(['budget', 'details', '123'])?.fresh).toBe(false)
   })
 
+  it('clearDirty on child key clears only that key, not the whole prefix', async () => {
+    cache.invalidate(['budget'])
+
+    cache.clearDirty(['budget', 'may'])
+
+    // May: resolved → prefetch writes fresh
+    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-data'))
+    expect(cache.get(['budget', 'may'])?.fresh).toBe(true)
+
+    // June: still dirty → prefetch writes stale
+    await cache.prefetch(['budget', 'jun'], () => Promise.resolve('jun-data'))
+    expect(cache.get(['budget', 'jun'])?.fresh).toBe(false)
+  })
+
+  it('re-invalidation after clearDirty re-dirties the key', async () => {
+    cache.invalidate(['budget'])
+    cache.clearDirty(['budget', 'may'])
+
+    // May is clean
+    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-v1'))
+    expect(cache.get(['budget', 'may'])?.fresh).toBe(true)
+
+    // Re-invalidate → May dirty again
+    cache.invalidate(['budget'])
+    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-v2'))
+    expect(cache.get(['budget', 'may'])?.fresh).toBe(false)
+  })
+
   it('clear() removes dirty flags', async () => {
     cache.invalidate(['a'])
     cache.clear()

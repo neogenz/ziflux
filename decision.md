@@ -452,6 +452,25 @@ Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` an
 
 ---
 
+## D-36 — Fix clearDirty prefix mismatch (two-set dirty tracking)
+
+**Date:** 2026-03-17
+
+**Bug:** `clearDirty(key)` was a no-op when invalidation used a broader prefix. `invalidate(['budget'])` stored prefix `["budget"` in `#dirtyKeys`, but `clearDirty(['budget', 'may'])` tried to delete `["budget","may"` — a different string. The dirty flag leaked forever, causing all prefetches under the prefix to be marked stale indefinitely (performance leak, not correctness bug).
+
+**Root cause:** Single Set (`#dirtyKeys`) stored prefixes from `invalidate()` but `clearDirty()` tried exact-match deletion with a different serialization (full key vs. prefix). The tests only covered same-key scenarios (`invalidate(['a'])` + `clearDirty(['a'])`), missing the prefix mismatch.
+
+**Fix:** Two-set approach:
+- `#dirtyPrefixes: Set<string>` — prefix strings from `invalidate()` (unchanged behavior)
+- `#resolvedKeys: Set<string>` — full serialized keys from `clearDirty()` (exclusion set)
+- `#isDirty(serialized)`: returns `false` if in `#resolvedKeys`, then checks `#dirtyPrefixes`
+- `invalidate(prefix)`: adds to `#dirtyPrefixes` and clears matching `#resolvedKeys` (re-dirties)
+- `clearDirty(key)`: adds to `#resolvedKeys` (marks one key clean without affecting siblings)
+
+**Trade-off:** One extra Set and an `O(r)` scan on `invalidate()` (where `r` = resolved keys, typically small). Gains per-key granularity — `clearDirty(['budget', 'may'])` clears May without clearing June.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

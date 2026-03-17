@@ -33,7 +33,8 @@ let cacheCounter = 0
 export class DataCache {
   readonly #entries = new Map<string, CacheEntry<unknown>>()
   readonly #inFlight = new Map<string, { promise: Promise<unknown>; staleAtCreation: boolean }>()
-  readonly #dirtyKeys = new Set<string>()
+  readonly #dirtyPrefixes = new Set<string>()
+  readonly #resolvedKeys = new Set<string>()
   readonly #version = signal(0)
   readonly #config: ZifluxConfig
   readonly #logger: DevtoolsLogger | null
@@ -181,7 +182,12 @@ export class DataCache {
         entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
       }
     }
-    this.#dirtyKeys.add(prefixStr)
+    this.#dirtyPrefixes.add(prefixStr)
+    for (const key of this.#resolvedKeys) {
+      if (key.startsWith(prefixStr)) {
+        this.#resolvedKeys.delete(key)
+      }
+    }
     this.#version.update(v => v + 1)
     this.#logger?.logInvalidate(this.name, prefix)
   }
@@ -245,9 +251,9 @@ export class DataCache {
    *
    * If the key was invalidated (dirty), the data is still written but marked
    * as stale so that `cachedResource` triggers a background revalidation
-   * instead of serving potentially outdated data. The dirty flag persists
-   * across cascading prefetches — only `clearDirty()` (called by the
-   * `cachedResource` loader on real navigation) can remove it.
+   * instead of serving potentially outdated data. Dirty state is tracked per
+   * prefix; `clearDirty()` marks individual keys as resolved without
+   * affecting sibling keys under the same prefix.
    *
    * @remarks
    * If a `cachedResource` with the same key resolves after this prefetch,
@@ -268,21 +274,22 @@ export class DataCache {
   }
 
   /**
-   * Removes the dirty flag for `key`, allowing `prefetch()` to write it as fresh again.
+   * Marks `key` as resolved (freshly fetched), so `prefetch()` writes it as fresh again.
    * Called by `cachedResource` after the loader fetches genuinely fresh data from the server.
-   * `prefetch()` never clears dirty flags — only this method and `clear()` do.
+   * Only affects the exact key — sibling keys under the same dirty prefix stay dirty.
    *
    * @internal
    */
   clearDirty(key: string[]): void {
-    this.#dirtyKeys.delete(JSON.stringify(key).slice(0, -1))
+    this.#resolvedKeys.add(this.#serialize(key))
   }
 
   /** Removes all entries and cancels in-flight deduplication. Bumps `version`. */
   clear(): void {
     this.#entries.clear()
     this.#inFlight.clear()
-    this.#dirtyKeys.clear()
+    this.#dirtyPrefixes.clear()
+    this.#resolvedKeys.clear()
     this.#version.update(v => v + 1)
     this.#logger?.logClear(this.name)
   }
@@ -343,7 +350,8 @@ export class DataCache {
   }
 
   #isDirty(serialized: string): boolean {
-    for (const prefix of this.#dirtyKeys) {
+    if (this.#resolvedKeys.has(serialized)) return false
+    for (const prefix of this.#dirtyPrefixes) {
       if (serialized.startsWith(prefix)) return true
     }
     return false

@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.0.12
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.11...v0.0.12)
+
+### Bug Fixes
+
+- **core:** Resolve clearDirty prefix mismatch with two-set dirty tracking ([84f19a1](https://github.com/neogenz/ziflux/commit/84f19a1))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.11
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.10...v0.0.11)

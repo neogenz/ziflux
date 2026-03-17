@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.0.11
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.10...v0.0.11)
+
+### Bug Fixes
+
+- **core:** Mark prefetch stale through cascading invalidations ([bce78be](https://github.com/neogenz/ziflux/commit/bce78be))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.10
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.9...v0.0.10)

@@ -35,7 +35,7 @@ export function Hero() {
 
         {/* One-liner subtitle */}
         <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-          Instant navigations, background refreshes, zero spinners.
+          Stale-while-revalidate for <code className="rounded bg-muted px-1.5 py-0.5 text-base">resource()</code>. Instant navigations, silent background refreshes.
         </p>
 
         {/* Value proposition */}
@@ -44,7 +44,8 @@ export function Hero() {
           ziflux eliminates that. One cache layer with{" "}
           <strong className="text-foreground">stale-while-revalidate</strong> (SWR) semantics:
           return visits are instant, background refreshes are silent.
-          3 functions, zero dependencies, ~2KB.
+          {" "}If you know <code>resource()</code> and signals, you already know ziflux.
+          3 core functions, zero dependencies, ~2KB.
         </p>
 
         {/* Install */}
@@ -52,8 +53,28 @@ export function Hero() {
           <CodeBlock code={INSTALL_CODE} language="bash" />
         </div>
 
+        {/* Primary CTAs — explicit paths after install snippet */}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <a
+            href="#quickstart"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+          >
+            Quick start
+            <span aria-hidden="true">→</span>
+          </a>
+          <a
+            href="https://www.npmjs.com/package/ngx-ziflux"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            View on npm
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+
         {/* Usage — the signature code */}
-        <div className="mt-4">
+        <div className="mt-6">
           <CodeBlock code={USAGE_CODE} filename="order-list.store.ts" />
         </div>
 

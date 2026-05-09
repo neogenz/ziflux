@@ -8,6 +8,8 @@ import { Freshness } from "@/components/landing/freshness"
 import { ApiReference } from "@/components/landing/api-reference"
 import { Gotchas } from "@/components/landing/gotchas"
 import { PriorArt } from "@/components/landing/prior-art"
+import { Scenarios } from "@/components/landing/scenarios"
+import { NotAFit } from "@/components/landing/not-a-fit"
 import { AiSkills } from "@/components/landing/ai-skills"
 import { Footer } from "@/components/landing/footer"
 
@@ -18,9 +20,11 @@ export default function HomePage() {
       <main id="main" className="relative">
         <Hero />
         <QuickStart />
-        <PriorArt />
+        <NotAFit />
         <Guide />
         <Freshness />
+        <Scenarios />
+        <PriorArt />
         <AdvancedUsage />
         <Testing />
         <ApiReference />

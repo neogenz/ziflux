@@ -6,9 +6,10 @@ import { Github, ExternalLink, Menu, X, Sun, Moon, Monitor } from "lucide-react"
 
 const NAV_LINKS = [
   { href: "#quickstart", label: "Quick start" },
-  { href: "#prior-art", label: "Compare" },
   { href: "#guide", label: "Guide" },
   { href: "#freshness", label: "Caching" },
+  { href: "#scenarios", label: "Use cases" },
+  { href: "#prior-art", label: "Compare" },
   { href: "#advanced-usage", label: "Patterns" },
   { href: "#testing", label: "Testing" },
   { href: "#api", label: "API" },
@@ -72,18 +73,18 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <nav className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
-        <a href="#" className="text-lg font-bold tracking-tight">
+      <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-6 px-6">
+        <a href="#" className="shrink-0 text-lg font-bold tracking-tight">
           ziflux<span className="font-normal text-muted-foreground">.docs</span>
         </a>
 
         {/* Desktop links */}
-        <div className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
+        <div className="hidden items-center gap-5 text-sm text-muted-foreground lg:flex">
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className={`transition-colors hover:text-foreground ${activeSection === link.href ? "text-foreground" : ""}`}
+              className={`whitespace-nowrap transition-colors hover:text-foreground ${activeSection === link.href ? "text-foreground" : ""}`}
             >
               {link.label}
             </a>
@@ -114,7 +115,7 @@ export function Navbar() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setOpen((v) => !v)}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground lg:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
           >
             {open ? <X size={18} /> : <Menu size={18} />}
@@ -124,7 +125,7 @@ export function Navbar() {
 
       {/* Mobile dropdown */}
       {open && (
-        <div className="border-t border-border/50 bg-background px-6 pb-4 pt-2 sm:hidden">
+        <div className="border-t border-border/50 bg-background px-6 pb-4 pt-2 lg:hidden">
           <div className="flex flex-col gap-3">
             {NAV_LINKS.map((link) => (
               <a

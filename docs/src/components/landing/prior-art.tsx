@@ -12,22 +12,26 @@ export function PriorArt() {
         <div className="rounded-xl border border-border bg-muted/30 p-5">
           <p className="text-sm font-semibold">TanStack Query (Angular)</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Full-featured, framework-agnostic. More concepts to learn (query keys, observers, query client). Great if you need advanced features like infinite queries or SSR hydration.
+            Full data-fetching framework. Infinite queries, SSR hydration, persistence, cross-framework. Pick this if your data layer needs the whole toolbox.
           </p>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-5">
           <p className="text-sm font-semibold">NgRx</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            State management + effects, much larger scope. Reducers, actions, selectors — powerful for complex global state, but heavy for just caching HTTP responses.
+            Full state container. Reducers, effects, selectors, time-travel. Pick this when caching is a side-effect of complex global state, not the goal.
           </p>
         </div>
         <div className="rounded-xl border border-accent/20 bg-accent/[0.03] p-5">
           <p className="text-sm font-semibold text-accent">ziflux</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            SWR caching only. Signal-native. Zero learning curve if you know <code>resource()</code>. Fewer concepts, less API surface, more clarity.
+            Caches <code>resource()</code>. That&apos;s the entire scope. Signal-native, no new mental model. Pick this when SWR on top of Angular&apos;s built-in primitives is what you need — nothing more.
           </p>
         </div>
       </div>
+
+      <p className="mt-6 text-center text-xs text-muted-foreground/80">
+        Mutation lifecycle (<code>onMutate → mutationFn → onSuccess → invalidateKeys</code>) is modeled on React Query — proven shape, signal-native execution.
+      </p>
 
       <div className="mt-10 text-center">
         <pre className="inline-block"><code>npm install ngx-ziflux</code></pre>

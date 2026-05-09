@@ -500,6 +500,36 @@ Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` an
 
 ---
 
+## D-38 — Cross-resource optimistic sync via decoupled `_dataVersion` signal
+
+**Date:** 2026-05-09
+
+**Decision:** Introduce an internal `_dataVersion` signal on `DataCache` that bumps on every content change (`set`, `invalidate`, `clear`). `cachedResource.staleSnapshot.source` reads `_dataVersion` instead of `version`, and the `value` computed prefers the snapshot over `res.value()` whenever the resource is not in `'local'` state. Keep `version` semantics unchanged (bumps on `invalidate`/`clear` only) so `resource.params` continues to reload only on invalidations.
+
+**Context:** With write-through `set()`/`update()` (D-33), the optimistic value is correctly stored in the cache, but a sibling `cachedResource` instance with the same `cacheKey` did not reflect it. Its `staleSnapshot.source` only re-evaluated on `cache.version()` bumps, and `version` did not change on a plain `set`. Even when the snapshot recomputed, the `value` computed only consulted it during `loading`/`reloading`/`error` states — so a sibling sitting in `resolved` state kept rendering its own stale `res.value()`.
+
+**Options considered:**
+
+- **Bump `version` on `set` too.** Rejected — would cascade reload across all resources observing the cache (each loader-side `cache.set` bumps `version`, every other resource re-evals `params` and reloads, their loaders complete with `cache.set`, …). D-20 already documents this exact trap for `cleanup()`.
+- **Per-key signal map.** Rejected — heavier (a signal per key, lifecycle to manage), unnecessary granularity for the use case.
+- **Document "set is local-only".** Rejected — leaves a real footgun in the API. Two sibling resources sharing a key is a normal pattern (multiple components reading the same domain entity), not an edge case.
+- **Decoupled `_dataVersion` (chosen).** Two signals: `version` for invalidation (drives reload), `_dataVersion` for write notifications (drives snapshot recompute, no reload). Plus tweak `value` to consult the snapshot whenever the local resource is not actively writing.
+
+**Why this works without cascading:**
+
+- Loader-side `cache.set` bumps `_dataVersion` only. Snapshots in other resources recompute and read the cache — no signal in the recompute chain triggers a reload. Stops cleanly.
+- An optimistic `ref.set(v)` bumps `_dataVersion` (via `cache.set`) but **not** `version`. The writing resource sets its own status to `'local'` and the `value` computed special-cases `'local'` to return `res.value()`, so the writer doesn't flicker.
+- Sibling resources see their snapshot update to `v`. Their `value` computed returns `snapshot` over `res.value()` since they are not in `'local'`. Render updates instantly, no fetch.
+- `invalidate`/`clear` continue to bump both signals, preserving every prior behavior.
+
+**API impact:** `_dataVersion` is marked `/** @internal */` and stripped from generated `.d.ts` via `stripInternal: true` in `tsconfig.lib.json`. Zero new public surface. Runtime contract between `DataCache` and `cachedResource` only.
+
+**`value` computed change:** Previously consulted `staleSnapshot` only in `loading`/`reloading`/`error`. Now consults it whenever status is not `'local'`, falling back to `res.value()` if the snapshot is `NO_VALUE`. In normal flow (post-loader), the snapshot tracks `res.value()` because the loader writes the same data to the cache via `cache.set`, so no behavior change for non-shared keys.
+
+**Trade-off:** None observed. The writer's UX is preserved (no reload, no flicker), siblings get instant propagation, no cascade, no cross-resource test churn.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

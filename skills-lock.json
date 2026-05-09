@@ -11,6 +11,12 @@
       "sourceType": "github",
       "computedHash": "2789fdf11e2a70832ce2e6e79954018325a010ebdd45c5d4b1e7bfdf44679b7c"
     },
+    "angular-developer": {
+      "source": "angular/angular",
+      "sourceType": "github",
+      "skillPath": "skills/dev-skills/angular-developer/SKILL.md",
+      "computedHash": "28eb592b92e5a24c4e3a1c0229a854069f0b8c49bed7b8d2bf6b852812dbe214"
+    },
     "angular-di": {
       "source": "analogjs/angular-skills",
       "sourceType": "github",
@@ -56,6 +62,12 @@
       "sourceType": "github",
       "computedHash": "ee53d65b163cd7eb953a930c95841cfe398cc2c0bd24c06508bbaa07c432be35"
     },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": "skill/SKILL.md",
+      "computedHash": "8cdf2e788eaca3af7d02026ef9cec55b506100a00d130f938e3fb1ad669c0ad0"
+    },
     "mastering-typescript": {
       "source": "spillwavesolutions/mastering-typescript-skill",
       "sourceType": "github",
@@ -70,6 +82,12 @@
       "source": "reactjs/react.dev",
       "sourceType": "github",
       "computedHash": "e53cc1a286987b7f28ba5cdd29e8ebacdde0d5822d40e938652fec8c47f33efa"
+    },
+    "reference-core": {
+      "source": "angular/angular",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/reference-core/SKILL.md",
+      "computedHash": "16783417eeebecc4c35f5253872c2155967de10bd3e6b5d26f0bf950ff9347d0"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",

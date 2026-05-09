@@ -666,7 +666,7 @@ describe('DataCache', () => {
     const result = cache.get(['budget', '2026-04'])
     expect(result).not.toBeNull()
     expect(result?.data).toBe('pre-mutation-data')
-    expect(result?.fresh).toBe(false) // ← THIS IS THE BUG: currently returns true
+    expect(result?.fresh).toBe(false)
   })
 
   it('marks entry as stale when cache was invalidated during in-flight prefetch (warm cache)', async () => {
@@ -720,11 +720,11 @@ describe('DataCache', () => {
     cache.invalidate(['a'])
     resolveFetch1('old-data')
     await prefetch1
-    expect(cache.get(['a'])?.fresh).toBe(false) // v0.0.10 handles this ✓
+    expect(cache.get(['a'])?.fresh).toBe(false)
 
     // Cascading prefetch (simulates constructor effect re-fire after version bumps)
     await cache.prefetch(['a'], () => Promise.resolve('still-old'))
-    expect(cache.get(['a'])?.fresh).toBe(false) // v0.0.10 FAILS this ✗
+    expect(cache.get(['a'])?.fresh).toBe(false)
   })
 
   it('prefetch stays stale through multiple cascades after invalidation', async () => {

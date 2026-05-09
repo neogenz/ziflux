@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { signal, type ResourceStatus } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
-import { of } from 'rxjs'
+import { of, throwError } from 'rxjs'
 import { cachedResource } from './cached-resource'
 import { DataCache } from './data-cache'
 import type { CachedResourceRef } from './types'
@@ -221,6 +221,22 @@ describe('cachedResource', () => {
 
     await waitForStatus(ref, 'resolved')
     expect(ref.value()).toBe('from-observable')
+  })
+
+  it('captures Observable loader error in error signal', async () => {
+    const boom = new Error('observable boom')
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['obs-error'],
+        params: () => ({}),
+        loader: () => throwError(() => boom),
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect(ref.error()).toBe(boom)
+    expect(ref.value()).toBeUndefined()
   })
 
   // --- Deduplication ---
@@ -1160,6 +1176,55 @@ describe('cachedResource', () => {
         TestBed.tick()
 
         expect(loadCount).toBe(afterInitial)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('signal change restarts timer (no stale timers pile up)', async () => {
+      vi.useFakeTimers()
+      try {
+        let loadCount = 0
+        const interval = signal<number>(200)
+
+        const pollCache = TestBed.runInInjectionContext(
+          () => new DataCache({ staleTime: 1, expireTime: 300_000 }),
+        )
+
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache: pollCache,
+            cacheKey: ['poll-signal'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve(`data-${loadCount}`)
+            },
+            refetchInterval: () => interval(),
+            staleTime: 1,
+          }),
+        )
+
+        // Initial load.
+        await vi.advanceTimersByTimeAsync(5)
+        TestBed.tick()
+        const afterInitial = loadCount
+
+        // Tighten interval — should restart timer at 50ms cadence, not pile up on top of 200ms.
+        interval.set(50)
+        TestBed.tick()
+
+        // Window of ~120ms — under the old 200ms tick we'd see 0 polls, with the new 50ms cadence
+        // we see at least one. Bound the upper end so a runaway timer (e.g. both 200ms and 50ms
+        // running) gets caught.
+        await vi.advanceTimersByTimeAsync(120)
+        TestBed.tick()
+        await vi.advanceTimersByTimeAsync(20)
+        TestBed.tick()
+
+        const polls = loadCount - afterInitial
+        expect(polls).toBeGreaterThan(0)
+        expect(polls).toBeLessThanOrEqual(5)
       } finally {
         vi.useRealTimers()
       }

@@ -194,6 +194,10 @@ export function cachedResource<T, P extends object>(
     destroy: () => {
       res.destroy()
     },
+    // Write-through to DataCache + Angular resource. The DataCache write makes
+    // optimistic values survive `cache.version()` bumps from unrelated invalidations
+    // — without it, the staleSnapshot linkedSignal would re-read the old DataCache
+    // entry and overwrite the optimistic value (D-33).
     set: (v: T) => {
       const p = params()
       if (p !== undefined) cache.set(resolveKey(p), v)

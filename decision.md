@@ -471,6 +471,35 @@ Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` an
 
 ---
 
+## D-37 — Naming: `cachedResource` / `cachedMutation` (v0), `swrResource` / `swrMutation` candidate (v1)
+
+**Date:** 2026-05-08
+
+**Decision:** Keep `cachedResource` and `cachedMutation` for v0.x. Flag `swrResource` / `swrMutation` as a v1 rename candidate, gated on user feedback.
+
+**Context:** External feedback flagged the API shape as "TanStack-adjacent" — mutation lifecycle (`onMutate → mutationFn → onSuccess → invalidateKeys`) and `invalidateKeys` callback mirror React Query. Naming is part of that surface.
+
+**Options considered:**
+
+- `withCachedResource` — collides with the `with*` feature-provider convention (`withDevtools`, `withRoutes`).
+- `swrResource` / `swrMutation` — names the **semantic** (SWR) instead of the **side-effect** (cached). Tighter (8 chars vs 14). Aligns with the landing tagline "SWR caching for `resource()`".
+- Keep current — plain-English, accurate, already on npm at v0.0.12.
+
+**Rationale for keeping (v0):**
+
+- Cost of break = sweep across README, llms.txt, decision log, skill files, landing site, example app.
+- Renaming does not address the actual "TanStack copy" critique, which targets API **shape**, not API **name**.
+- `cachedResource` is unambiguous and self-documenting today.
+
+**Rationale for flagging (v1):**
+
+- `swrResource` is a strict improvement on naming — names the contract, not the implementation.
+- v1 is the natural break point; ahead-of-time signaling lets early adopters plan migration.
+
+**Concrete intent:** v1 ships both names with the `cached*` aliases marked `@deprecated`, with a one-version overlap before removal. Trigger conditions for the rename: ≥2 unsolicited "what's the difference between this and TanStack" issues, OR a downstream library asks about naming alignment.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

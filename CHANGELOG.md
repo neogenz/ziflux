@@ -1,6 +1,38 @@
 # Changelog
 
 
+## v0.0.13
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.12...v0.0.13)
+
+### Features
+
+- **core:** Add internal _dataVersion signal on DataCache ([7de7b82](https://github.com/neogenz/ziflux/commit/7de7b82))
+- **core:** Propagate optimistic ref.set across sibling resources ([90dea18](https://github.com/neogenz/ziflux/commit/90dea18))
+
+### Refactoring
+
+- **core:** Enforce @internal contract and tighten D-33 comment ([0dc7354](https://github.com/neogenz/ziflux/commit/0dc7354))
+
+### Documentation
+
+- **landing:** Add Scenarios and NotAFit sections, polish hero/navbar ([f865edc](https://github.com/neogenz/ziflux/commit/f865edc))
+- **core:** Document D-38 cross-resource optimistic sync via _dataVersion ([0f704e7](https://github.com/neogenz/ziflux/commit/0f704e7))
+
+### Chores
+
+- Add PRODUCT.md brand brief and update skills-lock.json ([2db4a71](https://github.com/neogenz/ziflux/commit/2db4a71))
+
+### Tests
+
+- **core:** Cover Observable loader error and refetchInterval signal change ([eefeacd](https://github.com/neogenz/ziflux/commit/eefeacd))
+- **core:** RED — _dataVersion signal contract on DataCache ([7774cba](https://github.com/neogenz/ziflux/commit/7774cba))
+- **core:** Red — cross-resource sync on shared cache key ([097cd4e](https://github.com/neogenz/ziflux/commit/097cd4e))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.12
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.11...v0.0.12)

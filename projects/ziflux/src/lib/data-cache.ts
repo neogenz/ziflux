@@ -36,6 +36,7 @@ export class DataCache {
   readonly #dirtyPrefixes = new Set<string>()
   readonly #resolvedKeys = new Set<string>()
   readonly #version = signal(0)
+  readonly #dataVersion = signal(0)
   readonly #config: ZifluxConfig
   readonly #logger: DevtoolsLogger | null
 
@@ -43,6 +44,14 @@ export class DataCache {
   readonly name: string
   /** Monotonically incrementing signal that bumps on every `invalidate()` or `clear()`. */
   readonly version = this.#version.asReadonly()
+  /**
+   * Internal signal bumped on every cache content change (set, invalidate, clear).
+   * Decoupled from `version` to allow `cachedResource` to react to writes without
+   * triggering a resource reload (which `version` would do via `params` re-eval).
+   *
+   * @internal
+   */
+  readonly _dataVersion = this.#dataVersion.asReadonly()
 
   /**
    * Must be called inside an Angular injection context (constructor, factory, or `runInInjectionContext`).
@@ -144,6 +153,7 @@ export class DataCache {
   set<T>(key: string[], data: T): void {
     this.#entries.set(this.#serialize(key), { data, createdAt: Date.now() })
     this.#evictOverflow()
+    this.#dataVersion.update(v => v + 1)
     this.#logger?.logSet(this.name, key, data)
   }
 
@@ -189,6 +199,7 @@ export class DataCache {
       }
     }
     this.#version.update(v => v + 1)
+    this.#dataVersion.update(v => v + 1)
     this.#logger?.logInvalidate(this.name, prefix)
   }
 
@@ -291,6 +302,7 @@ export class DataCache {
     this.#dirtyPrefixes.clear()
     this.#resolvedKeys.clear()
     this.#version.update(v => v + 1)
+    this.#dataVersion.update(v => v + 1)
     this.#logger?.logClear(this.name)
   }
 

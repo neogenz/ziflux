@@ -560,6 +560,40 @@ describe('DataCache', () => {
     expect(cache.version()).toBe(3)
   })
 
+  // --- _dataVersion (internal) ---
+
+  it('_dataVersion starts at 0', () => {
+    expect(cache._dataVersion()).toBe(0)
+  })
+
+  it('_dataVersion bumps on set', () => {
+    const v0 = cache._dataVersion()
+    cache.set(['k'], 'v')
+    expect(cache._dataVersion()).toBe(v0 + 1)
+  })
+
+  it('_dataVersion bumps on invalidate', () => {
+    cache.set(['k'], 'v') // v0+1
+    const v1 = cache._dataVersion()
+    cache.invalidate(['k'])
+    expect(cache._dataVersion()).toBe(v1 + 1)
+  })
+
+  it('_dataVersion bumps on clear', () => {
+    cache.set(['k'], 'v') // v0+1
+    const v1 = cache._dataVersion()
+    cache.clear()
+    expect(cache._dataVersion()).toBe(v1 + 1)
+  })
+
+  it('_dataVersion is decoupled from version (set bumps dataVersion only)', () => {
+    const dv0 = cache._dataVersion()
+    const v0 = cache.version()
+    cache.set(['k'], 'v')
+    expect(cache._dataVersion()).toBe(dv0 + 1)
+    expect(cache.version()).toBe(v0) // version untouched on set
+  })
+
   // --- wrap ---
 
   it('wraps observable and populates cache on emit', async () => {

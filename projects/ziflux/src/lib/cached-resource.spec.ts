@@ -1230,4 +1230,154 @@ describe('cachedResource', () => {
       }
     })
   })
+
+  // --- Cross-resource optimistic sync (D-38) ---
+
+  describe('cross-resource sync via shared cache key', () => {
+    it('propagates optimistic ref.set() to a sibling resource sharing the same cacheKey', async () => {
+      let loadCount = 0
+      const sharedKey = ['shared', 'one']
+
+      const refA = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: sharedKey,
+          params: () => ({}),
+          loader: () => {
+            loadCount++
+            return Promise.resolve('server-data')
+          },
+        }),
+      )
+      const refB = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: sharedKey,
+          params: () => ({}),
+          loader: () => {
+            loadCount++
+            return Promise.resolve('server-data')
+          },
+        }),
+      )
+
+      await waitForStatus(refA, 'resolved')
+      await waitForStatus(refB, 'resolved')
+      expect(refA.value()).toBe('server-data')
+      expect(refB.value()).toBe('server-data')
+      const loadsAfterInitial = loadCount
+
+      // A optimistic-sets a new value.
+      refA.set('optimistic')
+      TestBed.tick()
+
+      // A's own state shows the optimistic value.
+      expect(refA.value()).toBe('optimistic')
+
+      // B (sibling sharing the same cache key) also shows the optimistic value
+      // without performing any new fetch.
+      expect(refB.value()).toBe('optimistic')
+      expect(loadCount).toBe(loadsAfterInitial)
+    })
+
+    it('propagates optimistic ref.update() to a sibling resource', async () => {
+      const sharedKey = ['shared', 'two']
+
+      const refA = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: sharedKey,
+          params: () => ({}),
+          loader: () => Promise.resolve(10),
+        }),
+      )
+      const refB = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: sharedKey,
+          params: () => ({}),
+          loader: () => Promise.resolve(10),
+        }),
+      )
+
+      await waitForStatus(refA, 'resolved')
+      await waitForStatus(refB, 'resolved')
+
+      refA.update(v => (v ?? 0) + 5)
+      TestBed.tick()
+
+      expect(refA.value()).toBe(15)
+      expect(refB.value()).toBe(15)
+    })
+
+    it('does not trigger a reload on the resource that performed the optimistic set', async () => {
+      let loadCount = 0
+      const sharedKey = ['shared', 'three']
+
+      const refA = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: sharedKey,
+          params: () => ({}),
+          loader: () => {
+            loadCount++
+            return Promise.resolve('initial')
+          },
+        }),
+      )
+
+      await waitForStatus(refA, 'resolved')
+      const loadsAfterInitial = loadCount
+
+      refA.set('optimistic')
+      TestBed.tick()
+      await flushMicrotasks()
+      TestBed.tick()
+
+      // Status must remain `local` after optimistic set: no params re-eval,
+      // no reload triggered. Loader call count stays put.
+      expect(refA.status()).toBe('local')
+      expect(loadCount).toBe(loadsAfterInitial)
+    })
+
+    it('does not cascade reload sibling resources when a loader writes to cache', async () => {
+      let loadCountA = 0
+      let loadCountB = 0
+      const keyA = ['cascade', 'a']
+      const keyB = ['cascade', 'b']
+
+      TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: keyA,
+          params: () => ({}),
+          loader: () => {
+            loadCountA++
+            return Promise.resolve('data-a')
+          },
+        }),
+      )
+      const refB = TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: keyB,
+          params: () => ({}),
+          loader: () => {
+            loadCountB++
+            return Promise.resolve('data-b')
+          },
+        }),
+      )
+
+      // Wait for both initial loads (different keys, no sharing).
+      await waitForStatus(refB, 'resolved')
+      await flushMicrotasks()
+      TestBed.tick()
+
+      // Each loader fired exactly once on initial load.
+      // A's loader writing to cache must NOT cause B to reload (no version bump on set).
+      expect(loadCountA).toBe(1)
+      expect(loadCountB).toBe(1)
+    })
+  })
 })

@@ -90,13 +90,15 @@ export function cachedResource<T, P extends object>(
   const cacheGetOptions =
     staleTime !== undefined || expireTime !== undefined ? { staleTime, expireTime } : undefined
 
-  // Captures cached data whenever params or cache version change.
-  // Used to display stale data during background revalidation.
+  // Captures cached data whenever params change or any cache write happens
+  // (set, invalidate, clear). Reads `_dataVersion` rather than `version` so
+  // a sibling resource's optimistic `set()` propagates here without
+  // triggering a reload via `params` re-eval (D-38).
   const staleSnapshot = linkedSignal({
     source: () => {
       const p = params()
       if (p === undefined) return undefined
-      cache.version() // react to invalidations
+      cache._dataVersion() // react to any cache content change
       return resolveKey(p)
     },
     computation: (currentKey: string[] | undefined) => {
@@ -165,14 +167,19 @@ export function cachedResource<T, P extends object>(
     })
   }
 
-  // SWR value: stale data during loading/error, otherwise resource value.
+  // SWR value: prefer the cache snapshot whenever it exists, except when this
+  // resource is in `local` state (the user just called `set()`/`update()` and
+  // their value is the source of truth on this instance). Reading the snapshot
+  // in `resolved` state is what makes a sibling resource sharing the same
+  // cacheKey see another instance's optimistic write (D-38). In normal flow
+  // the snapshot tracks `res.value()` because the loader writes the same data
+  // to the cache, so behavior is unchanged.
   const value = computed(() => {
     const status = res.status()
-    if (status === 'loading' || status === 'reloading' || status === 'error') {
-      const snapshot = staleSnapshot()
-      if (snapshot !== NO_VALUE) return snapshot
-      if (status === 'error') return undefined as T
-    }
+    if (status === 'local') return res.value()
+    const snapshot = staleSnapshot()
+    if (snapshot !== NO_VALUE) return snapshot
+    if (status === 'error') return undefined as T
     return res.value()
   })
 
@@ -195,9 +202,9 @@ export function cachedResource<T, P extends object>(
       res.destroy()
     },
     // Write-through to DataCache + Angular resource. The DataCache write makes
-    // optimistic values survive `cache.version()` bumps from unrelated invalidations
-    // — without it, the staleSnapshot linkedSignal would re-read the old DataCache
-    // entry and overwrite the optimistic value (D-33).
+    // the optimistic value visible to any sibling resource sharing the same
+    // cacheKey via _dataVersion (D-38), and survives staleSnapshot recomputes
+    // triggered by unrelated invalidations (D-33).
     set: (v: T) => {
       const p = params()
       if (p !== undefined) cache.set(resolveKey(p), v)

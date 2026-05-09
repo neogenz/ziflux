@@ -1265,6 +1265,7 @@ describe('cachedResource', () => {
       await waitForStatus(refB, 'resolved')
       expect(refA.value()).toBe('server-data')
       expect(refB.value()).toBe('server-data')
+      const loadsAfterInitial = loadCount
 
       // A optimistic-sets a new value.
       refA.set('optimistic')
@@ -1276,6 +1277,7 @@ describe('cachedResource', () => {
       // B (sibling sharing the same cache key) also shows the optimistic value
       // without performing any new fetch.
       expect(refB.value()).toBe('optimistic')
+      expect(loadCount).toBe(loadsAfterInitial)
     })
 
     it('propagates optimistic ref.update() to a sibling resource', async () => {

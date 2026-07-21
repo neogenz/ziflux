@@ -20,7 +20,7 @@ export function Hero() {
       <div className="relative">
         <div className="mb-6 flex items-start justify-between">
           <p className="inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-            Angular 21+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
+            Angular 22+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
           </p>
           <div className="hidden sm:block">
             <CopyPageDropdown />

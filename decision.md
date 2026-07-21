@@ -530,6 +530,18 @@ Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` an
 
 ---
 
+## D-39 — Angular 22 peer range replaces v21, it does not extend it
+
+**Decision:** `peerDependencies` moves from `@angular/core ^21.0.0` to `^22.0.0`. One major supported at a time. Consumers still on v21 stay on `0.0.13`.
+
+**Rationale:** The emitted partial declarations link on Angular 17+, so a `^21.0.0 || ^22.0.0` range would install and probably run. But CI compiles, lints and runs the 227 tests against a single Angular version, so a dual range would advertise support the pipeline never exercises. A published peer range is a promise, not a guess.
+
+**Rejected alternative:** Dual range `^21.0.0 || ^22.0.0` for a softer upgrade path. Rejected — untested compatibility surfaces as a consumer's runtime bug, and the library is pre-1.0 with a well-known consumer set.
+
+**Collateral:** the v22 toolchain forces TypeScript 6.0 (`@angular/compiler-cli` peer `>=6.0 <6.1`), hence `typescript-eslint` 8.65+. Two `ng update` migrations were deliberately not kept: `change-detection-eager`, because v22's OnPush default is the target rather than a regression to paper over, and `strict-safe-navigation-narrow`, because suppressing `nullishCoalescingNotNullable` / `optionalChainNotNullable` would hide the dead assertions they exist to find — one of which was real, in `cachedResource`.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

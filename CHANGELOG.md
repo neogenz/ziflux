@@ -1,6 +1,32 @@
 # Changelog
 
 
+## v0.1.0
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.0.13...v0.1.0)
+
+### ⚠️ Breaking
+
+- **Angular 22 is now required.** `peerDependencies` move from `@angular/core ^21.0.0` to `^22.0.0`. One major is supported at a time — see [D-39](./decision.md). Projects still on Angular 21 stay on `0.0.13`.
+
+### Build
+
+- **deps:** Migrate to Angular 22 ([d624452](https://github.com/neogenz/ziflux/commit/d624452))
+  Angular 21.2 → 22.0.7, TypeScript 5.9 → 6.0.3, ng-packagr 22, angular-eslint 22, typescript-eslint 8.65.
+
+### Refactoring
+
+- **resource:** Drop the redundant `undefined as T` assertion in `cachedResource` ([d624452](https://github.com/neogenz/ziflux/commit/d624452))
+  Surfaced by the v22 diagnostics. The public type `value: Signal<T | undefined>` is unchanged.
+
+### Documentation
+
+- **core:** Record D-39 — Angular 22 peer range replaces v21 ([50a0d1f](https://github.com/neogenz/ziflux/commit/50a0d1f))
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.0.13
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.12...v0.0.13)

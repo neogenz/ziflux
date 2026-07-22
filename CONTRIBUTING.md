@@ -24,7 +24,7 @@ When in doubt, read [decision.md](./decision.md) — it captures the reasoning b
 
 - **Node.js** — check `.nvmrc` (use `nvm use`)
 - **pnpm 10+** — `corepack enable && corepack prepare`
-- **Angular CLI 21+** — comes with dev dependencies
+- **Angular CLI 22+** — comes with dev dependencies
 
 ### Getting Started
 

@@ -17,7 +17,7 @@ ziflux fills the one gap Angular left open — **the data lifecycle** (fresh →
 Every API decision is filtered through one question: *"Would an Angular developer guess this API without reading docs?"*
 
 ## Tech Stack
-- Angular 21+ library (ng-packagr, Vitest)
+- Angular 22+ library (ng-packagr, Vitest)
 - pnpm, Lefthook
 - `docs/` — Landing/docs site: Next.js 16, React 19, Tailwind 4, shadcn/ui
 

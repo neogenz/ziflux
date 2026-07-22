@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://ziflux.dev"),
   title: "ziflux — SWR caching for Angular resource()",
   description:
-    "Zero-dependency, signal-native caching layer for Angular 21+. Stale-while-revalidate semantics for resource() — instant navigations, background refreshes, no spinners on return visits.",
+    "Zero-dependency, signal-native caching layer for Angular 22+. Stale-while-revalidate semantics for resource() — instant navigations, background refreshes, no spinners on return visits.",
   keywords: [
     "angular",
     "cache",

@@ -179,7 +179,7 @@ export function cachedResource<T, P extends object>(
     if (status === 'local') return res.value()
     const snapshot = staleSnapshot()
     if (snapshot !== NO_VALUE) return snapshot
-    if (status === 'error') return undefined as T
+    if (status === 'error') return undefined
     return res.value()
   })
 

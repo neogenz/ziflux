@@ -27,6 +27,17 @@ Every API decision is filtered through one question: *"Would an Angular develope
 - `pnpm typecheck` — `tsc --noEmit` against lib tsconfig
 - `cd docs && pnpm dev` — Docs dev server
 
+## Releasing
+`pnpm release:prepare` (bump + changelog + tag), then `git push --follow-tags`.
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which publishes `ngx-ziflux`
+to npm via Trusted Publishing (OIDC) — no token, no OTP, provenance attached.
+Never `npm publish` from a laptop — the account has 2FA on writes, so it fails with
+`EOTP` and would produce an unsigned artifact.
+
+The run uses the workflow file from the *tagged* commit. If a tag predates a workflow
+change, move it (`git tag -f vX.Y.Z && git push -f origin vX.Y.Z`) — safe only while
+that version has never been published.
+
 ## Important Files
 - `decision.md` — Chronological decision log (append-only, not current state). Add a new `D-XX` entry for every architectural or API decision.
 

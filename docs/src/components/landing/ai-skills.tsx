@@ -1,6 +1,6 @@
 import { CodeBlock } from "./code-block"
 
-const INSTALL_CODE = `npx skills add neogenz/ziflux`
+const INSTALL_CODE = `npx skills add https://github.com/neogenz/ziflux --skill ziflux-expert`
 
 export function AiSkills() {
   return (

@@ -311,11 +311,13 @@ Instructions for AI code generation are in [llms.txt](https://github.com/neogenz
 ## AI skills
 
 ```bash
-npx skills add neogenz/ziflux
+npx skills add https://github.com/neogenz/ziflux --skill ziflux-expert
 ```
 
 Gives a coding agent working knowledge of the APIs and patterns for implementation,
-review and testing.
+review and testing. Also listed on
+[skills.sh](https://skills.sh/skills/neogenz/ziflux/ziflux-expert), which mirrors this
+repository's default branch.
 
 ---
 

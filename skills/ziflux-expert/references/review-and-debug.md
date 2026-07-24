@@ -42,10 +42,14 @@ Practical guidance for reviewing code that uses ziflux, debugging cache issues, 
 - [ ] **Prefix hierarchy correct?** `invalidate(['orders'])` will hit `['orders', 'list']` but NOT `['order']` or `['orderDetails']`.
 - [ ] **Filter params serialized consistently?** Use `JSON.stringify(filters)` as a key segment, not individual filter values.
 - [ ] **No empty prefix invalidation?** `invalidate([])` is a no-op. Use `clear()` for full wipe.
+- [ ] **`cache` and `invalidateKeys` passed together?** `cachedMutation` throws in dev mode when
+  given one without the other, because the mutation would succeed and invalidate nothing.
 
 ### Signals and Reactivity
 
-- [ ] **No Subjects or Observables for state?** Signals only. `firstValueFrom()` to bridge Observable → Promise.
+- [ ] **No Subjects or Observables for state?** Signals only. Hand an Observable straight to a
+  `cachedResource` loader and let it manage the subscription; `firstValueFrom()` in a loader
+  ignores `abortSignal` and leaks the request.
 - [ ] **No `any` or `as unknown as`?** Forbidden by project rules.
 - [ ] **No wrapping Angular APIs?** `set()`, `update()`, `inject()` used directly.
 

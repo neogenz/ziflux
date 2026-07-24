@@ -311,6 +311,9 @@ await api.cache.prefetch(
 );
 ```
 
+`firstValueFrom` is correct here: `prefetch` takes a plain `() => Promise<T>` and has no
+`abortSignal` to honor. The rule against it applies to `cachedResource` loaders, which do.
+
 Uses `deduplicate()` internally — concurrent prefetch + resource load for the same key collapse into one request.
 
 ---
@@ -410,7 +413,10 @@ Each API service owns exactly one `DataCache`. Keep it simple.
 
 ## Observable Loaders
 
-`cachedResource` accepts Observable loaders (converted via `firstValueFrom` internally):
+`cachedResource` accepts Observable loaders. It subscribes directly and unsubscribes when
+`abortSignal` fires, so a superseded or destroyed load actually cancels the `HttpClient`
+request. Do not reach for `firstValueFrom()` here: it has no `AbortSignal` parameter, so the
+request would outlive the load that started it.
 
 ```typescript
 readonly orders = cachedResource({

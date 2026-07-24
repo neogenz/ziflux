@@ -1,6 +1,65 @@
 # Changelog
 
 
+## v0.2.0
+
+[compare changes](https://github.com/neogenz/ziflux/compare/v0.1.0...v0.2.0)
+
+### Features
+
+- **resource:** Close the measured resource() parity gaps (D-45) ([de56da9](https://github.com/neogenz/ziflux/commit/de56da9))
+- **resource:** Add opt-in focus and reconnect revalidation (D-46) ([3ca942c](https://github.com/neogenz/ziflux/commit/3ca942c))
+
+### Bug Fixes
+
+- **cache:** Make invalidation a flag, not a timestamp shift (D-40) ([5a781f9](https://github.com/neogenz/ziflux/commit/5a781f9))
+- **resource:** Cancel Observable loaders, honor reload(), guard SSR timers ([b65f187](https://github.com/neogenz/ziflux/commit/b65f187))
+- **mutation:** Fail loudly on half-configured invalidation (D-44) ([229520e](https://github.com/neogenz/ziflux/commit/229520e))
+- **cache:** Keep in-flight records alive until the write lands ([7b512f0](https://github.com/neogenz/ziflux/commit/7b512f0))
+- **landing:** Clear the sticky header on anchors, fit 320px, honor reduced motion ([5d4fc59](https://github.com/neogenz/ziflux/commit/5d4fc59))
+- **skills:** Stop shipping dangling symlinks to third-party skills ([924d7dd](https://github.com/neogenz/ziflux/commit/924d7dd))
+
+### Refactoring
+
+- **example:** Drop the nullish fallback hasValue() makes dead ([d7c4d99](https://github.com/neogenz/ziflux/commit/d7c4d99))
+
+### Documentation
+
+- Document OIDC publishing, pin .nvmrc to a node the CLI accepts ([7eca911](https://github.com/neogenz/ziflux/commit/7eca911))
+- Replace every unmeasured or false claim with a verified one ([6005484](https://github.com/neogenz/ziflux/commit/6005484))
+- **plan:** Mark fix-review-findings implemented ([9ed7069](https://github.com/neogenz/ziflux/commit/9ed7069))
+- Compare bundle size against TanStack in matching units ([3ff2eef](https://github.com/neogenz/ziflux/commit/3ff2eef))
+- Rewrite the positioning, add non-goals and a support policy ([a61f9d8](https://github.com/neogenz/ziflux/commit/a61f9d8))
+- ⚠️  Add a 0.2.0 migration guide, drop the untested interop claim ([5500633](https://github.com/neogenz/ziflux/commit/5500633))
+- **landing:** Remove AI writing tells and tighten the hero ([a514d53](https://github.com/neogenz/ziflux/commit/a514d53))
+- **skill:** Align ziflux-expert with the shipped API ([a661430](https://github.com/neogenz/ziflux/commit/a661430))
+- Use the exact install command skills.sh publishes ([905a7ff](https://github.com/neogenz/ziflux/commit/905a7ff))
+
+### Build
+
+- Make "zero dependencies" true and enforce size in CI ([1f94642](https://github.com/neogenz/ziflux/commit/1f94642))
+
+### Chores
+
+- **skills:** Refresh lock for angular-developer and impeccable ([9fde482](https://github.com/neogenz/ziflux/commit/9fde482))
+
+#### ⚠️ Breaking Changes
+
+Full upgrade notes in [MIGRATION.md](./MIGRATION.md).
+
+- **`CachedResourceRef.error` is now `Signal<Error | undefined>`**, was `Signal<unknown>`. Code that cast it (`ref.error() as ApiError`) needs `as unknown as ApiError`.
+- **`hasValue()` returns a type predicate**, was `boolean`. It narrows `value()` to `T`, and is now exactly `value() !== undefined`, so a loader resolving `undefined` reports `false` where it previously reported `true`. Hand-written test doubles of `CachedResourceRef` must declare the predicate signature.
+- **`CacheEntry<T>` requires an `invalidated` field.** Affects code constructing the literal, in practice test fixtures.
+- **`reload()` now refetches inside the `staleTime` window.** Its contract always said it bypassed staleness checks; the freshness short-circuit ran first and made it a no-op on a fresh entry. `refetchInterval` inherited the same bug.
+- **`cachedMutation` throws in dev mode** when given `cache` without `invalidateKeys`, or the reverse. That configuration silently invalidated nothing before, so this is the most likely upgrade-time crash.
+- **`invalidate()` is a flag, not a timestamp shift.** A per-resource `staleTime` larger than the cache's can no longer swallow it, and a smaller `expireTime` no longer turns it into an eviction. Cost: a raced in-flight fetch is never reused, so invalidations spread over time issue one refetch each. Invalidations within a single tick still collapse into one.
+- **Observable loaders are cancelled on abort.** A superseded or destroyed load now kills its `HttpClient` request. An Observable completing without emitting rejects with a named `Error` instead of RxJS `EmptyError`.
+- **No timers during server rendering.** The cleanup sweep and polling are browser-only.
+
+### ❤️ Contributors
+
+- Maxime De Sogus <maxime.desogus@gmail.com>
+
 ## v0.1.0
 
 [compare changes](https://github.com/neogenz/ziflux/compare/v0.0.13...v0.1.0)

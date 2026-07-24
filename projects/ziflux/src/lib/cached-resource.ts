@@ -1,5 +1,6 @@
 import {
   computed,
+  DestroyRef,
   effect,
   inject,
   linkedSignal,
@@ -148,8 +149,18 @@ export function cachedResource<T, P extends object>(
 export function cachedResource<T, P extends object>(
   options: CachedResourceOptions<T, P>,
 ): CachedResourceRef<T> {
-  const { cache, cacheKey, loader, staleTime, expireTime, retry, refetchInterval, defaultValue } =
-    options
+  const {
+    cache,
+    cacheKey,
+    loader,
+    staleTime,
+    expireTime,
+    retry,
+    refetchInterval,
+    refetchOnWindowFocus,
+    refetchOnReconnect,
+    defaultValue,
+  } = options
   const params = options.params ?? (() => ({}) as P)
 
   const resolveKey = (p: P): string[] => (typeof cacheKey === 'function' ? cacheKey(p) : cacheKey)
@@ -235,12 +246,38 @@ export function cachedResource<T, P extends object>(
     return started
   }
 
+  const isBrowser = isPlatformBrowser(inject(PLATFORM_ID, { optional: true }) ?? 'browser')
+
+  // Revalidation triggers. These call `res.reload()` rather than `forceReload()`
+  // so the loader's freshness check still applies: an entry inside its staleTime
+  // is served from cache, and returning to a tab costs no request.
+  const revalidateListeners: Array<() => void> = []
+  if (isBrowser && (refetchOnWindowFocus === true || refetchOnReconnect === true)) {
+    const destroyRef = inject(DestroyRef)
+    const listen = (target: EventTarget, event: string, shouldReload: () => boolean): void => {
+      const handler = (): void => {
+        if (shouldReload()) res.reload()
+      }
+      target.addEventListener(event, handler)
+      revalidateListeners.push(() => {
+        target.removeEventListener(event, handler)
+      })
+    }
+
+    if (refetchOnWindowFocus === true) {
+      listen(document, 'visibilitychange', () => document.visibilityState === 'visible')
+    }
+    if (refetchOnReconnect === true) {
+      listen(window, 'online', () => true)
+    }
+    destroyRef.onDestroy(() => {
+      for (const stop of revalidateListeners) stop()
+    })
+  }
+
   // Background polling. Browser-only: a recurring timer keeps an SSR render from
   // ever stabilizing, and each tick would reload a resource nobody will hydrate.
-  if (
-    refetchInterval !== undefined &&
-    isPlatformBrowser(inject(PLATFORM_ID, { optional: true }) ?? 'browser')
-  ) {
+  if (refetchInterval !== undefined && isBrowser) {
     effect(onCleanup => {
       const interval = typeof refetchInterval === 'function' ? refetchInterval() : refetchInterval
       if (!interval || interval <= 0) return
@@ -285,6 +322,8 @@ export function cachedResource<T, P extends object>(
     isLoading: res.isLoading,
     reload: forceReload,
     destroy: () => {
+      for (const stop of revalidateListeners) stop()
+      revalidateListeners.length = 0
       res.destroy()
     },
     // Write-through to DataCache + Angular resource. The DataCache write makes

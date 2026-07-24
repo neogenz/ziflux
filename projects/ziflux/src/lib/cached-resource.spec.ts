@@ -1774,4 +1774,149 @@ describe('cachedResource', () => {
       expect(loadCountB).toBe(1)
     })
   })
+  // --- refetchOnWindowFocus / refetchOnReconnect (D-46) ---
+
+  describe('focus and reconnect revalidation', () => {
+    it('refetches when the tab becomes visible and the entry is stale', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['focus-stale'],
+          params: () => ({}),
+          staleTime: 0,
+          refetchOnWindowFocus: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      expect(fetches).toBe(1)
+
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(2)
+    })
+
+    it('does not hit the network on focus while the entry is still fresh', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['focus-fresh'],
+          params: () => ({}),
+          staleTime: 60_000,
+          refetchOnWindowFocus: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      expect(fetches).toBe(1)
+
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(1)
+    })
+
+    it('refetches when the browser comes back online', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['reconnect'],
+          params: () => ({}),
+          staleTime: 0,
+          refetchOnReconnect: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      expect(fetches).toBe(1)
+
+      window.dispatchEvent(new Event('online'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(2)
+    })
+
+    it('adds no listeners when both options are off', () => {
+      const docSpy = vi.spyOn(document, 'addEventListener')
+      const winSpy = vi.spyOn(window, 'addEventListener')
+      TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['no-listeners'],
+          params: () => ({}),
+          loader: () => Promise.resolve('x'),
+        }),
+      )
+      expect(docSpy).not.toHaveBeenCalledWith('visibilitychange', expect.anything())
+      expect(winSpy).not.toHaveBeenCalledWith('online', expect.anything())
+      docSpy.mockRestore()
+      winSpy.mockRestore()
+    })
+
+    it('stops revalidating after destroy()', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['focus-destroy'],
+          params: () => ({}),
+          staleTime: 0,
+          refetchOnWindowFocus: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      const afterLoad = fetches
+
+      ref.destroy()
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(afterLoad)
+    })
+
+    it('registers no listeners on the server', () => {
+      TestBed.resetTestingModule()
+      TestBed.configureTestingModule({
+        providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
+      })
+      const serverCache = TestBed.runInInjectionContext(() => new DataCache())
+      const docSpy = vi.spyOn(document, 'addEventListener')
+      TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache: serverCache,
+          cacheKey: ['ssr-focus'],
+          params: () => ({}),
+          refetchOnWindowFocus: true,
+          loader: () => Promise.resolve('x'),
+        }),
+      )
+      expect(docSpy).not.toHaveBeenCalledWith('visibilitychange', expect.anything())
+      docSpy.mockRestore()
+    })
+  })
 })

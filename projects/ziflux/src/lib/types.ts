@@ -153,6 +153,20 @@ export interface CachedResourceOptions<T, P extends object> {
   retry?: number | RetryConfig
   /** Auto-refetch interval in ms, or a function returning ms / `false` to disable. */
   refetchInterval?: number | (() => number | false)
+  /**
+   * Revalidate when the tab becomes visible again. Off by default.
+   *
+   * Respects `staleTime`: a still-fresh entry is served from cache without a
+   * request, so switching tabs on a short-lived dashboard costs nothing.
+   * Browser-only.
+   */
+  refetchOnWindowFocus?: boolean
+  /**
+   * Revalidate when the browser regains network connectivity. Off by default.
+   *
+   * Respects `staleTime` the same way `refetchOnWindowFocus` does. Browser-only.
+   */
+  refetchOnReconnect?: boolean
 }
 
 // --- cachedMutation ---

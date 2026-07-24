@@ -627,10 +627,26 @@ Polling inherited the same bug through `res.reload()`: `refetchInterval: 3_000` 
 
 ---
 
+## D-46 - Focus and reconnect revalidation are opt-in listeners, not a background service
+
+**Decision:** `cachedResource` accepts `refetchOnWindowFocus` and `refetchOnReconnect`. Both default to off. When enabled in a browser, the resource listens to `visibilitychange` on `document` and `online` on `window`, and calls the resource's own `reload()` on each.
+
+**Rationale:** Revalidating on return is the behavior people expect from a stale-while-revalidate cache, and it belongs to the data lifecycle rather than to state management. Two event listeners cover it, so there is no scheduler, no shared service, and nothing new to inject. The option names match TanStack Query's, which means anyone arriving from that library can guess them.
+
+**Why they respect `staleTime`:** the handler calls the internal `res.reload()`, not the public `reload()`. The public one forces a network round trip by contract (D-42), which would turn every tab switch into a request. The internal path still runs the loader's freshness check, so an entry inside its `staleTime` is served from cache and costs nothing. A stale entry refetches, which is the point.
+
+**Why opt-in:** a library that starts refetching on events the developer never configured is surprising, and the cost lands on someone else's API. Defaulting to off also keeps the behavior of every existing call site unchanged.
+
+**Browser-only:** guarded by the same `isPlatformBrowser` check as the polling timer (D-43). `document` and `window` do not exist during server rendering.
+
+**Cleanup:** listeners are removed both by `DestroyRef.onDestroy` and by an explicit `destroy()` call, since the two can happen independently.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.
 - **`DataCache` config override per instance** — ✓ Yes. Priority: constructor arg > global provider > defaults.
 - **`prefetch()` on `DataCache` vs standalone function** — ✓ Method on `DataCache`.
-- **RxJS interop** — ✓ `firstValueFrom()` used internally in `cachedResource`. No helper needed.
+- **RxJS interop** — superseded by D-41: `cachedResource` bridges Observables with an abort-aware helper, because `firstValueFrom()` ignores `abortSignal`.
 - **`cachedResource` staleSnapshot exposure** — ✓ Kept internal. No public API for it.

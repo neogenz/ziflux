@@ -563,6 +563,40 @@ A flag is independent of every time window, so neither edge exists. It also subs
 
 ---
 
+## D-41 — Observable loaders bridge through an abort-aware helper, not `firstValueFrom()`
+
+**Decision:** `cachedResource` subscribes to an Observable loader manually and unsubscribes when `abortSignal` fires. `firstValueFrom()` is no longer used.
+
+**Rationale:** `firstValueFrom()` has no `AbortSignal` parameter — it stays subscribed until the first emission whatever the resource does. The documented primary loader shape is `({ params }) => this.http.get(...)`, so an Angular abort (params changed, resource destroyed) left the HTTP request running to completion. Consequences: a typeahead leaked one live request per keystroke, and `destroy()` cancelled nothing. Angular's own `rxResource` unsubscribes on abort; ziflux claims to mirror `resource()` and did not.
+
+**Behavior:** the source is piped through `take(1)`, so a first emission tears it down and only the abort path unsubscribes explicitly. Abort rejects with `abortSignal.reason` when it is an `Error`, otherwise a standard `AbortError` `DOMException`. Completing without emitting rejects with a named error rather than rxjs `EmptyError` — rxjs deprecates constructing that class ("internal implementation detail"), and `cachedResource: the loader Observable completed without emitting` says more at a debugger than `EmptyError` does.
+
+**Collateral:** the abort-reason construction, previously duplicated inline in `retryWithBackoff` with two eslint suppressions, is now one `abortReason()` helper with none. Supersedes the CLAUDE.md rule naming `firstValueFrom()` as the bridge.
+
+---
+
+## D-42 — `reload()` and `refetchInterval` bypass the freshness check
+
+**Decision:** a `force` flag, set by `reload()` and by each polling tick, makes the next loader run skip the `entry?.fresh` short-circuit.
+
+**Rationale:** the loader's first act is to return cached data when the entry is fresh. `reload()` went through that path, so within `staleTime` it issued **zero** requests and resolved from cache — while its own JSDoc promised "triggers an immediate refetch, bypassing staleness checks". The example app's Reload button was a no-op for 5 s after every fetch.
+
+Polling inherited the same bug through `res.reload()`: `refetchInterval: 3_000` under `staleTime: 5_000` produced a request roughly every 6 s (only the ticks that happened to land on a stale entry), not every 3 s. A configured poll interval must mean the network interval.
+
+**Trade-off:** none. Both entry points are explicit user intent to refetch; the freshness short-circuit exists for reactive re-runs (params re-eval, version bumps), which still take it.
+
+---
+
+## D-43 — Recurring timers are browser-only
+
+**Decision:** `DataCache`'s `cleanupInterval` sweep and `cachedResource`'s `refetchInterval` effect are created only when `isPlatformBrowser()`. `PLATFORM_ID` is injected `{ optional: true }` and defaults to browser.
+
+**Rationale:** both timers started during SSR. On zone.js-based SSR a recurring `setInterval` keeps `ApplicationRef.isStable` false forever, so rendering hangs until the timeout for any app that configures either option — and `cleanupInterval` runs from a `providedIn: 'root'` service constructor, i.e. on every request. On zoneless SSR a render slower than `refetchInterval` reload-loops. `ZifluxDevtoolsComponent` already guarded this way; the cache and the resource did not.
+
+**Optional injection:** `DataCache` is documented as constructible in any injection context, including a bare `Injector.create()` that provides no `PLATFORM_ID`. Requiring the token would have thrown NG0201 there, so absence is treated as browser — the pre-existing behavior.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

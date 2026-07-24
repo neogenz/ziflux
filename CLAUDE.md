@@ -44,7 +44,7 @@ that version has never been published.
 ## Rules
 - **NEVER** add patterns foreign to Angular — the API must feel like `resource()` extended, zero learning curve
 - **NEVER** wrap or abstract an existing Angular API — if Angular has it (`set()`, `update()`, `inject()`), use it directly
-- **NEVER** use Subjects, BehaviorSubjects, or Observables for state — Signals only. `firstValueFrom()` to bridge Observable → Promise in loaders
+- **NEVER** use Subjects, BehaviorSubjects, or Observables for state — Signals only. Bridge Observable → Promise in loaders with the abort-aware first-value helper, never `firstValueFrom()` (it ignores `abortSignal`, so the HTTP request outlives the cancelled loader)
 - **NEVER** use `any` or `as unknown as`
 - **NEVER** add an export without weighing the learning curve it introduces — every export is a concept to learn
 - Private class fields use `#` prefix

@@ -1,8 +1,60 @@
-import { computed, effect, linkedSignal, resource } from '@angular/core'
-import { firstValueFrom, isObservable } from 'rxjs'
+import { computed, effect, inject, linkedSignal, PLATFORM_ID, resource } from '@angular/core'
+import { isPlatformBrowser } from '@angular/common'
+import { isObservable, type Observable, take } from 'rxjs'
 import type { CachedResourceOptions, CachedResourceRef, RetryConfig } from './types'
 
 const NO_VALUE = Symbol('NO_VALUE')
+
+/** The error an aborted operation rejects with, normalized to an `Error`. */
+function abortReason(abortSignal: AbortSignal): Error {
+  const reason: unknown = abortSignal.reason
+  return reason instanceof Error
+    ? reason
+    : new DOMException('The operation was aborted', 'AbortError')
+}
+
+/**
+ * Resolves with an Observable's first value, then unsubscribes.
+ *
+ * Unlike `firstValueFrom()`, aborting the signal tears the subscription down —
+ * which is what cancels the underlying `HttpClient` request when Angular aborts
+ * a superseded loader.
+ */
+function firstValueWithAbort<T>(source: Observable<T>, abortSignal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    if (abortSignal.aborted) {
+      reject(abortReason(abortSignal))
+      return
+    }
+
+    const onAbort = (): void => {
+      subscription.unsubscribe()
+      reject(abortReason(abortSignal))
+    }
+    const stopListening = (): void => {
+      abortSignal.removeEventListener('abort', onAbort)
+    }
+
+    abortSignal.addEventListener('abort', onAbort, { once: true })
+
+    // take(1) tears the source down after the first value, so only the abort
+    // path needs an explicit unsubscribe.
+    const subscription = source.pipe(take(1)).subscribe({
+      next: value => {
+        stopListening()
+        resolve(value)
+      },
+      error: (error: unknown) => {
+        stopListening()
+        reject(error instanceof Error ? error : new Error(String(error)))
+      },
+      complete: () => {
+        stopListening()
+        reject(new Error('cachedResource: the loader Observable completed without emitting'))
+      },
+    })
+  })
+}
 
 function retryWithBackoff<T>(
   fn: () => Promise<T>,
@@ -18,8 +70,7 @@ function retryWithBackoff<T>(
       return new Promise<T>((resolve, reject) => {
         // Guard: signal may already be aborted before the listener is registered
         if (abortSignal.aborted) {
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- DOMException is the standard AbortError type
-          reject(abortSignal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
+          reject(abortReason(abortSignal))
           return
         }
         const timer = setTimeout(() => {
@@ -29,10 +80,7 @@ function retryWithBackoff<T>(
           'abort',
           () => {
             clearTimeout(timer)
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- DOMException is the standard AbortError type
-            reject(
-              abortSignal.reason ?? new DOMException('The operation was aborted', 'AbortError'),
-            )
+            reject(abortReason(abortSignal))
           },
           { once: true },
         )
@@ -56,17 +104,21 @@ function normalizeRetryConfig(retry: number | RetryConfig): Required<RetryConfig
  *
  * On each `params` change or cache invalidation, previously cached data is
  * served immediately while a background fetch refreshes the entry. The loader
- * runs only when the cache entry is missing or stale.
+ * runs only when the cache entry is missing or stale — except through
+ * `reload()` and `refetchInterval`, which always hit the network.
  *
- * Supports Promises and Observables in the `loader`. Pass `retry` (number or
- * `RetryConfig`) to enable exponential-backoff retries. Pass `refetchInterval`
- * to poll in the background — the interval is reactive: if you pass a signal,
- * changing it restarts the timer automatically.
+ * Supports Promises and Observables in the `loader`. An Observable loader is
+ * unsubscribed when Angular aborts the request, which cancels the underlying
+ * `HttpClient` call. Pass `retry` (number or `RetryConfig`) to enable
+ * exponential-backoff retries. Pass `refetchInterval` to poll in the background
+ * — the interval is reactive: if you pass a signal, changing it restarts the
+ * timer automatically.
  *
  * @remarks
  * Must be called inside an injection context (constructor, `inject()` call, or
  * `runInInjectionContext()`). The underlying `resource()` and the polling
- * `effect()` are destroyed with the owning injector.
+ * `effect()` are destroyed with the owning injector. Polling is browser-only:
+ * no interval is scheduled during server-side rendering.
  *
  * @example
  * ```ts
@@ -110,6 +162,10 @@ export function cachedResource<T, P extends object>(
 
   const retryConfig = retry !== undefined ? normalizeRetryConfig(retry) : undefined
 
+  // Set by reload() and by polling: the next loader run must hit the network even
+  // if the cached entry is still inside its staleTime window.
+  let force = false
+
   const res = resource<T, P | undefined>({
     params: () => {
       const p = params()
@@ -122,13 +178,15 @@ export function cachedResource<T, P extends object>(
       // so `reqParams` is guaranteed to be P at this point.
       const p = reqParams as P
       const k = resolveKey(p)
+      const forced = force
+      force = false
       const entry = cache.get<T>(k, cacheGetOptions)
-      if (entry?.fresh) return entry.data
+      if (!forced && entry?.fresh) return entry.data
 
       const doFetch = () => {
         const invoke = () => {
           const result = loader({ params: p, abortSignal })
-          return isObservable(result) ? firstValueFrom(result) : result
+          return isObservable(result) ? firstValueWithAbort(result, abortSignal) : result
         }
         return retryConfig ? retryWithBackoff(invoke, retryConfig, abortSignal) : invoke()
       }
@@ -154,12 +212,24 @@ export function cachedResource<T, P extends object>(
     },
   })
 
-  // Background polling
-  if (refetchInterval !== undefined) {
+  /** `reload()` bypasses the freshness check — its contract is "refetch now". */
+  const forceReload = (): boolean => {
+    force = true
+    const started = res.reload()
+    if (!started) force = false
+    return started
+  }
+
+  // Background polling. Browser-only: a recurring timer keeps an SSR render from
+  // ever stabilizing, and each tick would reload a resource nobody will hydrate.
+  if (
+    refetchInterval !== undefined &&
+    isPlatformBrowser(inject(PLATFORM_ID, { optional: true }) ?? 'browser')
+  ) {
     effect(onCleanup => {
       const interval = typeof refetchInterval === 'function' ? refetchInterval() : refetchInterval
       if (!interval || interval <= 0) return
-      const id = setInterval(() => res.reload(), interval)
+      const id = setInterval(() => forceReload(), interval)
       onCleanup(() => {
         clearInterval(id)
       })
@@ -196,7 +266,7 @@ export function cachedResource<T, P extends object>(
     status: res.status,
     error: res.error,
     isLoading: res.isLoading,
-    reload: () => res.reload(),
+    reload: forceReload,
     destroy: () => {
       res.destroy()
     },

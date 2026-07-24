@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { DestroyRef, Injector, runInInjectionContext } from '@angular/core'
+import { DestroyRef, Injector, PLATFORM_ID, runInInjectionContext } from '@angular/core'
 import { DataCache } from './data-cache'
 import { ZIFLUX_CONFIG } from './provide-ziflux'
 import type { DataCacheOptions, ZifluxConfig } from './types'
@@ -1146,6 +1146,39 @@ describe('DataCache', () => {
     expect(autoGcCache.get(['a'])).toBeNull()
 
     // cleanup
+    destroyFns.forEach(fn => {
+      fn()
+    })
+    vi.useRealTimers()
+  })
+
+  it('auto-cleanup does not schedule a timer on the server', () => {
+    // Regression (D-43): a recurring setInterval in a providedIn:'root' service
+    // keeps an SSR render from ever stabilizing.
+    vi.useFakeTimers()
+
+    const destroyFns: (() => void)[] = []
+    const injector = Injector.create({
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'server' },
+        {
+          provide: DestroyRef,
+          useValue: { onDestroy: (fn: () => void) => destroyFns.push(fn) },
+        },
+      ],
+    })
+
+    const serverCache = runInInjectionContext(
+      injector,
+      () => new DataCache({ staleTime: 10, expireTime: 50, cleanupInterval: 100 }),
+    )
+
+    serverCache.set(['a'], 'v1')
+    vi.advanceTimersByTime(500) // well past several cleanup intervals
+
+    // No sweep ran: the expired entry is still there until read
+    expect(vi.getTimerCount()).toBe(0)
+
     destroyFns.forEach(fn => {
       fn()
     })

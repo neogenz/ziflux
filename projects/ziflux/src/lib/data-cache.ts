@@ -1,4 +1,5 @@
-import { DestroyRef, inject, signal } from '@angular/core'
+import { DestroyRef, inject, PLATFORM_ID, signal } from '@angular/core'
+import { isPlatformBrowser } from '@angular/common'
 import { type Observable, tap } from 'rxjs'
 import { CacheRegistry } from './cache-registry'
 import { DevtoolsLogger } from './devtools-logger'
@@ -87,7 +88,11 @@ export class DataCache {
       })
     }
 
-    if (this.#config.cleanupInterval) {
+    // Browser-only: on the server a recurring timer keeps the app from ever
+    // stabilizing, and the cache does not outlive the render anyway. PLATFORM_ID
+    // is optional so a bare `Injector.create` context still behaves as before.
+    const platformId = inject(PLATFORM_ID, { optional: true })
+    if (this.#config.cleanupInterval && isPlatformBrowser(platformId ?? 'browser')) {
       const id = setInterval(() => this.cleanup(), this.#config.cleanupInterval)
       destroyRef?.onDestroy(() => {
         clearInterval(id)

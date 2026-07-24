@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { signal, type ResourceStatus } from '@angular/core'
+import { PLATFORM_ID, signal, type ResourceStatus } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
-import { of, throwError } from 'rxjs'
+import { EMPTY, Observable, of, throwError } from 'rxjs'
 import { cachedResource } from './cached-resource'
 import { DataCache } from './data-cache'
 import type { CachedResourceRef } from './types'
@@ -237,6 +237,78 @@ describe('cachedResource', () => {
     await waitForStatus(ref, 'error')
     expect(ref.error()).toBe(boom)
     expect(ref.value()).toBeUndefined()
+  })
+
+  it('unsubscribes an Observable loader when the params change abort it', async () => {
+    // Regression (D-41): firstValueFrom() ignores abortSignal, so a superseded
+    // HttpClient request kept running to completion.
+    let teardowns = 0
+    const userId = signal(1)
+
+    TestBed.runInInjectionContext(() =>
+      cachedResource<string, { id: number }>({
+        cache,
+        cacheKey: p => ['user', String(p.id)],
+        params: () => ({ id: userId() }),
+        loader: () =>
+          new Observable<string>(() => {
+            return () => {
+              teardowns++
+            }
+          }),
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Superseding params abort the first loader → its subscription must tear down
+    userId.set(2)
+    await flushMicrotasks()
+    TestBed.tick()
+    await flushMicrotasks()
+
+    expect(teardowns).toBe(1)
+  })
+
+  it('unsubscribes an Observable loader on destroy()', async () => {
+    let teardowns = 0
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['never-resolves'],
+        params: () => ({}),
+        loader: () =>
+          new Observable<string>(() => {
+            return () => {
+              teardowns++
+            }
+          }),
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    ref.destroy()
+    await flushMicrotasks()
+
+    expect(teardowns).toBe(1)
+  })
+
+  it('rejects an Observable loader that completes without emitting', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['empty-obs'],
+        params: () => ({}),
+        loader: () => EMPTY,
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect((ref.error() as Error).message).toContain('completed without emitting')
   })
 
   // --- Deduplication ---
@@ -914,6 +986,75 @@ describe('cachedResource', () => {
     expect(ref.error()).toBeUndefined()
   })
 
+  // --- reload ---
+
+  it('reload() refetches even while the cached entry is fresh', async () => {
+    // Regression (D-42): the loader short-circuited on a fresh entry, so reload()
+    // resolved from cache and issued no request — contradicting its own contract.
+    let loaderCalls = 0
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['reloadable'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          return Promise.resolve(`data-${loaderCalls}`)
+        },
+        staleTime: 60_000,
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+    expect(loaderCalls).toBe(1)
+
+    ref.reload()
+    await waitForStatus(ref, 'resolved')
+
+    expect(loaderCalls).toBe(2)
+    expect(ref.value()).toBe('data-2')
+  })
+
+  it('a reload() that does not start leaves no force pending', async () => {
+    let loaderCalls = 0
+    let resolveFirst!: (v: string) => void
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['reload-busy'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          if (loaderCalls === 1) {
+            return new Promise<string>(r => {
+              resolveFirst = r
+            })
+          }
+          return Promise.resolve(`data-${loaderCalls}`)
+        },
+        staleTime: 60_000,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Already loading → reload() is refused and must not arm the force flag
+    expect(ref.reload()).toBe(false)
+
+    resolveFirst('data-1')
+    await waitForStatus(ref, 'resolved')
+    expect(loaderCalls).toBe(1)
+
+    // A cache write for the same key must still be served from cache, not refetched
+    cache.set(['reload-busy'], 'from-elsewhere')
+    await flushMicrotasks()
+    TestBed.tick()
+    expect(loaderCalls).toBe(1)
+  })
+
   // --- destroy ---
 
   it('destroy() stops the resource', async () => {
@@ -1201,6 +1342,83 @@ describe('cachedResource', () => {
         TestBed.tick()
 
         expect(loadCount).toBeGreaterThan(afterInitial)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('polls at the configured interval even when the entry is still fresh', async () => {
+      // Regression (D-42): polling went through reload(), which the loader's
+      // freshness short-circuit swallowed — a 50ms interval under a 60s staleTime
+      // produced zero requests instead of one per tick.
+      vi.useFakeTimers()
+      try {
+        let loadCount = 0
+
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache,
+            cacheKey: ['poll-fresh'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve(`data-${loadCount}`)
+            },
+            refetchInterval: 50,
+            staleTime: 60_000,
+          }),
+        )
+
+        await vi.advanceTimersByTimeAsync(10)
+        TestBed.tick()
+        expect(loadCount).toBe(1)
+
+        // Three ticks of a 50ms interval, entry fresh the whole time
+        for (let i = 0; i < 3; i++) {
+          await vi.advanceTimersByTimeAsync(50)
+          TestBed.tick()
+          await vi.advanceTimersByTimeAsync(0)
+        }
+
+        expect(loadCount).toBe(4)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not schedule polling on the server', async () => {
+      vi.useFakeTimers()
+      try {
+        TestBed.resetTestingModule()
+        TestBed.configureTestingModule({
+          providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
+        })
+        const serverCache = TestBed.runInInjectionContext(() => new DataCache({ staleTime: 10 }))
+        let loadCount = 0
+
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache: serverCache,
+            cacheKey: ['ssr-poll'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve(`data-${loadCount}`)
+            },
+            refetchInterval: 50,
+            staleTime: 10,
+          }),
+        )
+
+        await vi.advanceTimersByTimeAsync(10)
+        TestBed.tick()
+        const afterInitial = loadCount
+
+        await vi.advanceTimersByTimeAsync(500)
+        TestBed.tick()
+
+        // Only the initial render load — no recurring timer to keep SSR from stabilizing
+        expect(loadCount).toBe(afterInitial)
       } finally {
         vi.useRealTimers()
       }

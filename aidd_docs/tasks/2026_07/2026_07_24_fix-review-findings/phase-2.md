@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Resource lifecycle — abortable Observables, reload() force, SSR timer guards

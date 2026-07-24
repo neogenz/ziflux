@@ -8,6 +8,11 @@ import type { DataCache } from './data-cache'
 export interface CacheEntry<T> {
   data: T
   createdAt: number
+  /**
+   * Set by `invalidate()`. An invalidated entry is never `fresh`, whatever its age
+   * or the caller's `staleTime` override. Cleared by the next `set()`.
+   */
+  invalidated: boolean
 }
 
 /** Global freshness and eviction policy for a `DataCache` instance. */

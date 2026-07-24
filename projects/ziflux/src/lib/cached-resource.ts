@@ -133,13 +133,13 @@ export function cachedResource<T, P extends object>(
         return retryConfig ? retryWithBackoff(invoke, retryConfig, abortSignal) : invoke()
       }
 
-      // When invalidate() preserves in-flight promises, a dedup hit may return
-      // a promise whose underlying fetch was aborted by Angular (previous loader
-      // abort on param change). Catch that stale AbortError and retry with the
-      // current loader's (non-aborted) signal.
-      const data = await cache.deduplicate(k, doFetch).catch((err: unknown) => {
+      // A dedup hit may return a promise whose underlying fetch was aborted by
+      // Angular (a sibling resource's loader aborted on param change or destroy).
+      // Catch that stale AbortError and retry with the current loader's
+      // (non-aborted) signal.
+      const result = await cache._fetch(k, doFetch).catch((err: unknown) => {
         if (!abortSignal.aborted && err instanceof DOMException && err.name === 'AbortError') {
-          return cache.deduplicate(k, doFetch)
+          return cache._fetch(k, doFetch)
         }
         throw err
       })
@@ -148,10 +148,9 @@ export function cachedResource<T, P extends object>(
         if (res.status() === 'local') {
           return res.value() as T
         }
-        cache.set(k, data)
-        cache.clearDirty(k)
+        cache._settle(k, result)
       }
-      return data
+      return result.data
     },
   })
 

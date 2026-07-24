@@ -681,6 +681,94 @@ describe('cachedResource', () => {
     }
   })
 
+  it('revalidates after invalidate() even when staleTime exceeds the cache staleTime', async () => {
+    // Regression (D-40): invalidate() used to backdate createdAt by the CACHE
+    // staleTime (30s), which stayed inside this resource's 120s window — so the
+    // loader short-circuited on a "fresh" entry and the invalidation was lost.
+    let loaderCalls = 0
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['long-stale'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          return Promise.resolve(`data-${loaderCalls}`)
+        },
+        staleTime: 120_000,
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+    expect(loaderCalls).toBe(1)
+
+    cache.invalidate(['long-stale'])
+    await waitForStatus(ref, 'resolved')
+
+    expect(loaderCalls).toBe(2)
+    expect(ref.value()).toBe('data-2')
+  })
+
+  it('keeps the entry when invalidate() meets a smaller expireTime override', async () => {
+    // Regression (D-40): backdating pushed the entry past a small expireTime
+    // override, so get() evicted it — invalidate() must only ever mark stale.
+    cache.set(['short-expire'], 'cached')
+    cache.invalidate(['short-expire'])
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['short-expire'],
+        params: () => ({}),
+        loader: () => Promise.resolve('refetched'),
+        staleTime: 1_000,
+        expireTime: 2_000,
+      }),
+    )
+
+    // The invalidated entry is still there, served as stale while revalidating
+    expect(ref.value()).toBe('cached')
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('refetched')
+  })
+
+  it('does not serve pre-mutation data as fresh when invalidate races the initial load', async () => {
+    // Regression (D-40): the cold-cache race — "no entry" read as "not stale", so
+    // the in-flight fetch was reused and its pre-mutation data stored as fresh.
+    let resolveFirst!: (v: string) => void
+    let loaderCalls = 0
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['racy'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          if (loaderCalls === 1) {
+            return new Promise<string>(r => {
+              resolveFirst = r
+            })
+          }
+          return Promise.resolve('post-mutation')
+        },
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Mutation lands while the initial load is still in flight
+    cache.invalidate(['racy'])
+    resolveFirst('pre-mutation')
+
+    await waitForStatus(ref, 'resolved')
+
+    expect(ref.value()).toBe('post-mutation')
+    expect(cache.get(['racy'])?.data).toBe('post-mutation')
+    expect(cache.get(['racy'])?.fresh).toBe(true)
+  })
+
   // --- error handling ---
 
   it('transitions to error on loader failure', async () => {

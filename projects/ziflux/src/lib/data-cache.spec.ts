@@ -269,6 +269,46 @@ describe('DataCache', () => {
     expect(cache.version()).toBe(v0 + 1)
   })
 
+  it('is honored by a get() whose staleTime override exceeds the cache staleTime', () => {
+    // Regression (D-40): backdating createdAt by the CACHE staleTime left the entry
+    // inside a larger per-resource window, so the invalidation was silently lost.
+    cache.set(['a'], 'data')
+    cache.invalidate(['a'])
+
+    expect(cache.get(['a'], { staleTime: 120_000 })?.fresh).toBe(false)
+  })
+
+  it('never deletes an entry, even when an expireTime override is smaller than staleTime', () => {
+    // Regression (D-40): backdating pushed age past a small expireTime override,
+    // so get() evicted the entry — invalidate() must only ever mark stale.
+    cache.set(['a'], 'data')
+    cache.invalidate(['a'])
+
+    const result = cache.get(['a'], { expireTime: 1_000 })
+    expect(result).not.toBeNull()
+    expect(result?.data).toBe('data')
+    expect(result?.fresh).toBe(false)
+  })
+
+  it('is idempotent across repeated calls', () => {
+    cache.set(['a'], 'data')
+    cache.invalidate(['a'])
+    cache.invalidate(['a'])
+    cache.invalidate(['a'])
+
+    const result = cache.get(['a'])
+    expect(result?.data).toBe('data')
+    expect(result?.fresh).toBe(false)
+  })
+
+  it('a later set() clears the invalidation flag', () => {
+    cache.set(['a'], 'v1')
+    cache.invalidate(['a'])
+    cache.set(['a'], 'v2')
+
+    expect(cache.get(['a'])?.fresh).toBe(true)
+  })
+
   it('invalidate with exact key matches only that entry', () => {
     cache.set(['a', 'b'], 'ab')
     cache.set(['a', 'c'], 'ac')
@@ -314,7 +354,7 @@ describe('DataCache', () => {
 
   // --- invalidate + in-flight ---
 
-  it('invalidate preserves in-flight entries for dedup', () => {
+  it('ends deduplication of the fetch it raced', () => {
     let resolvePromise!: (v: string) => void
     const pending = new Promise<string>(r => {
       resolvePromise = r
@@ -323,15 +363,16 @@ describe('DataCache', () => {
 
     cache.invalidate(['todos'])
 
-    // After invalidation, dedup should return the SAME promise (DEDUP HIT)
+    // The in-flight fetch predates the mutation, so reusing it would serve
+    // pre-mutation data. The next caller gets its own request instead.
     let freshCalled = false
     const p2 = cache.deduplicate(['todos'], () => {
       freshCalled = true
       return Promise.resolve('fresh')
     })
 
-    expect(freshCalled).toBe(false) // fn should NOT be called
-    expect(p2).toBe(p1) // same promise reference
+    expect(freshCalled).toBe(true)
+    expect(p2).not.toBe(p1)
 
     resolvePromise('done')
   })
@@ -351,11 +392,13 @@ describe('DataCache', () => {
     expect(callCount).toBe(0)
   })
 
-  it('rapid sequential invalidations reuse in-flight fetch (no redundant fetches)', async () => {
+  it('refetches once per invalidation rather than reusing pre-mutation data', async () => {
+    // Cost of D-40: a burst of mutations costs one request each, because every
+    // in-flight fetch predates the mutation that followed it. In a cachedResource
+    // the superseded requests are aborted, so only the last one completes.
     let fetchCount = 0
     let resolvePromise!: (v: string) => void
 
-    // First dedup starts a fetch
     const p1 = cache.deduplicate(['items'], () => {
       fetchCount++
       return new Promise<string>(r => {
@@ -363,20 +406,17 @@ describe('DataCache', () => {
       })
     })
 
-    // Simulate 5 rapid invalidations (like 5 mutations completing quickly)
     for (let i = 0; i < 5; i++) {
       cache.invalidate(['items'])
 
-      // After each invalidation, dedup should find the existing in-flight fetch
       const pN = cache.deduplicate(['items'], () => {
         fetchCount++
         return Promise.resolve(`fetch-${fetchCount}`)
       })
-      expect(pN).toBe(p1)
+      expect(pN).not.toBe(p1)
     }
 
-    // Only 1 actual fetch, not 6
-    expect(fetchCount).toBe(1)
+    expect(fetchCount).toBe(6)
 
     resolvePromise('result')
     const result = await p1
@@ -438,7 +478,7 @@ describe('DataCache', () => {
     resolveFirst('pre-mutation-data')
   })
 
-  it('post-invalidation in-flight (started while stale) IS reused after re-invalidation', () => {
+  it('a revalidation fetch is reused until an invalidation races it', () => {
     // Warm cache — make entry stale via invalidation
     cache.set(['key'], 'old-data')
     cache.invalidate(['key'])
@@ -447,34 +487,62 @@ describe('DataCache', () => {
     // Start a fetch in response to staleness (post-invalidation)
     void cache.deduplicate(['key'], () => new Promise<string>(() => {}))
 
-    // Another invalidation while fetch is in-flight (rapid mutations)
+    // A concurrent reader joins it — no mutation has happened since it started
+    let joinedCalled = false
+    void cache.deduplicate(['key'], () => {
+      joinedCalled = true
+      return Promise.resolve('should-not-reach')
+    })
+    expect(joinedCalled).toBe(false) // DEDUP HIT
+
+    // Another mutation lands while that fetch is still running
     cache.invalidate(['key'])
 
-    // New dedup SHOULD reuse the post-invalidation fetch
     let freshCalled = false
     void cache.deduplicate(['key'], () => {
       freshCalled = true
-      return Promise.resolve('should-not-reach')
+      return Promise.resolve('post-mutation-data')
     })
 
-    expect(freshCalled).toBe(false) // DEDUP HIT — reuses existing
+    expect(freshCalled).toBe(true) // DEDUP MISS — the running fetch is now obsolete
   })
 
-  it('cold cache in-flight IS reused after invalidation (no entry to be stale)', () => {
-    // Cold cache — no entry exists
+  it('cold cache in-flight is NOT reused after invalidation', () => {
+    // Regression (D-40): treating "no entry" as "not stale" made the cold-cache
+    // fetch reusable, so pre-mutation data was stored as fresh for a full staleTime.
     void cache.deduplicate(['key'], () => new Promise<string>(() => {}))
 
-    // Invalidation while fetch is in-flight (nothing to mark stale)
     cache.invalidate(['key'])
 
-    // New dedup should reuse (cold cache has no "pre-mutation data" concern)
     let freshCalled = false
     void cache.deduplicate(['key'], () => {
       freshCalled = true
-      return Promise.resolve('should-not-reach')
+      return Promise.resolve('post-mutation-data')
     })
 
-    expect(freshCalled).toBe(false) // DEDUP HIT
+    expect(freshCalled).toBe(true) // DEDUP MISS
+  })
+
+  it('a superseded fetch never overwrites the newer result', async () => {
+    let resolveOld!: (v: string) => void
+    const oldFetch = cache.prefetch(['key'], () => {
+      return new Promise<string>(r => {
+        resolveOld = r
+      })
+    })
+
+    cache.invalidate(['key'])
+
+    // Newer fetch starts and completes first
+    await cache.prefetch(['key'], () => Promise.resolve('post-mutation'))
+    expect(cache.get(['key'])?.data).toBe('post-mutation')
+
+    // The raced fetch lands late — it must not clobber the newer value
+    resolveOld('pre-mutation')
+    await oldFetch
+
+    expect(cache.get(['key'])?.data).toBe('post-mutation')
+    expect(cache.get(['key'])?.fresh).toBe(true)
   })
 
   it('after in-flight rejects with AbortError, new dedup starts fresh fetch', async () => {
@@ -524,26 +592,26 @@ describe('DataCache', () => {
 
     cache.invalidate(['key'])
 
-    // Still dedup-hits the existing fetch
+    // The raced fetch is not reused
     const p2 = cache.deduplicate(['key'], () => {
       fetchCount++
-      return Promise.resolve('should-not-reach')
+      return Promise.resolve('post-mutation-data')
     })
-    expect(p2).toBe(p1)
-    expect(fetchCount).toBe(1)
+    expect(p2).not.toBe(p1)
+    expect(fetchCount).toBe(2)
 
     // Resolve the first fetch
     resolveFirst('first-data')
     await p1
     await new Promise(r => setTimeout(r, 0)) // wait for .finally()
 
-    // Now a new dedup should start a fresh fetch (in-flight was cleaned up)
+    // Once everything settled, a new dedup starts a fresh fetch
     const p3 = cache.deduplicate(['key'], () => {
       fetchCount++
       return Promise.resolve('second-data')
     })
     expect(p3).not.toBe(p1)
-    expect(fetchCount).toBe(2)
+    expect(fetchCount).toBe(3)
     expect(await p3).toBe('second-data')
   })
 
@@ -739,12 +807,10 @@ describe('DataCache', () => {
     expect(result?.fresh).toBe(true)
   })
 
-  it('cascading prefetch after invalidation should STILL be stale (Race 3)', async () => {
-    // Race 3: constructor effect cascade
-    // prefetch1 starts → invalidate → prefetch1 completes (stale ✓)
-    // → version bump → prefetch2 starts (captures versionBefore AFTER all bumps)
-    // → prefetch2 completes → should STILL be stale
-
+  it('only the raced fetch lands stale — the next prefetch writes fresh', async () => {
+    // A fetch racing invalidate() carries pre-invalidation data → stale.
+    // The fetch that follows started after the invalidation, so its data already
+    // reflects the mutation → fresh. (Pre-D-40 this stayed stale forever.)
     let resolveFetch1!: (v: string) => void
     const slowFetch1 = new Promise<string>(r => {
       resolveFetch1 = r
@@ -752,97 +818,86 @@ describe('DataCache', () => {
 
     const prefetch1 = cache.prefetch(['a'], () => slowFetch1)
     cache.invalidate(['a'])
-    resolveFetch1('old-data')
+    resolveFetch1('pre-mutation')
     await prefetch1
+    expect(cache.get(['a'])?.data).toBe('pre-mutation')
     expect(cache.get(['a'])?.fresh).toBe(false)
 
-    // Cascading prefetch (simulates constructor effect re-fire after version bumps)
-    await cache.prefetch(['a'], () => Promise.resolve('still-old'))
-    expect(cache.get(['a'])?.fresh).toBe(false)
+    await cache.prefetch(['a'], () => Promise.resolve('post-mutation'))
+    expect(cache.get(['a'])?.data).toBe('post-mutation')
+    expect(cache.get(['a'])?.fresh).toBe(true)
   })
 
-  it('prefetch stays stale through multiple cascades after invalidation', async () => {
-    // Even 3+ cascading prefetches should all remain stale
+  it('a fetch racing invalidate() is never reused by a later caller', async () => {
+    let resolveFirst!: (v: string) => void
+    const first = new Promise<string>(r => {
+      resolveFirst = r
+    })
+    const secondFetch = vi.fn(() => Promise.resolve('post-mutation'))
+
+    const inflight = cache.prefetch(['a'], () => first)
+    cache.invalidate(['a'])
+
+    // Joins while the raced fetch is still pending → must start its own request
+    const joined = cache.prefetch(['a'], secondFetch)
+    resolveFirst('pre-mutation')
+    await Promise.all([inflight, joined])
+
+    expect(secondFetch).toHaveBeenCalledTimes(1)
+    expect(cache.get(['a'])?.data).toBe('post-mutation')
+  })
+
+  it('cold cache: a prefetch started after invalidate writes fresh', async () => {
+    cache.invalidate(['cold'])
+    await cache.prefetch(['cold'], () => Promise.resolve('data'))
+    expect(cache.get(['cold'])?.fresh).toBe(true)
+  })
+
+  it('prefix invalidation flags a child key fetched during flight', async () => {
     let resolveFetch!: (v: string) => void
     const slowFetch = new Promise<string>(r => {
       resolveFetch = r
     })
 
-    const prefetch1 = cache.prefetch(['key'], () => slowFetch)
-    cache.invalidate(['key'])
-    resolveFetch('pre-mutation')
-    await prefetch1
-    expect(cache.get(['key'])?.fresh).toBe(false)
-
-    // 2nd cascade
-    await cache.prefetch(['key'], () => Promise.resolve('cascade-2'))
-    expect(cache.get(['key'])?.fresh).toBe(false)
-
-    // 3rd cascade
-    await cache.prefetch(['key'], () => Promise.resolve('cascade-3'))
-    expect(cache.get(['key'])?.fresh).toBe(false)
-  })
-
-  it('dirty flag cleared by clearDirty, not by prefetch', async () => {
-    cache.set(['a'], 'initial')
-    cache.invalidate(['a'])
-
-    // Prefetch writes but stays stale (dirty flag persists)
-    await cache.prefetch(['a'], () => Promise.resolve('prefetched'))
-    expect(cache.get(['a'])?.fresh).toBe(false)
-
-    // clearDirty removes the dirty flag → next set() writes a fresh entry
-    cache.clearDirty(['a'])
-    cache.set(['a'], 'from-loader')
-    expect(cache.get(['a'])?.fresh).toBe(true)
-  })
-
-  it('cold cache: prefetch after invalidate should be stale even with no prior entry', async () => {
-    // invalidate on cold cache (no entry exists) → prefetch should still be stale
-    cache.invalidate(['cold'])
-    await cache.prefetch(['cold'], () => Promise.resolve('data'))
-    expect(cache.get(['cold'])?.fresh).toBe(false)
-  })
-
-  it('prefix invalidation marks child key prefetch as stale (cold cache)', async () => {
-    // invalidate(['budget']) on cold cache → prefetch(['budget', 'details', '123']) should be stale
+    const prefetching = cache.prefetch(['budget', 'details', '123'], () => slowFetch)
     cache.invalidate(['budget'])
-    await cache.prefetch(['budget', 'details', '123'], () => Promise.resolve('data'))
+    resolveFetch('data')
+    await prefetching
+
     expect(cache.get(['budget', 'details', '123'])?.fresh).toBe(false)
   })
 
-  it('clearDirty on child key clears only that key, not the whole prefix', async () => {
+  it('prefix invalidation flags sibling keys independently of one another', async () => {
+    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-data'))
+    await cache.prefetch(['budget', 'jun'], () => Promise.resolve('jun-data'))
     cache.invalidate(['budget'])
 
-    cache.clearDirty(['budget', 'may'])
+    expect(cache.get(['budget', 'may'])?.fresh).toBe(false)
+    expect(cache.get(['budget', 'jun'])?.fresh).toBe(false)
 
-    // May: resolved → prefetch writes fresh
-    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-data'))
+    // Refetching May clears only May's flag
+    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-v2'))
     expect(cache.get(['budget', 'may'])?.fresh).toBe(true)
-
-    // June: still dirty → prefetch writes stale
-    await cache.prefetch(['budget', 'jun'], () => Promise.resolve('jun-data'))
     expect(cache.get(['budget', 'jun'])?.fresh).toBe(false)
   })
 
-  it('re-invalidation after clearDirty re-dirties the key', async () => {
-    cache.invalidate(['budget'])
-    cache.clearDirty(['budget', 'may'])
+  it('clear() flags an in-flight fetch so its late result lands stale', async () => {
+    let resolveFetch!: (v: string) => void
+    const slowFetch = new Promise<string>(r => {
+      resolveFetch = r
+    })
 
-    // May is clean
-    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-v1'))
-    expect(cache.get(['budget', 'may'])?.fresh).toBe(true)
+    const prefetching = cache.prefetch(['a'], () => slowFetch)
+    cache.clear()
+    resolveFetch('late-data')
+    await prefetching
 
-    // Re-invalidate → May dirty again
-    cache.invalidate(['budget'])
-    await cache.prefetch(['budget', 'may'], () => Promise.resolve('may-v2'))
-    expect(cache.get(['budget', 'may'])?.fresh).toBe(false)
+    expect(cache.get(['a'])?.fresh).toBe(false)
   })
 
-  it('clear() removes dirty flags', async () => {
+  it('after clear(), a new prefetch writes fresh', async () => {
     cache.invalidate(['a'])
     cache.clear()
-    // After clear, prefetch should write fresh (dirty flag removed)
     await cache.prefetch(['a'], () => Promise.resolve('data'))
     expect(cache.get(['a'])?.fresh).toBe(true)
   })

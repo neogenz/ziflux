@@ -542,6 +542,27 @@ Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` an
 
 ---
 
+## D-40 — Invalidation is a flag on the entry, not a shift of its timestamp
+
+**Decision:** `invalidate()` sets `entry.invalidated = true` instead of backdating `createdAt`. `get()` computes `fresh` as `age < staleTime && !invalidated`. A `set()` clears the flag. In-flight fetches carry the same idea: `invalidate()` marks matching in-flight records `raced`, a raced fetch is never reused by a later caller, and its result is stored flagged rather than fresh. The `#dirtyPrefixes` / `#resolvedKeys` sets, `clearDirty()` and `staleAtCreation` are all deleted.
+
+**Rationale:** backdating measured staleness against the *cache-level* `staleTime`, but `cachedResource` reads with its own per-resource override. The two disagreed in both directions:
+
+- Override larger than the cache's (`staleTime: 120_000` on a 30s cache): the entry was backdated to an age of 30 001 ms, still inside the resource's 120 s window, so the loader short-circuited on a "fresh" entry and **the invalidation was silently lost**.
+- Override smaller in `expireTime` (`expireTime: 2_000`): the backdated age exceeded it, so `get()` **deleted the entry** — the exact opposite of D-08's "invalidate marks stale, never deletes".
+
+A flag is independent of every time window, so neither edge exists. It also subsumes the dirty-prefix machinery: "was this data fetched before the invalidation?" is answered by the in-flight record itself, which self-deletes on settle, instead of by two `Set`s that grew for the process lifetime.
+
+**Cold-cache race (fixed by the same mechanism):** the old reuse rule was `staleAtCreation || !isStale`, and `isStale` read `false` when no entry existed. So on a cold cache an in-flight fetch was *always* reusable, including after an `invalidate()` — a mutation landing during the initial load left pre-mutation data stored as fresh for a full `staleTime`. Now that fetch is `raced`, so it is neither reused nor written as fresh.
+
+**Ordering:** a raced fetch that resolves *after* a newer fetch already wrote would otherwise overwrite newer data with older. Records replaced by a newer fetch are marked `superseded` and their late result is dropped.
+
+**Trade-off:** a burst of N mutations during one in-flight fetch now costs up to N requests instead of one, because every running fetch predates the mutation that followed it. This is the correct price: the single-request behavior it replaces was serving data known to be obsolete. In a `cachedResource` the superseded requests are aborted (D-41), so only the last one completes.
+
+**Behavior change:** a fetch started *after* an invalidation is now stored **fresh**. Previously any `prefetch()` under an invalidated prefix stayed stale until a `cachedResource` loader called `clearDirty()`, which forced a needless extra revalidation of data that already reflected the mutation.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

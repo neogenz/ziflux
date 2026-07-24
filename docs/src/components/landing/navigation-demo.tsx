@@ -32,7 +32,7 @@ function DemoPanel({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border transition-all duration-300 ${
+      className={`overflow-hidden rounded-2xl border transition-[border-color,background-color,opacity] duration-300 ${
         glow
           ? "border-accent/40 shadow-[0_0_20px_rgba(249,115,22,0.1)]"
           : accent
@@ -80,7 +80,7 @@ function DataRow({
 }) {
   return (
     <div
-      className={`rounded-lg px-3 py-2.5 transition-all duration-200 ${
+      className={`rounded-lg px-3 py-2.5 transition-[background-color,color,opacity] duration-200 ${
         highlight
           ? "bg-accent/5 ring-1 ring-accent/30"
           : "bg-muted/40"
@@ -92,7 +92,7 @@ function DataRow({
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
         )}
       </div>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>
+      <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">{detail}</p>
     </div>
   )
 }
@@ -181,7 +181,7 @@ function NavPanel({
         {NAV_TABS.map((tab, i) => (
           <span
             key={tab}
-            className={`rounded-md px-3 py-1 text-xs transition-all duration-200 ${
+            className={`rounded-md px-3 py-1 text-xs transition-[background-color,color,opacity] duration-200 ${
               state.tab === i
                 ? accent
                   ? "bg-accent/10 font-medium text-accent"

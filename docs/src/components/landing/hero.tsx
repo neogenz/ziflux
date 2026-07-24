@@ -58,7 +58,7 @@ export function Hero() {
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <a
             href="#quickstart"
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[opacity,scale] duration-150 hover:opacity-90 active:scale-[0.96]"
           >
             Quick start
             <span aria-hidden="true">→</span>
@@ -67,7 +67,7 @@ export function Hero() {
             href="https://www.npmjs.com/package/ngx-ziflux"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-[color,background-color,scale] duration-150 hover:bg-muted active:scale-[0.96]"
           >
             View on npm
             <span aria-hidden="true">↗</span>

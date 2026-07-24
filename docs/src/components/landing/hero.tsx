@@ -45,7 +45,7 @@ export function Hero() {
           <strong className="text-foreground">stale-while-revalidate</strong> (SWR) semantics:
           return visits are instant, background refreshes are silent.
           {" "}If you know <code>resource()</code> and signals, you already know ziflux.
-          3 core functions, zero dependencies, ~2KB.
+          3 core functions, zero runtime dependencies, 5.9 kB brotli — measured, and enforced in CI.
         </p>
 
         {/* Install */}

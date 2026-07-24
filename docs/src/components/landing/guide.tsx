@@ -83,7 +83,7 @@ export class OrderListComponent {
     const result = await this.store.deleteOrder.mutate(id)
 
     if (result !== undefined) {
-      this.toast.show('Order deleted')
+      this.#toast.show('Order deleted')
     }
     // No try/catch needed — errors land in store.deleteOrder.error()
   }
@@ -98,7 +98,7 @@ const OPTIMISTIC_CODE = `readonly updateOrder = cachedMutation({
   onMutate: (args) => {
     const prev = this.orders.value()              // snapshot current state
     this.orders.update(list =>                     // apply change to UI immediately
-      list?.map(o => (o.id === args.id ? { ...o, ...args.data } : o)),
+      (list ?? []).map(o => (o.id === args.id ? { ...o, ...args.data } : o)),
     )
     return prev                                    // → becomes "context" in onError
   },
@@ -376,7 +376,7 @@ export function Guide() {
         <div className="mt-8">
           <h4 className="mb-2 text-sm font-semibold">3. Invalidate cache after a mutation</h4>
           <p className="mb-3 text-sm text-muted-foreground">
-            Replaces ~13 lines of boilerplate per mutation with a declarative definition.
+            Replaces the hand-rolled pending/error signals, try/catch, and post-success invalidation with a declarative definition.
           </p>
           <CodeBlock code={MUTATION_CODE} filename="order-list.store.ts" />
           <div className="mt-3">

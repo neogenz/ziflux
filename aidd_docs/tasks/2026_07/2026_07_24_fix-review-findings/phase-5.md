@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Credibility sweep — example, README, measured size, CI badge

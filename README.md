@@ -4,9 +4,10 @@
 [![license](https://img.shields.io/npm/l/ngx-ziflux)](https://github.com/neogenz/ziflux/blob/main/LICENSE)
 [![Angular](https://img.shields.io/badge/Angular-22+-dd0031)](https://angular.dev)
 [![CI](https://github.com/neogenz/ziflux/actions/workflows/ci.yml/badge.svg)](https://github.com/neogenz/ziflux/actions/workflows/ci.yml)
+[![bundle size](https://img.shields.io/badge/core-5.9_kB_brotli-blue)](https://github.com/neogenz/ziflux/blob/main/.size-limit.json)
 
 A zero-dependency, signal-native caching layer for Angular 22+.
-Stale-while-revalidate semantics for `resource()` — instant navigations, background refreshes, no spinners on return visits.
+Stale-while-revalidate semantics for `resource()` — instant navigations and background refreshes, with no spinner on return visits while the entry is still within `expireTime`.
 
 **[Documentation](https://ziflux.dev)** · [npm](https://www.npmjs.com/package/ngx-ziflux) · [GitHub](https://github.com/neogenz/ziflux)
 
@@ -19,7 +20,7 @@ npm install ngx-ziflux
 ```
 
 ```typescript
-import { provideZiflux, withDevtools } from 'ziflux'
+import { provideZiflux, withDevtools } from 'ngx-ziflux'
 
 // app.config.ts
 export const appConfig: ApplicationConfig = {
@@ -30,7 +31,7 @@ export const appConfig: ApplicationConfig = {
 ```typescript
 import { inject, Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
-import { DataCache, cachedResource } from 'ziflux'
+import { DataCache, cachedResource } from 'ngx-ziflux'
 
 // todo.api.ts — singleton, owns the cache
 @Injectable({ providedIn: 'root' })
@@ -41,14 +42,19 @@ export class TodoApi {
 }
 
 // todo-list.store.ts — route-scoped, reads the cache
-readonly todos = cachedResource({
-  cache: this.#api.cache,
-  cacheKey: ['todos'],
-  loader: () => this.#api.getAll$(),
-})
+@Injectable()
+export class TodoListStore {
+  readonly #api = inject(TodoApi)
+
+  readonly todos = cachedResource({
+    cache: this.#api.cache,
+    cacheKey: ['todos'],
+    loader: () => this.#api.getAll$(),
+  })
+}
 ```
 
-All `DataCache` instances inherit defaults from `provideZiflux()`. Devtools are only active in dev mode.
+All `DataCache` instances inherit defaults from `provideZiflux()`. `new DataCache()` and `cachedResource()` must run inside an Angular injection context — a field initializer, a constructor, or `runInInjectionContext()`. Devtools are only active in dev mode.
 
 See the [full example app](https://github.com/neogenz/ziflux/tree/main/projects/example) for a working Todo demo with mutations, optimistic updates, polling, and devtools.
 
@@ -66,8 +72,8 @@ See the [Architecture Guide](https://ziflux.dev#guide) for the full domain patte
 
 ## Why ziflux?
 
-- **Instant navigations** — cached data appears immediately, fresh data loads in the background. No spinners on return visits.
-- **Optimistic updates in 5 lines** — `cachedMutation` handles the snapshot → mutate → rollback-on-error lifecycle for you.
+- **Instant navigations** — cached data appears immediately, fresh data loads in the background. No spinner on return visits while the entry is within `expireTime`.
+- **Optimistic updates without hand-rolled state** — `cachedMutation` gives you the `onMutate` / `onError` hooks and write-through `set()` / `update()`; you write the snapshot and the rollback, it owns the status signals and the invalidation.
 - **Zero plumbing** — you stop hand-rolling stale-while-revalidate logic, duplicating it across projects, and maintaining it forever.
 
 `resource()` handles the fetch lifecycle. ziflux handles the data lifecycle — when to re-fetch, what to keep, what's stale. Angular signals remain your state layer.
@@ -79,15 +85,15 @@ See the [Architecture Guide](https://ziflux.dev#guide) for the full domain patte
 | | ziflux | TanStack Query | NgRx |
 | --- | --- | --- | --- |
 | Mental model | `resource()` + cache | Query client | Actions + reducers + effects |
-| Angular signals | Native | Adapter | Adapter (SignalStore) |
-| Dependencies | 0 | 3+ | 5+ |
-| Learning curve | Minutes | Hours | Days |
-| API surface | 9 exports | 50+ | 100+ |
+| Angular signals | Native | Angular adapter (`@tanstack/angular-query-experimental`) | Native (`@ngrx/signals` SignalStore) |
+| Runtime dependencies | 0 (peers: `@angular/core`, `@angular/common`, `rxjs`) | TanStack core + Angular adapter | multiple `@ngrx/*` packages |
+| Bundle size | 5.9 kB brotli, enforced in CI | ~13 kB gzip | varies by packages used |
+| API surface | 9 runtime + 13 type exports | broader | broader |
 | Use case | SWR caching for `resource()` | Full data-fetching framework | Full state management |
 | **Best for** | SWR on `resource()` | Full data-fetching layer | Complex state + effects |
 
 **Pick ziflux when** you want caching semantics on top of Angular's built-in `resource()` — nothing more, nothing less.
-**Pick TanStack Query when** you need a comprehensive data-fetching layer with pagination, infinite queries, and devtools across frameworks.
+**Pick TanStack Query when** you need a comprehensive data-fetching layer with pagination, infinite queries, persistence, and devtools across frameworks — noting its Angular adapter still ships as `@tanstack/angular-query-experimental` and documents breaking changes in minor and patch releases.
 **Pick NgRx when** you need full-blown state management with time-travel debugging, entity adapters, and complex side-effect orchestration.
 
 ---
@@ -99,7 +105,7 @@ See the [Architecture Guide](https://ziflux.dev#guide) for the full domain patte
 | `DataCache` | Per-domain cache instance — owns entries, invalidation, dedup |
 | `cachedResource()` | `resource()` + SWR cache awareness. Returns `CachedResourceRef<T>` |
 | `cachedMutation()` | Declarative mutation lifecycle — status signals, optimistic updates, auto-invalidation |
-| `provideZiflux()` | Global config — `staleTime`, `expireTime`, `maxEntries` |
+| `provideZiflux()` | Global config — `staleTime`, `expireTime`, `maxEntries`, `cleanupInterval` |
 | `withDevtools()` | Cache inspector + structured console logging (dev mode only) |
 | `anyLoading()` | Aggregate `Signal<boolean>` from multiple loading/pending signals |
 | `ZIFLUX_CONFIG` | Injection token for the resolved config |
@@ -112,11 +118,11 @@ Full signatures, return types, and usage examples → **[API Reference](https://
 
 ## Freshness Model
 
-Entries move through three states: **Fresh** → **Stale** → **Evicted**. `staleTime` and `expireTime` control the transitions.
+Entries move through three states: **Fresh** → **Stale** → **Expired**. `staleTime` and `expireTime` control the transitions.
 
 - **Fresh** — returned directly from cache, no fetch
 - **Stale** — returned immediately + background fetch (SWR)
-- **Evicted** — cache miss, full fetch from server
+- **Expired** — cache miss, full fetch from server
 
 **Golden rule: `invalidate()` marks entries stale. It never deletes them.**
 Users always see data instantly — even stale — while fresh data loads.
@@ -163,7 +169,7 @@ Hierarchical arrays. Serialized with `JSON.stringify`. Prefix-based invalidation
 - **SWR by Vercel** — popularized SWR in the frontend ecosystem
 - **Angular `resource()`** — the foundation this library builds on
 
-Zero external dependencies. 100% Angular signals + `resource()` + in-memory `Map`.
+Zero runtime dependencies — Angular signals, `resource()` and an in-memory `Map`. `rxjs` is a peer dependency (already present in every Angular app) and is used to consume Observable loaders.
 
 AI code generation instructions: [llms.txt](https://github.com/neogenz/ziflux/blob/main/llms.txt)
 
@@ -183,7 +189,7 @@ Gives your agent deep knowledge of ziflux APIs, patterns, and best practices for
 
 ## Limitations
 
-- **Client-side only** — no SSR transfer state. The cache is in-memory and does not serialize across server/client boundaries.
+- **No SSR transfer state** — the cache is in-memory and does not serialize across the server/client boundary, so the client refetches on hydration. Server rendering itself is safe: the cleanup sweep and `refetchInterval` polling are browser-only.
 
 ---
 

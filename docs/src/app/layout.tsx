@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     "stale-while-revalidate",
     "resource",
     "signals",
-    "angular 21",
+    "angular 22",
     "data cache",
     "ziflux",
   ],

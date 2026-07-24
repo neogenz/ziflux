@@ -10,7 +10,7 @@ const tabs = [
     description: "Own one per domain, in your API service (singleton).",
     code: `class DataCache {
   readonly name: string                   // devtools label (auto-generated if omitted)
-  readonly version: Signal<number>        // auto-increments on invalidate()
+  readonly version: Signal<number>        // auto-increments on invalidate() and clear()
   readonly staleTime: number              // resolved config value
   readonly expireTime: number             // resolved config value
 
@@ -50,6 +50,7 @@ this.cache.invalidate(['order'])  // prefix match`,
   cacheKey: string[] | ((params: P) => string[])
   params?: () => P | undefined     // undefined = idle
   loader: (ctx: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
+  defaultValue?: NoInfer<T>             // value before the first load; narrows value() to Signal<T>
   staleTime?: number
   expireTime?: number
   retry?: number | RetryConfig          // auto-retry with exponential backoff
@@ -58,12 +59,12 @@ this.cache.invalidate(['order'])  // prefix match`,
     usage: `interface CachedResourceRef<T> {
   readonly value: Signal<T | undefined>        // preserves last cached value on error
   readonly status: Signal<ResourceStatus>
-  readonly error: Signal<unknown>
+  readonly error: Signal<Error | undefined>
   readonly isLoading: Signal<boolean>
   readonly isStale: Signal<boolean>            // SWR in progress
   readonly isInitialLoading: Signal<boolean>   // true only on cold cache
-  hasValue(): boolean
-  reload(): boolean
+  hasValue(): this is { readonly value: Signal<T> }   // type guard, narrows value()
+  reload(): boolean                            // refetches now, bypassing staleTime
   destroy(): void
   set(value: T): void
   update(updater: (prev: T | undefined) => T): void
@@ -89,7 +90,7 @@ interface RetryConfig {
   onError?: (error: unknown, args: A, context: C | undefined) => void
 }): CachedMutationRef<A, R>
 
-// Lifecycle: onMutate → mutationFn → onSuccess | onError → invalidateKeys
+// Lifecycle: onMutate → mutationFn → (onSuccess → invalidateKeys) | onError
 // mutate() never rejects — errors are captured in the error signal`,
     usage: `interface CachedMutationRef<A, R> {
   mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
@@ -107,7 +108,7 @@ readonly deleteMutation = cachedMutation({
   invalidateKeys: (id) => [['order']],
   onMutate: (id) => {
     const prev = this.orders.value()                    // 1. snapshot
-    this.orders.update(list => list?.filter(o => o.id !== id))  // 2. optimistic update
+    this.orders.update(list => (list ?? []).filter(o => o.id !== id))  // 2. optimistic update
     return prev                                         // 3. → becomes "context" in onError
   },
   onError: (_err, _id, prev) => {

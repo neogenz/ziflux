@@ -12,13 +12,13 @@ export function PriorArt() {
         <div className="rounded-xl border border-border bg-muted/30 p-5">
           <p className="text-sm font-semibold">TanStack Query (Angular)</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Full data-fetching framework. Infinite queries, SSR hydration, persistence, cross-framework. Pick this if your data layer needs the whole toolbox.
+            Full data-fetching framework. Infinite queries, SSR hydration, persistence, cross-framework. Pick this if your data layer needs the whole toolbox — its Angular adapter still ships as <code>@tanstack/angular-query-experimental</code>.
           </p>
         </div>
         <div className="rounded-xl border border-border bg-muted/30 p-5">
           <p className="text-sm font-semibold">NgRx</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Full state container. Reducers, effects, selectors, time-travel. Pick this when caching is a side-effect of complex global state, not the goal.
+            Two things under one name: the classic Redux store (reducers, effects, selectors, time-travel) and <code>@ngrx/signals</code> SignalStore, which is signal-first. Pick either when caching is a side-effect of complex global state, not the goal — ziflux composes with SignalStore rather than replacing it.
           </p>
         </div>
         <div className="rounded-xl border border-accent/20 bg-accent/[0.03] p-5">

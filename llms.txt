@@ -7,6 +7,11 @@ When generating code for a ziflux project, follow this pattern exactly:
 **Step 1** — Create `product.api.ts`:
 
 ```typescript
+import { inject, Injectable } from '@angular/core'
+import { HttpClient } from '@angular/common/http'
+import type { Observable } from 'rxjs'
+import { DataCache } from 'ngx-ziflux'
+
 @Injectable({ providedIn: 'root' })
 export class ProductApi {
   readonly cache = new DataCache()
@@ -29,6 +34,10 @@ export class ProductApi {
 **Step 2** — Create `product-list.store.ts`:
 
 ```typescript
+import { inject, Injectable } from '@angular/core'
+import { anyLoading, cachedMutation, cachedResource } from 'ngx-ziflux'
+import { ProductApi } from './product.api'
+
 @Injectable()
 export class ProductListStore {
   readonly #api = inject(ProductApi)
@@ -37,6 +46,7 @@ export class ProductListStore {
     cache: this.#api.cache,
     cacheKey: ['product', 'list'],
     loader: () => this.#api.getAll$(),
+    defaultValue: [],
   })
 
   readonly createProduct = cachedMutation({
@@ -55,7 +65,10 @@ export class ProductListStore {
 **Step 3** — Use in component:
 
 ```typescript
-@Component({ providers: [ProductListStore] })
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
+import { ProductListStore } from './product-list.store'
+
+@Component({ providers: [ProductListStore], changeDetection: ChangeDetectionStrategy.OnPush })
 export class ProductListComponent {
   readonly store = inject(ProductListStore)
 }
@@ -69,4 +82,6 @@ export class ProductListComponent {
 - Skip the API layer and fetch directly in `cachedResource`'s loader
 - Create a new `DataCache` per store (use the one from the API service)
 - Write manual loading/error signal boilerplate — use `cachedMutation()` instead
-- Invalidate cache manually inside a store — use `cachedMutation`'s `invalidateKeys`
+- Invalidate the cache manually *after a mutation* — use `cachedMutation`'s `invalidateKeys`. For a user-triggered refresh, call `ref.reload()`: it refetches immediately, bypassing `staleTime`
+- Pass `invalidateKeys` without `cache` (or the reverse) — `cachedMutation` throws in dev mode, because half a config invalidates nothing
+- Call `new DataCache()` or `cachedResource()` outside an injection context — both need one (field initializer, constructor, or `runInInjectionContext()`)

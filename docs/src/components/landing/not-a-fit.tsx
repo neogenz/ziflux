@@ -32,7 +32,7 @@ const LIMITS: Limit[] = [
   },
   {
     key: "ng-pre-21",
-    title: "Angular before v21",
+    title: "Angular before v22",
     reason: "ziflux is built on Angular's `resource()` API.",
     alternative: "Stay on whatever cache pattern you have today; revisit when you upgrade.",
   },

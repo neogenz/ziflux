@@ -1219,4 +1219,46 @@ describe('DataCache', () => {
 
     vi.useRealTimers()
   })
+
+  it('reports an invalidated entry as stale with no time left to stale', () => {
+    cache.set(['inspected'], 'v')
+    cache.invalidate(['inspected'])
+    const info = cache.inspect().entries.find(e => e.key[0] === 'inspected')
+    expect(info?.fresh).toBe(false)
+    expect(info?.state).toBe('stale')
+    expect(info?.timeToStale).toBe(0)
+  })
+
+  it('clear() does not let an older in-flight fetch overwrite a newer one', async () => {
+    let resolveSlow!: (v: string) => void
+    const slow = new Promise<string>(r => (resolveSlow = r))
+
+    const first = cache.prefetch(['todos'], () => slow)
+    cache.clear()
+    await cache.prefetch(['todos'], () => Promise.resolve('NEW'))
+
+    resolveSlow('OLD')
+    await first
+
+    expect(cache.get(['todos'])?.data).toBe('NEW')
+  })
+
+  it('observes an invalidate() that lands between the fetch resolving and the write', async () => {
+    let resolveFetch!: (v: string) => void
+    const pending = new Promise<string>(r => (resolveFetch = r))
+    const done = cache.prefetch(['todos'], () => pending)
+
+    resolveFetch('pre-invalidation')
+    // Land the invalidation a couple of microtasks later: after the fetch
+    // settles, before prefetch() writes it.
+    void Promise.resolve()
+      .then(() => undefined)
+      .then(() => {
+        cache.invalidate(['todos'])
+      })
+    await done
+
+    expect(cache.get(['todos'])?.data).toBe('pre-invalidation')
+    expect(cache.get(['todos'])?.fresh).toBe(false)
+  })
 })

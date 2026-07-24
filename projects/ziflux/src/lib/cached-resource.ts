@@ -160,6 +160,7 @@ export function cachedResource<T, P extends object>(
     refetchOnWindowFocus,
     refetchOnReconnect,
     defaultValue,
+    id,
   } = options
   const params = options.params ?? (() => ({}) as P)
 
@@ -189,10 +190,14 @@ export function cachedResource<T, P extends object>(
   const retryConfig = retry !== undefined ? normalizeRetryConfig(retry) : undefined
 
   // Set by reload() and by polling: the next loader run must hit the network even
-  // if the cached entry is still inside its staleTime window.
-  let force = false
+  // if the cached entry is still inside its staleTime window. Stored as the key it
+  // was armed for, not a bare flag: `reload()` schedules the load asynchronously,
+  // so a params change in the same tick would otherwise hand the force to a
+  // different key and make it refetch data it already has fresh.
+  let forcedKey: string | null = null
 
   const res = resource<T, P | undefined>({
+    id,
     params: () => {
       const p = params()
       if (p === undefined) return undefined
@@ -204,8 +209,8 @@ export function cachedResource<T, P extends object>(
       // so `reqParams` is guaranteed to be P at this point.
       const p = reqParams as P
       const k = resolveKey(p)
-      const forced = force
-      force = false
+      const forced = forcedKey !== null && forcedKey === JSON.stringify(k)
+      if (forced) forcedKey = null
       const entry = cache.get<T>(k, cacheGetOptions)
       if (!forced && entry?.fresh) return entry.data
 
@@ -228,21 +233,24 @@ export function cachedResource<T, P extends object>(
         throw err
       })
 
-      if (!abortSignal.aborted) {
-        if (res.status() === 'local') {
-          return res.value() as T
-        }
-        cache._settle(k, result)
-      }
+      // Settle on every path, even when the value is discarded: the in-flight
+      // record lives until it does, and leaving it behind would block dedup for
+      // this key forever.
+      const local = !abortSignal.aborted && res.status() === 'local'
+      cache._settle(k, result, !abortSignal.aborted && !local)
+      if (local) return res.value() as T
       return result.data
     },
   })
 
-  /** `reload()` bypasses the freshness check — its contract is "refetch now". */
+  /** `reload()` bypasses the freshness check: its contract is "refetch now". */
   const forceReload = (): boolean => {
-    force = true
+    const p = params()
+    if (p === undefined) return res.reload()
+    const previous = forcedKey
+    forcedKey = JSON.stringify(resolveKey(p))
     const started = res.reload()
-    if (!started) force = false
+    if (!started) forcedKey = previous
     return started
   }
 
@@ -254,9 +262,17 @@ export function cachedResource<T, P extends object>(
   const revalidateListeners: Array<() => void> = []
   if (isBrowser && (refetchOnWindowFocus === true || refetchOnReconnect === true)) {
     const destroyRef = inject(DestroyRef)
+    // Checking freshness here rather than letting the loader short-circuit keeps
+    // the resource from cycling through `reloading` on every tab switch, which
+    // would flip isLoading()/isStale() with no request behind it.
+    const isStaleNow = (): boolean => {
+      const p = params()
+      if (p === undefined) return false
+      return cache.get(resolveKey(p), cacheGetOptions)?.fresh !== true
+    }
     const listen = (target: EventTarget, event: string, shouldReload: () => boolean): void => {
       const handler = (): void => {
-        if (shouldReload()) res.reload()
+        if (shouldReload() && isStaleNow()) res.reload()
       }
       target.addEventListener(event, handler)
       revalidateListeners.push(() => {
@@ -281,9 +297,9 @@ export function cachedResource<T, P extends object>(
     effect(onCleanup => {
       const interval = typeof refetchInterval === 'function' ? refetchInterval() : refetchInterval
       if (!interval || interval <= 0) return
-      const id = setInterval(() => forceReload(), interval)
+      const intervalId = setInterval(() => forceReload(), interval)
       onCleanup(() => {
-        clearInterval(id)
+        clearInterval(intervalId)
       })
     })
   }

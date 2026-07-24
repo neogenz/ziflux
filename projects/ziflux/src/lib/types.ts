@@ -145,6 +145,15 @@ export interface CachedResourceOptions<T, P extends object> {
    * with nothing cached. Mirrors `resource()`'s `defaultValue`.
    */
   defaultValue?: NoInfer<T>
+  /**
+   * Forwarded to `resource()`'s `id`, which caches the resolved value in
+   * `TransferState` during server rendering and reuses it on the client, so
+   * hydration does not refetch. Must be identical on server and client.
+   *
+   * The transferred value populates the resource, not the `DataCache`: a later
+   * navigation back to the same key still fetches once to fill the cache.
+   */
+  id?: string
   /** Per-resource override for `ZifluxConfig.staleTime` (ms). */
   staleTime?: number
   /** Per-resource override for `ZifluxConfig.expireTime` (ms). */

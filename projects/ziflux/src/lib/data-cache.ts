@@ -34,6 +34,18 @@ interface InFlightRecord {
 }
 
 /**
+ * A resolved `_fetch()`, still carrying its in-flight record so `_settle()` can
+ * read `raced`/`superseded` as they stand at write time rather than as they
+ * stood when the promise resolved.
+ *
+ * @internal
+ */
+export interface FetchResult<T> {
+  data: T
+  record: InFlightRecord
+}
+
+/**
  * In-memory SWR cache scoped to an Angular injection context.
  *
  * Keys are serialized string arrays; entries transition through
@@ -261,14 +273,17 @@ export class DataCache {
    *
    * @internal
    */
-  async _fetch<T>(
-    key: string[],
-    fn: () => Promise<T>,
-  ): Promise<{ data: T; raced: boolean; superseded: boolean }> {
-    const { promise, record } = this.#start(key, fn)
-    const data = await promise
-    // Read after awaiting: an invalidate() during the wait must be observed here too.
-    return { data, raced: record.raced, superseded: record.superseded }
+  async _fetch<T>(key: string[], fn: () => Promise<T>): Promise<FetchResult<T>> {
+    // `retain`: the record has to outlive the promise. `_settle()` runs several
+    // microtasks later, and an invalidate() in that window must still find
+    // something to flag, or it is silently lost and stale data is stored fresh.
+    const { promise, record } = this.#start(key, fn, true)
+    try {
+      return { data: await promise, record }
+    } catch (error) {
+      this.#release(key, record)
+      throw error
+    }
   }
 
   /**
@@ -281,17 +296,34 @@ export class DataCache {
    *
    * @internal
    */
-  _settle(key: string[], result: { data: unknown; raced: boolean; superseded: boolean }): void {
-    if (result.superseded) return
-    this.set(key, result.data)
-    if (result.raced) {
-      const entry = this.#entries.get(this.#serialize(key))
-      if (entry) entry.invalidated = true
+  _settle(key: string[], result: FetchResult<unknown>, write = true): void {
+    const { record } = result
+    try {
+      // Read the record, not a snapshot taken when the fetch resolved: the caller
+      // may have awaited more work since, and an invalidate() in between counts.
+      if (!write || record.superseded) return
+      this.set(key, result.data)
+      if (record.raced) {
+        const entry = this.#entries.get(this.#serialize(key))
+        if (entry) entry.invalidated = true
+      }
+    } finally {
+      this.#release(key, record)
     }
   }
 
+  /** Drops an in-flight record, unless a newer fetch already replaced it. */
+  #release(key: string[], record: InFlightRecord): void {
+    const serialized = this.#serialize(key)
+    if (this.#inFlight.get(serialized) === record) this.#inFlight.delete(serialized)
+  }
+
   /** Resolves a key to its in-flight fetch, joining an existing one or starting a new one. */
-  #start<T>(key: string[], fn: () => Promise<T>): { promise: Promise<T>; record: InFlightRecord } {
+  #start<T>(
+    key: string[],
+    fn: () => Promise<T>,
+    retain = false,
+  ): { promise: Promise<T>; record: InFlightRecord } {
     const serialized = this.#serialize(key)
     const existing = this.#inFlight.get(serialized)
 
@@ -304,11 +336,13 @@ export class DataCache {
     if (existing) existing.superseded = true
 
     this.#logger?.logDeduplicate(this.name, key, false)
-    const promise = fn().finally(() => {
-      if (this.#inFlight.get(serialized)?.promise === promise) {
-        this.#inFlight.delete(serialized)
-      }
-    })
+    const promise = retain
+      ? fn()
+      : fn().finally(() => {
+          if (this.#inFlight.get(serialized)?.promise === promise) {
+            this.#inFlight.delete(serialized)
+          }
+        })
     const record: InFlightRecord = { promise, raced: false, superseded: false }
     this.#inFlight.set(serialized, record)
     return { promise, record }
@@ -334,16 +368,18 @@ export class DataCache {
   }
 
   /**
-   * Removes all entries and cancels in-flight deduplication. Bumps `version`.
-   * A fetch still running is flagged first, so its late result lands as stale
-   * rather than silently repopulating a cache the caller asked to empty.
+   * Removes all entries and bumps `version`. A fetch still running is flagged,
+   * so its late result lands as stale rather than masquerading as fresh.
+   *
+   * The in-flight records are kept rather than dropped: forgetting them would
+   * leave a later fetch unable to mark the older one superseded, and the older
+   * result could then land last and overwrite the newer one.
    */
   clear(): void {
     this.#entries.clear()
     for (const record of this.#inFlight.values()) {
       record.raced = true
     }
-    this.#inFlight.clear()
     this.#version.update(v => v + 1)
     this.#dataVersion.update(v => v + 1)
     this.#logger?.logClear(this.name)
@@ -371,7 +407,9 @@ export class DataCache {
         age,
         fresh,
         expired,
-        timeToStale: Math.max(0, this.#config.staleTime - age),
+        // An invalidated entry is stale now, whatever its age says. Reporting the
+        // remaining window would contradict `fresh: false` in the same object.
+        timeToStale: entry.invalidated ? 0 : Math.max(0, this.#config.staleTime - age),
         timeToExpire: Math.max(0, this.#config.expireTime - age),
         state,
       }

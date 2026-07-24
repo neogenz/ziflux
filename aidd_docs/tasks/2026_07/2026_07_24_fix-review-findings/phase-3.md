@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Mutation hardening — config pairing error, invalidation isolation

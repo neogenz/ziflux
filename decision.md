@@ -597,6 +597,18 @@ Polling inherited the same bug through `res.reload()`: `refetchInterval: 3_000` 
 
 ---
 
+## D-44 — `cache` and `invalidateKeys` must be passed together
+
+**Decision:** `cachedMutation()` throws at creation, in dev mode only, when exactly one of `cache` / `invalidateKeys` is provided. Invalidation failures are caught and reported instead of rewriting the mutation's outcome.
+
+**Rationale:** the invalidation branch reads `if (invalidateKeys && cache)`, but the two options are independently optional. Passing `invalidateKeys` and forgetting `cache` (or the reverse) produced a mutation that succeeded, fired its callbacks, and invalidated nothing — a stale UI with no error, no warning, nothing in devtools. It is the most likely misconfiguration in the whole API and it was the quietest.
+
+**Rejected alternative:** collapsing the pair into a single `invalidate` option. It reads better, but it is a breaking change to the documented API for a problem a dev-mode guard solves, and `invalidateKeys(args, result)` returning keys is what makes result-derived invalidation (`todo => [['todos', String(todo.id)]]`) possible.
+
+**Isolation:** `invalidateKeys()` or `cache.invalidate()` throwing used to land in the mutation's own `catch`, flipping a succeeded mutation to `error` and firing `onError` after `onSuccess` had already run for the same call. The invalidation loop now has its own `try`/`catch`: status stays `success`, and dev mode logs the failure.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

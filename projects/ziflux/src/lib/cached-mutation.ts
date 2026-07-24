@@ -1,4 +1,4 @@
-import { computed, signal } from '@angular/core'
+import { computed, isDevMode, signal } from '@angular/core'
 import { firstValueFrom, isObservable } from 'rxjs'
 import type { CachedMutationOptions, CachedMutationRef, CachedMutationStatus } from './types'
 
@@ -37,6 +37,17 @@ export function cachedMutation<A = void, R = void, C = void>(
 ): CachedMutationRef<A, R> {
   const { mutationFn, cache, invalidateKeys, onMutate, onSuccess, onError } = options
 
+  // `cache` and `invalidateKeys` are only useful together: with one of them
+  // missing the mutation succeeds and silently invalidates nothing, leaving a
+  // stale UI and no diagnostic. Dev-only, so production pays nothing.
+  if (isDevMode() && !!cache !== !!invalidateKeys) {
+    const missing = cache ? 'invalidateKeys' : 'cache'
+    const given = cache ? 'cache' : 'invalidateKeys'
+    throw new Error(
+      `cachedMutation: \`${given}\` was provided without \`${missing}\`, so nothing would be invalidated. Pass both, or neither.`,
+    )
+  }
+
   const status = signal<CachedMutationStatus>('idle')
   const error = signal<unknown>(undefined)
   const data = signal<R | undefined>(undefined)
@@ -71,8 +82,19 @@ export function cachedMutation<A = void, R = void, C = void>(
       }
 
       if (invalidateKeys && cache) {
-        for (const key of invalidateKeys(args, result)) {
-          cache.invalidate(key)
+        // Isolated: the mutation already succeeded, so a throw here must not
+        // rewrite its outcome to `error` and fire onError on top of onSuccess.
+        try {
+          for (const key of invalidateKeys(args, result)) {
+            cache.invalidate(key)
+          }
+        } catch (invalidationError) {
+          if (isDevMode()) {
+            console.error(
+              'ziflux: invalidateKeys threw after a successful mutation — nothing was invalidated',
+              invalidationError,
+            )
+          }
         }
       }
 

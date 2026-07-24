@@ -1,6 +1,6 @@
 ---
 objective: "Every confirmed finding of the 2026-07-24 strategic review is fixed: invalidation is correct under per-resource overrides, loaders are cancellable, SSR is safe, reload() honors its contract, mutations fail loudly on misconfiguration, the API matches Angular 22 resource() parity claims, and every published claim is measured or deleted."
-status: in-progress
+status: implemented
 ---
 
 # Plan: Fix review findings (bugs, parity, credibility)

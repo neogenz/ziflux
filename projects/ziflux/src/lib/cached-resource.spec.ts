@@ -697,6 +697,94 @@ describe('cachedResource', () => {
     expect(ref.hasValue()).toBe(true)
   })
 
+  it('hasValue() narrows value() to a defined type', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['narrowing'],
+        params: () => ({}),
+        loader: () => Promise.resolve('data'),
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+
+    if (ref.hasValue()) {
+      // Type-level assertion: inside this branch `value()` is `string`, not
+      // `string | undefined`. This line fails to compile if narrowing regresses.
+      const narrowed: string = ref.value()
+      expect(narrowed).toBe('data')
+    } else {
+      throw new Error('expected hasValue() to be true')
+    }
+  })
+
+  // --- defaultValue ---
+
+  it('serves defaultValue before the first load resolves', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string[], Record<string, never>>({
+        cache,
+        cacheKey: ['with-default'],
+        params: () => ({}),
+        loader: () => Promise.resolve(['loaded']),
+        defaultValue: [],
+      }),
+    )
+
+    // Type-level: the defaultValue overload drops `undefined` from value()
+    const initial: string[] = ref.value()
+    expect(initial).toEqual([])
+    expect(ref.hasValue()).toBe(true)
+
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toEqual(['loaded'])
+  })
+
+  it('falls back to defaultValue on error with nothing cached', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string[], Record<string, never>>({
+        cache,
+        cacheKey: ['default-on-error'],
+        params: () => ({}),
+        loader: () => Promise.reject(new Error('boom')),
+        defaultValue: [],
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect(ref.value()).toEqual([])
+  })
+
+  it('prefers cached data over defaultValue', () => {
+    cache.set(['default-vs-cache'], ['from-cache'])
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string[], Record<string, never>>({
+        cache,
+        cacheKey: ['default-vs-cache'],
+        params: () => ({}),
+        loader: () => Promise.resolve(['loaded']),
+        defaultValue: [],
+      }),
+    )
+
+    expect(ref.value()).toEqual(['from-cache'])
+  })
+
+  it('without defaultValue, value() is undefined before the first load', () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['no-default'],
+        params: () => ({}),
+        loader: () => Promise.resolve('data'),
+      }),
+    )
+
+    expect(ref.value()).toBeUndefined()
+  })
+
   // --- per-resource staleTime ---
 
   it('staleTime: 0 overrides cache default — data is always stale', async () => {

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Angular 22 resource() parity — hasValue narrowing, error typing, defaultValue

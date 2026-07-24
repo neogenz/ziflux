@@ -1,4 +1,12 @@
-import { computed, effect, inject, linkedSignal, PLATFORM_ID, resource } from '@angular/core'
+import {
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  PLATFORM_ID,
+  resource,
+  type Signal,
+} from '@angular/core'
 import { isPlatformBrowser } from '@angular/common'
 import { isObservable, type Observable, take } from 'rxjs'
 import type { CachedResourceOptions, CachedResourceRef, RetryConfig } from './types'
@@ -132,9 +140,16 @@ function normalizeRetryConfig(retry: number | RetryConfig): Required<RetryConfig
  * ```
  */
 export function cachedResource<T, P extends object>(
+  options: CachedResourceOptions<T, P> & { defaultValue: NoInfer<T> },
+): Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> }
+export function cachedResource<T, P extends object>(
+  options: CachedResourceOptions<T, P>,
+): CachedResourceRef<T>
+export function cachedResource<T, P extends object>(
   options: CachedResourceOptions<T, P>,
 ): CachedResourceRef<T> {
-  const { cache, cacheKey, loader, staleTime, expireTime, retry, refetchInterval } = options
+  const { cache, cacheKey, loader, staleTime, expireTime, retry, refetchInterval, defaultValue } =
+    options
   const params = options.params ?? (() => ({}) as P)
 
   const resolveKey = (p: P): string[] => (typeof cacheKey === 'function' ? cacheKey(p) : cacheKey)
@@ -248,8 +263,10 @@ export function cachedResource<T, P extends object>(
     if (status === 'local') return res.value()
     const snapshot = staleSnapshot()
     if (snapshot !== NO_VALUE) return snapshot
-    if (status === 'error') return undefined
-    return res.value()
+    if (status === 'error') return defaultValue
+    const current = res.value()
+    // Explicit undefined check, not `??`: `null` is a legitimate cached value.
+    return current === undefined ? defaultValue : current
   })
 
   const isStale = computed(() => {
@@ -285,8 +302,9 @@ export function cachedResource<T, P extends object>(
       if (p !== undefined) cache.set(resolveKey(p), newValue)
       res.set(newValue)
     },
-    hasValue: () =>
-      staleSnapshot() !== NO_VALUE || res.status() === 'resolved' || res.status() === 'local',
+    hasValue(): this is Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> } {
+      return value() !== undefined
+    },
     isStale,
     isInitialLoading,
   }

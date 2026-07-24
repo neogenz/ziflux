@@ -609,6 +609,24 @@ Polling inherited the same bug through `res.reload()`: `refetchInterval: 3_000` 
 
 ---
 
+## D-45 — Close the measured `resource()` parity gaps
+
+**Decision:** `CachedResourceRef.error` is typed `Signal<Error | undefined>`, `hasValue()` is a type guard that narrows `value` to `Signal<T>`, and `cachedResource()` accepts `defaultValue` with the same overload pair Angular uses.
+
+**Rationale:** "mirrors `resource()` exactly" (D-04) is the headline claim, and three details contradicted it against Angular 22:
+
+- `error: Signal<unknown>` — the underlying `res.error` is already `Signal<Error | undefined>` (`@angular/core` `BaseWritableResource`), so ziflux widened a type for nothing and forced consumers to cast.
+- `hasValue(): boolean` — Angular declares `hasValue(): this is ResourceRef<Exclude<T, undefined>>`, so `if (r.hasValue())` narrows. ziflux returned a plain boolean and narrowed nothing.
+- no `defaultValue`, while `resource()` overloads on it: with the option, the ref's value is never `undefined`.
+
+**Narrowing shape:** Angular carries `| undefined` in the ref's generic (`ResourceRef<T | undefined>`), so `Exclude<T, undefined>` is enough. `CachedResourceRef<T>` instead declares `value: Signal<T | undefined>` with `T` as the data type, so the equivalent guard is `Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> }`. The plain intersection without `Omit` does **not** narrow — the wide `value` signature stays first in overload order and `value()` still returns `T | undefined`. Both spec assertions are type-level and fail the build if that regresses.
+
+**`hasValue()` implementation:** now literally `value() !== undefined`, which is what its own doc always claimed. The previous status-based expression was equivalent for every reachable state but had to be re-derived by hand for `defaultValue`.
+
+**Trade-off:** one new option and two changed type signatures. `error` narrowing from `unknown` to `Error | undefined` is technically breaking for anyone who annotated it as `unknown`, but pre-1.0 and strictly more precise.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.

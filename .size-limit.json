@@ -1,0 +1,15 @@
+[
+  {
+    "name": "core (DataCache + cachedResource + cachedMutation + provideZiflux)",
+    "path": "dist/ziflux/fesm2022/ngx-ziflux.mjs",
+    "import": "{ DataCache, cachedResource, cachedMutation, provideZiflux, anyLoading }",
+    "ignore": ["@angular/core", "@angular/common", "rxjs"],
+    "limit": "6.2 kB"
+  },
+  {
+    "name": "everything (including devtools)",
+    "path": "dist/ziflux/fesm2022/ngx-ziflux.mjs",
+    "ignore": ["@angular/core", "@angular/common", "rxjs"],
+    "limit": "6.4 kB"
+  }
+]

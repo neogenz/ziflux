@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/npm/l/ngx-ziflux)](https://github.com/neogenz/ziflux/blob/main/LICENSE)
 [![Angular](https://img.shields.io/badge/Angular-22+-dd0031)](https://angular.dev)
 [![CI](https://github.com/neogenz/ziflux/actions/workflows/ci.yml/badge.svg)](https://github.com/neogenz/ziflux/actions/workflows/ci.yml)
-[![bundle size](https://img.shields.io/badge/core-5.9_kB_brotli-blue)](https://github.com/neogenz/ziflux/blob/main/.size-limit.json)
+[![bundle size](https://img.shields.io/badge/library-5.9_kB_brotli-blue)](https://github.com/neogenz/ziflux/blob/main/.size-limit.json)
 
 A zero-dependency, signal-native caching layer for Angular 22+.
 Stale-while-revalidate semantics for `resource()` — instant navigations and background refreshes, with no spinner on return visits while the entry is still within `expireTime`.
@@ -87,7 +87,7 @@ See the [Architecture Guide](https://ziflux.dev#guide) for the full domain patte
 | Mental model | `resource()` + cache | Query client | Actions + reducers + effects |
 | Angular signals | Native | Angular adapter (`@tanstack/angular-query-experimental`) | Native (`@ngrx/signals` SignalStore) |
 | Runtime dependencies | 0 (peers: `@angular/core`, `@angular/common`, `rxjs`) | TanStack core + Angular adapter | multiple `@ngrx/*` packages |
-| Bundle size | 5.9 kB brotli, enforced in CI | ~13 kB gzip | varies by packages used |
+| Bundle size | 6.6 kB gzip (5.9 kB brotli), enforced in CI | ~13 kB gzip | varies by packages used |
 | API surface | 9 runtime + 13 type exports | broader | broader |
 | Use case | SWR caching for `resource()` | Full data-fetching framework | Full state management |
 | **Best for** | SWR on `resource()` | Full data-fetching layer | Complex state + effects |

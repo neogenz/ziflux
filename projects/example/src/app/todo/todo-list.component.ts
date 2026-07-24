@@ -88,7 +88,7 @@ import { TodoListStore } from './todo-list.store'
     <!-- Footer -->
     @if (store.todos.hasValue()) {
       <div class="footer">
-        <span>{{ (store.todos.value() ?? []).length }} todos</span>
+        <span>{{ store.todos.value().length }} todos</span>
         <span>&mdash;</span>
         <span>{{ store.completedCount() }} completed</span>
       </div>

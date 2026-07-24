@@ -1,8 +1,69 @@
-import { computed, effect, linkedSignal, resource } from '@angular/core'
-import { firstValueFrom, isObservable } from 'rxjs'
+import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  linkedSignal,
+  PLATFORM_ID,
+  resource,
+  type Signal,
+} from '@angular/core'
+import { isPlatformBrowser } from '@angular/common'
+import { isObservable, type Observable, take } from 'rxjs'
 import type { CachedResourceOptions, CachedResourceRef, RetryConfig } from './types'
 
 const NO_VALUE = Symbol('NO_VALUE')
+
+/** The error an aborted operation rejects with, normalized to an `Error`. */
+function abortReason(abortSignal: AbortSignal): Error {
+  const reason: unknown = abortSignal.reason
+  return reason instanceof Error
+    ? reason
+    : new DOMException('The operation was aborted', 'AbortError')
+}
+
+/**
+ * Resolves with an Observable's first value, then unsubscribes.
+ *
+ * Unlike `firstValueFrom()`, aborting the signal tears the subscription down —
+ * which is what cancels the underlying `HttpClient` request when Angular aborts
+ * a superseded loader.
+ */
+function firstValueWithAbort<T>(source: Observable<T>, abortSignal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    if (abortSignal.aborted) {
+      reject(abortReason(abortSignal))
+      return
+    }
+
+    const onAbort = (): void => {
+      subscription.unsubscribe()
+      reject(abortReason(abortSignal))
+    }
+    const stopListening = (): void => {
+      abortSignal.removeEventListener('abort', onAbort)
+    }
+
+    abortSignal.addEventListener('abort', onAbort, { once: true })
+
+    // take(1) tears the source down after the first value, so only the abort
+    // path needs an explicit unsubscribe.
+    const subscription = source.pipe(take(1)).subscribe({
+      next: value => {
+        stopListening()
+        resolve(value)
+      },
+      error: (error: unknown) => {
+        stopListening()
+        reject(error instanceof Error ? error : new Error(String(error)))
+      },
+      complete: () => {
+        stopListening()
+        reject(new Error('cachedResource: the loader Observable completed without emitting'))
+      },
+    })
+  })
+}
 
 function retryWithBackoff<T>(
   fn: () => Promise<T>,
@@ -18,8 +79,7 @@ function retryWithBackoff<T>(
       return new Promise<T>((resolve, reject) => {
         // Guard: signal may already be aborted before the listener is registered
         if (abortSignal.aborted) {
-          // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- DOMException is the standard AbortError type
-          reject(abortSignal.reason ?? new DOMException('The operation was aborted', 'AbortError'))
+          reject(abortReason(abortSignal))
           return
         }
         const timer = setTimeout(() => {
@@ -29,10 +89,7 @@ function retryWithBackoff<T>(
           'abort',
           () => {
             clearTimeout(timer)
-            // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- DOMException is the standard AbortError type
-            reject(
-              abortSignal.reason ?? new DOMException('The operation was aborted', 'AbortError'),
-            )
+            reject(abortReason(abortSignal))
           },
           { once: true },
         )
@@ -56,17 +113,21 @@ function normalizeRetryConfig(retry: number | RetryConfig): Required<RetryConfig
  *
  * On each `params` change or cache invalidation, previously cached data is
  * served immediately while a background fetch refreshes the entry. The loader
- * runs only when the cache entry is missing or stale.
+ * runs only when the cache entry is missing or stale — except through
+ * `reload()` and `refetchInterval`, which always hit the network.
  *
- * Supports Promises and Observables in the `loader`. Pass `retry` (number or
- * `RetryConfig`) to enable exponential-backoff retries. Pass `refetchInterval`
- * to poll in the background — the interval is reactive: if you pass a signal,
- * changing it restarts the timer automatically.
+ * Supports Promises and Observables in the `loader`. An Observable loader is
+ * unsubscribed when Angular aborts the request, which cancels the underlying
+ * `HttpClient` call. Pass `retry` (number or `RetryConfig`) to enable
+ * exponential-backoff retries. Pass `refetchInterval` to poll in the background
+ * — the interval is reactive: if you pass a signal, changing it restarts the
+ * timer automatically.
  *
  * @remarks
  * Must be called inside an injection context (constructor, `inject()` call, or
  * `runInInjectionContext()`). The underlying `resource()` and the polling
- * `effect()` are destroyed with the owning injector.
+ * `effect()` are destroyed with the owning injector. Polling is browser-only:
+ * no interval is scheduled during server-side rendering.
  *
  * @example
  * ```ts
@@ -80,9 +141,27 @@ function normalizeRetryConfig(retry: number | RetryConfig): Required<RetryConfig
  * ```
  */
 export function cachedResource<T, P extends object>(
+  options: CachedResourceOptions<T, P> & { defaultValue: NoInfer<T> },
+): Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> }
+export function cachedResource<T, P extends object>(
+  options: CachedResourceOptions<T, P>,
+): CachedResourceRef<T>
+export function cachedResource<T, P extends object>(
   options: CachedResourceOptions<T, P>,
 ): CachedResourceRef<T> {
-  const { cache, cacheKey, loader, staleTime, expireTime, retry, refetchInterval } = options
+  const {
+    cache,
+    cacheKey,
+    loader,
+    staleTime,
+    expireTime,
+    retry,
+    refetchInterval,
+    refetchOnWindowFocus,
+    refetchOnReconnect,
+    defaultValue,
+    id,
+  } = options
   const params = options.params ?? (() => ({}) as P)
 
   const resolveKey = (p: P): string[] => (typeof cacheKey === 'function' ? cacheKey(p) : cacheKey)
@@ -110,7 +189,15 @@ export function cachedResource<T, P extends object>(
 
   const retryConfig = retry !== undefined ? normalizeRetryConfig(retry) : undefined
 
+  // Set by reload() and by polling: the next loader run must hit the network even
+  // if the cached entry is still inside its staleTime window. Stored as the key it
+  // was armed for, not a bare flag: `reload()` schedules the load asynchronously,
+  // so a params change in the same tick would otherwise hand the force to a
+  // different key and make it refetch data it already has fresh.
+  let forcedKey: string | null = null
+
   const res = resource<T, P | undefined>({
+    id,
     params: () => {
       const p = params()
       if (p === undefined) return undefined
@@ -122,47 +209,97 @@ export function cachedResource<T, P extends object>(
       // so `reqParams` is guaranteed to be P at this point.
       const p = reqParams as P
       const k = resolveKey(p)
+      const forced = forcedKey !== null && forcedKey === JSON.stringify(k)
+      if (forced) forcedKey = null
       const entry = cache.get<T>(k, cacheGetOptions)
-      if (entry?.fresh) return entry.data
+      if (!forced && entry?.fresh) return entry.data
 
       const doFetch = () => {
         const invoke = () => {
           const result = loader({ params: p, abortSignal })
-          return isObservable(result) ? firstValueFrom(result) : result
+          return isObservable(result) ? firstValueWithAbort(result, abortSignal) : result
         }
         return retryConfig ? retryWithBackoff(invoke, retryConfig, abortSignal) : invoke()
       }
 
-      // When invalidate() preserves in-flight promises, a dedup hit may return
-      // a promise whose underlying fetch was aborted by Angular (previous loader
-      // abort on param change). Catch that stale AbortError and retry with the
-      // current loader's (non-aborted) signal.
-      const data = await cache.deduplicate(k, doFetch).catch((err: unknown) => {
+      // A dedup hit may return a promise whose underlying fetch was aborted by
+      // Angular (a sibling resource's loader aborted on param change or destroy).
+      // Catch that stale AbortError and retry with the current loader's
+      // (non-aborted) signal.
+      const result = await cache._fetch(k, doFetch).catch((err: unknown) => {
         if (!abortSignal.aborted && err instanceof DOMException && err.name === 'AbortError') {
-          return cache.deduplicate(k, doFetch)
+          return cache._fetch(k, doFetch)
         }
         throw err
       })
 
-      if (!abortSignal.aborted) {
-        if (res.status() === 'local') {
-          return res.value() as T
-        }
-        cache.set(k, data)
-        cache.clearDirty(k)
-      }
-      return data
+      // Settle on every path, even when the value is discarded: the in-flight
+      // record lives until it does, and leaving it behind would block dedup for
+      // this key forever.
+      const local = !abortSignal.aborted && res.status() === 'local'
+      cache._settle(k, result, !abortSignal.aborted && !local)
+      if (local) return res.value() as T
+      return result.data
     },
   })
 
-  // Background polling
-  if (refetchInterval !== undefined) {
+  /** `reload()` bypasses the freshness check: its contract is "refetch now". */
+  const forceReload = (): boolean => {
+    const p = params()
+    if (p === undefined) return res.reload()
+    const previous = forcedKey
+    forcedKey = JSON.stringify(resolveKey(p))
+    const started = res.reload()
+    if (!started) forcedKey = previous
+    return started
+  }
+
+  const isBrowser = isPlatformBrowser(inject(PLATFORM_ID, { optional: true }) ?? 'browser')
+
+  // Revalidation triggers. These call `res.reload()` rather than `forceReload()`
+  // so the loader's freshness check still applies: an entry inside its staleTime
+  // is served from cache, and returning to a tab costs no request.
+  const revalidateListeners: Array<() => void> = []
+  if (isBrowser && (refetchOnWindowFocus === true || refetchOnReconnect === true)) {
+    const destroyRef = inject(DestroyRef)
+    // Checking freshness here rather than letting the loader short-circuit keeps
+    // the resource from cycling through `reloading` on every tab switch, which
+    // would flip isLoading()/isStale() with no request behind it.
+    const isStaleNow = (): boolean => {
+      const p = params()
+      if (p === undefined) return false
+      return cache.get(resolveKey(p), cacheGetOptions)?.fresh !== true
+    }
+    const listen = (target: EventTarget, event: string, shouldReload: () => boolean): void => {
+      const handler = (): void => {
+        if (shouldReload() && isStaleNow()) res.reload()
+      }
+      target.addEventListener(event, handler)
+      revalidateListeners.push(() => {
+        target.removeEventListener(event, handler)
+      })
+    }
+
+    if (refetchOnWindowFocus === true) {
+      listen(document, 'visibilitychange', () => document.visibilityState === 'visible')
+    }
+    if (refetchOnReconnect === true) {
+      listen(window, 'online', () => true)
+    }
+    destroyRef.onDestroy(() => {
+      for (const stop of revalidateListeners) stop()
+    })
+  }
+
+  // Background polling. Browser-only: a recurring timer keeps an SSR render from
+  // ever stabilizing, and each tick would reload a resource nobody will hydrate.
+  if (refetchInterval !== undefined && isBrowser) {
     effect(onCleanup => {
       const interval = typeof refetchInterval === 'function' ? refetchInterval() : refetchInterval
       if (!interval || interval <= 0) return
-      const id = setInterval(() => res.reload(), interval)
+      const intervalId = setInterval(() => forceReload(), interval)
       onCleanup(() => {
-        clearInterval(id)
+        clearInterval(intervalId)
       })
     })
   }
@@ -179,8 +316,10 @@ export function cachedResource<T, P extends object>(
     if (status === 'local') return res.value()
     const snapshot = staleSnapshot()
     if (snapshot !== NO_VALUE) return snapshot
-    if (status === 'error') return undefined
-    return res.value()
+    if (status === 'error') return defaultValue
+    const current = res.value()
+    // Explicit undefined check, not `??`: `null` is a legitimate cached value.
+    return current === undefined ? defaultValue : current
   })
 
   const isStale = computed(() => {
@@ -197,8 +336,10 @@ export function cachedResource<T, P extends object>(
     status: res.status,
     error: res.error,
     isLoading: res.isLoading,
-    reload: () => res.reload(),
+    reload: forceReload,
     destroy: () => {
+      for (const stop of revalidateListeners) stop()
+      revalidateListeners.length = 0
       res.destroy()
     },
     // Write-through to DataCache + Angular resource. The DataCache write makes
@@ -216,8 +357,9 @@ export function cachedResource<T, P extends object>(
       if (p !== undefined) cache.set(resolveKey(p), newValue)
       res.set(newValue)
     },
-    hasValue: () =>
-      staleSnapshot() !== NO_VALUE || res.status() === 'resolved' || res.status() === 'local',
+    hasValue(): this is Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> } {
+      return value() !== undefined
+    },
     isStale,
     isInitialLoading,
   }

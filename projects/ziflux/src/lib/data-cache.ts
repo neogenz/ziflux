@@ -1,4 +1,5 @@
-import { DestroyRef, inject, signal } from '@angular/core'
+import { DestroyRef, inject, PLATFORM_ID, signal } from '@angular/core'
+import { isPlatformBrowser } from '@angular/common'
 import { type Observable, tap } from 'rxjs'
 import { CacheRegistry } from './cache-registry'
 import { DevtoolsLogger } from './devtools-logger'
@@ -19,6 +20,32 @@ import type {
 let cacheCounter = 0
 
 /**
+ * A fetch currently in flight for one key.
+ *
+ * `raced` is set when `invalidate()` (or `clear()`) fires while the fetch is
+ * running: the data it will resolve with predates that invalidation, so it must
+ * never be reused by a later caller, and it is stored as already-invalidated.
+ */
+interface InFlightRecord {
+  promise: Promise<unknown>
+  raced: boolean
+  /** A newer fetch for the same key replaced this one; its late result must not overwrite. */
+  superseded: boolean
+}
+
+/**
+ * A resolved `_fetch()`, still carrying its in-flight record so `_settle()` can
+ * read `raced`/`superseded` as they stand at write time rather than as they
+ * stood when the promise resolved.
+ *
+ * @internal
+ */
+export interface FetchResult<T> {
+  data: T
+  record: InFlightRecord
+}
+
+/**
  * In-memory SWR cache scoped to an Angular injection context.
  *
  * Keys are serialized string arrays; entries transition through
@@ -32,9 +59,7 @@ let cacheCounter = 0
  */
 export class DataCache {
   readonly #entries = new Map<string, CacheEntry<unknown>>()
-  readonly #inFlight = new Map<string, { promise: Promise<unknown>; staleAtCreation: boolean }>()
-  readonly #dirtyPrefixes = new Set<string>()
-  readonly #resolvedKeys = new Set<string>()
+  readonly #inFlight = new Map<string, InFlightRecord>()
   readonly #version = signal(0)
   readonly #dataVersion = signal(0)
   readonly #config: ZifluxConfig
@@ -75,7 +100,11 @@ export class DataCache {
       })
     }
 
-    if (this.#config.cleanupInterval) {
+    // Browser-only: on the server a recurring timer keeps the app from ever
+    // stabilizing, and the cache does not outlive the render anyway. PLATFORM_ID
+    // is optional so a bare `Injector.create` context still behaves as before.
+    const platformId = inject(PLATFORM_ID, { optional: true })
+    if (this.#config.cleanupInterval && isPlatformBrowser(platformId ?? 'browser')) {
       const id = setInterval(() => this.cleanup(), this.#config.cleanupInterval)
       destroyRef?.onDestroy(() => {
         clearInterval(id)
@@ -120,6 +149,9 @@ export class DataCache {
    * Returns the cached entry for `key`, or `null` if absent or expired.
    * Per-call `staleTime`/`expireTime` overrides take precedence over the instance config.
    * An expired entry is deleted on read.
+   *
+   * An entry marked by `invalidate()` is never `fresh`, regardless of its age or
+   * of any `staleTime` override — invalidation is a flag, not a timestamp shift.
    */
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- heterogeneous cache: caller provides T to cast from unknown
   get<T>(
@@ -145,13 +177,16 @@ export class DataCache {
       this.#entries.set(serialized, entry)
     }
 
-    return { data: entry.data as T, fresh: age < staleTime }
+    return { data: entry.data as T, fresh: age < staleTime && !entry.invalidated }
   }
 
-  /** Writes or overwrites an entry. Resets the entry's `createdAt` timestamp. */
+  /**
+   * Writes or overwrites an entry. Resets the entry's `createdAt` timestamp and
+   * clears any `invalidate()` flag — a write is fresh by definition.
+   */
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- heterogeneous cache: T inferred from data arg
   set<T>(key: string[], data: T): void {
-    this.#entries.set(this.#serialize(key), { data, createdAt: Date.now() })
+    this.#entries.set(this.#serialize(key), { data, createdAt: Date.now(), invalidated: false })
     this.#evictOverflow()
     this.#dataVersion.update(v => v + 1)
     this.#logger?.logSet(this.name, key, data)
@@ -175,11 +210,14 @@ export class DataCache {
    * matches any key whose serialization begins with `["todos"` — e.g.
    * `['todos', '1']`, `['todos', 'all']`, etc.
    *
-   * Entries are not deleted; their timestamp is shifted back so that
-   * `get()` returns `fresh: false`, triggering a background revalidation.
-   * In-flight `deduplicate()` promises are preserved so that subsequent
-   * `deduplicate()` calls can reuse an already-running fetch (dedup hit)
-   * instead of starting redundant parallel requests.
+   * Entries are not deleted and their timestamps are not touched: matching entries
+   * are flagged, so `get()` returns `fresh: false` and a background revalidation
+   * starts. The flag is independent of `staleTime`, so a per-resource override
+   * larger than the cache's cannot swallow the invalidation, and a smaller
+   * `expireTime` override cannot turn it into an eviction.
+   *
+   * Matching in-flight fetches are flagged too: their data predates this call, so
+   * a later caller never reuses them and their result lands as already-stale.
    * Bumps `version` to notify reactive consumers.
    */
   invalidate(prefix: string[]): void {
@@ -187,15 +225,12 @@ export class DataCache {
     const prefixStr = JSON.stringify(prefix).slice(0, -1)
     for (const [key, entry] of this.#entries) {
       if (key.startsWith(prefixStr)) {
-        // Set timestamp so age is exactly staleTime + 1 → entry reads as stale but never expired.
-        // Uses absolute positioning so repeated invalidate() calls are idempotent.
-        entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
+        entry.invalidated = true
       }
     }
-    this.#dirtyPrefixes.add(prefixStr)
-    for (const key of this.#resolvedKeys) {
+    for (const [key, record] of this.#inFlight) {
       if (key.startsWith(prefixStr)) {
-        this.#resolvedKeys.delete(key)
+        record.raced = true
       }
     }
     this.#version.update(v => v + 1)
@@ -223,36 +258,94 @@ export class DataCache {
    * If a request for `key` is already pending, returns the existing promise
    * instead of calling `fn` again. The in-flight record is cleared when
    * the promise settles.
+   *
+   * A pending fetch that `invalidate()` has raced is never reused — its data
+   * predates the invalidation, so a fresh request is issued instead.
    */
   deduplicate<T>(key: string[], fn: () => Promise<T>): Promise<T> {
+    return this.#start(key, fn).promise
+  }
+
+  /**
+   * `deduplicate()` plus the information `_settle()` needs: whether an
+   * `invalidate()` raced the fetch that produced this data, and whether a newer
+   * fetch for the same key has since replaced it.
+   *
+   * @internal
+   */
+  async _fetch<T>(key: string[], fn: () => Promise<T>): Promise<FetchResult<T>> {
+    // `retain`: the record has to outlive the promise. `_settle()` runs several
+    // microtasks later, and an invalidate() in that window must still find
+    // something to flag, or it is silently lost and stale data is stored fresh.
+    const { promise, record } = this.#start(key, fn, true)
+    try {
+      return { data: await promise, record }
+    } catch (error) {
+      this.#release(key, record)
+      throw error
+    }
+  }
+
+  /**
+   * Stores the result of a `_fetch()`.
+   *
+   * A superseded result is dropped: a newer fetch for the same key already
+   * landed, and this one carries older data. A raced result is written but
+   * immediately flagged, so it is served as stale and revalidated instead of
+   * masquerading as fresh.
+   *
+   * @internal
+   */
+  _settle(key: string[], result: FetchResult<unknown>, write = true): void {
+    const { record } = result
+    try {
+      // Read the record, not a snapshot taken when the fetch resolved: the caller
+      // may have awaited more work since, and an invalidate() in between counts.
+      if (!write || record.superseded) return
+      this.set(key, result.data)
+      if (record.raced) {
+        const entry = this.#entries.get(this.#serialize(key))
+        if (entry) entry.invalidated = true
+      }
+    } finally {
+      this.#release(key, record)
+    }
+  }
+
+  /** Drops an in-flight record, unless a newer fetch already replaced it. */
+  #release(key: string[], record: InFlightRecord): void {
+    const serialized = this.#serialize(key)
+    if (this.#inFlight.get(serialized) === record) this.#inFlight.delete(serialized)
+  }
+
+  /** Resolves a key to its in-flight fetch, joining an existing one or starting a new one. */
+  #start<T>(
+    key: string[],
+    fn: () => Promise<T>,
+    retain = false,
+  ): { promise: Promise<T>; record: InFlightRecord } {
     const serialized = this.#serialize(key)
     const existing = this.#inFlight.get(serialized)
 
-    if (existing) {
-      // A fetch started while the entry was already stale (response to invalidation)
-      // is always safe to reuse. A fetch started while fresh (pre-mutation) should be
-      // discarded if the entry has since been invalidated.
-      const entry = this.#entries.get(serialized)
-      const isStale = !!entry && Date.now() - entry.createdAt >= this.#config.staleTime
-
-      if (existing.staleAtCreation || !isStale) {
-        this.#logger?.logDeduplicate(this.name, key, true)
-        return existing.promise as Promise<T>
-      }
+    if (existing && !existing.raced) {
+      this.#logger?.logDeduplicate(this.name, key, true)
+      return { promise: existing.promise as Promise<T>, record: existing }
     }
 
-    this.#logger?.logDeduplicate(this.name, key, false)
-    const entry = this.#entries.get(serialized)
-    const staleAtCreation = !!entry && Date.now() - entry.createdAt >= this.#config.staleTime
+    // Replacing a raced fetch: its result is now obsolete and must not overwrite ours.
+    if (existing) existing.superseded = true
 
-    const promise = fn().finally(() => {
-      const current = this.#inFlight.get(serialized)
-      if (current?.promise === promise) {
-        this.#inFlight.delete(serialized)
-      }
-    })
-    this.#inFlight.set(serialized, { promise, staleAtCreation })
-    return promise
+    this.#logger?.logDeduplicate(this.name, key, false)
+    const promise = retain
+      ? fn()
+      : fn().finally(() => {
+          if (this.#inFlight.get(serialized)?.promise === promise) {
+            this.#inFlight.delete(serialized)
+          }
+        })
+    const record: InFlightRecord = { promise, raced: false, superseded: false }
+    this.#inFlight.set(serialized, record)
+    return { promise, record }
   }
 
   /**
@@ -260,11 +353,10 @@ export class DataCache {
    * Uses `deduplicate()` internally, so concurrent prefetch calls for the
    * same key are collapsed into one request.
    *
-   * If the key was invalidated (dirty), the data is still written but marked
-   * as stale so that `cachedResource` triggers a background revalidation
-   * instead of serving potentially outdated data. Dirty state is tracked per
-   * prefix; `clearDirty()` marks individual keys as resolved without
-   * affecting sibling keys under the same prefix.
+   * If an `invalidate()` races the fetch, the data is still written but flagged,
+   * so `cachedResource` triggers a background revalidation instead of serving
+   * data that predates the invalidation. A fetch started *after* an invalidation
+   * is stored as fresh — it already carries the post-invalidation state.
    *
    * @remarks
    * If a `cachedResource` with the same key resolves after this prefetch,
@@ -272,35 +364,22 @@ export class DataCache {
    * This is harmless but restarts the freshness timer.
    */
   async prefetch<T>(key: string[], fn: () => Promise<T>): Promise<void> {
-    const data = await this.deduplicate(key, fn)
-    const serialized = this.#serialize(key)
-    const dirty = this.#isDirty(serialized)
-    this.set(key, data)
-    if (dirty) {
-      const entry = this.#entries.get(serialized)
-      if (entry) {
-        entry.createdAt = Math.min(entry.createdAt, Date.now() - this.#config.staleTime - 1)
-      }
-    }
+    this._settle(key, await this._fetch(key, fn))
   }
 
   /**
-   * Marks `key` as resolved (freshly fetched), so `prefetch()` writes it as fresh again.
-   * Called by `cachedResource` after the loader fetches genuinely fresh data from the server.
-   * Only affects the exact key — sibling keys under the same dirty prefix stay dirty.
+   * Removes all entries and bumps `version`. A fetch still running is flagged,
+   * so its late result lands as stale rather than masquerading as fresh.
    *
-   * @internal
+   * The in-flight records are kept rather than dropped: forgetting them would
+   * leave a later fetch unable to mark the older one superseded, and the older
+   * result could then land last and overwrite the newer one.
    */
-  clearDirty(key: string[]): void {
-    this.#resolvedKeys.add(this.#serialize(key))
-  }
-
-  /** Removes all entries and cancels in-flight deduplication. Bumps `version`. */
   clear(): void {
     this.#entries.clear()
-    this.#inFlight.clear()
-    this.#dirtyPrefixes.clear()
-    this.#resolvedKeys.clear()
+    for (const record of this.#inFlight.values()) {
+      record.raced = true
+    }
     this.#version.update(v => v + 1)
     this.#dataVersion.update(v => v + 1)
     this.#logger?.logClear(this.name)
@@ -314,7 +393,7 @@ export class DataCache {
     const now = Date.now()
     const entries = [...this.#entries].map(([serialized, entry]) => {
       const age = now - entry.createdAt
-      const fresh = age < this.#config.staleTime
+      const fresh = age < this.#config.staleTime && !entry.invalidated
       const expired = age > this.#config.expireTime
       const state: CacheEntryInfo<unknown>['state'] = fresh
         ? 'fresh'
@@ -328,7 +407,9 @@ export class DataCache {
         age,
         fresh,
         expired,
-        timeToStale: Math.max(0, this.#config.staleTime - age),
+        // An invalidated entry is stale now, whatever its age says. Reporting the
+        // remaining window would contradict `fresh: false` in the same object.
+        timeToStale: entry.invalidated ? 0 : Math.max(0, this.#config.staleTime - age),
         timeToExpire: Math.max(0, this.#config.expireTime - age),
         state,
       }
@@ -359,14 +440,6 @@ export class DataCache {
       }
     }
     return evicted
-  }
-
-  #isDirty(serialized: string): boolean {
-    if (this.#resolvedKeys.has(serialized)) return false
-    for (const prefix of this.#dirtyPrefixes) {
-      if (serialized.startsWith(prefix)) return true
-    }
-    return false
   }
 
   #serialize(key: string[]): string {

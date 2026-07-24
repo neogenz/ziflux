@@ -40,12 +40,13 @@ export function Hero() {
 
         {/* Value proposition */}
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Every time your user navigates back to a page they already visited, they see a spinner.
-          ziflux eliminates that. One cache layer with{" "}
-          <strong className="text-foreground">stale-while-revalidate</strong> (SWR) semantics:
-          return visits are instant, background refreshes are silent.
-          {" "}If you know <code>resource()</code> and signals, you already know ziflux.
-          3 core functions, zero dependencies, ~2KB.
+          Go back to a page you already visited and you get the spinner again. ziflux paints the
+          cached value immediately and refreshes behind it, for as long as the entry is within{" "}
+          <code>expireTime</code>.
+        </p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          If you know <code>resource()</code> and signals, most of this is already familiar. Three
+          APIs, no runtime dependencies, 6.2 kB brotli enforced in CI.
         </p>
 
         {/* Install */}
@@ -53,11 +54,11 @@ export function Hero() {
           <CodeBlock code={INSTALL_CODE} language="bash" />
         </div>
 
-        {/* Primary CTAs — explicit paths after install snippet */}
+        {/* Primary CTAs, explicit paths after install snippet */}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <a
             href="#quickstart"
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[opacity,scale] duration-150 hover:opacity-90 active:scale-[0.96]"
           >
             Quick start
             <span aria-hidden="true">→</span>
@@ -66,14 +67,14 @@ export function Hero() {
             href="https://www.npmjs.com/package/ngx-ziflux"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-[color,background-color,scale] duration-150 hover:bg-muted active:scale-[0.96]"
           >
             View on npm
             <span aria-hidden="true">↗</span>
           </a>
         </div>
 
-        {/* Usage — the signature code */}
+        {/* Usage, the signature code */}
         <div className="mt-6">
           <CodeBlock code={USAGE_CODE} filename="order-list.store.ts" />
         </div>

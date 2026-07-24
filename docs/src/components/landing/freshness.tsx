@@ -12,7 +12,7 @@ export function Freshness() {
         Every cached entry goes through three phases. <code>invalidate()</code> marks entries stale &mdash; it never deletes them.
       </p>
 
-      {/* Timeline — phase bars */}
+      {/* Timeline, phase bars */}
       <div data-md-visual className="mt-8 flex gap-1">
         <div className="flex-[3] rounded-l-md bg-emerald-500/80 py-3 px-4">
           <p className="text-sm font-bold text-white">FRESH</p>
@@ -93,7 +93,7 @@ export function Freshness() {
       <div className="mt-10">
         <h3 className="mb-2 text-lg font-semibold">Cache keys</h3>
         <p className="mb-4 text-sm text-muted-foreground">
-          You delete an order. The list, the detail page, every filtered view — all need to refresh.
+          You delete an order. The list, the detail page and every filtered view all need to refresh.
           Cache keys make this one line:
         </p>
 
@@ -136,8 +136,8 @@ export function Freshness() {
           <div className="border-l-2 border-emerald-500 pl-4">
             <p className="mb-2 font-semibold text-emerald-500">Cache</p>
             <ul className="space-y-1.5 text-muted-foreground">
-              <li>GET — entity lists</li>
-              <li>GET — entity details</li>
+              <li>GET, entity lists</li>
+              <li>GET, entity details</li>
               <li>Data shared across multiple screens</li>
               <li>Predictable access patterns (tabs, navigation)</li>
             </ul>

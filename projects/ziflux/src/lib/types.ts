@@ -8,6 +8,11 @@ import type { DataCache } from './data-cache'
 export interface CacheEntry<T> {
   data: T
   createdAt: number
+  /**
+   * Set by `invalidate()`. An invalidated entry is never `fresh`, whatever its age
+   * or the caller's `staleTime` override. Cleared by the next `set()`.
+   */
+  invalidated: boolean
 }
 
 /** Global freshness and eviction policy for a `DataCache` instance. */
@@ -98,20 +103,23 @@ export interface RetryConfig {
  * cache version bumps from unrelated invalidations.
  */
 export interface CachedResourceRef<T> {
-  /** Current cached value. `undefined` before the first successful load. */
+  /** Current cached value. `undefined` before the first successful load, unless `defaultValue` is set. */
   readonly value: Signal<T | undefined>
   /** Mirrors Angular's `ResourceStatus` string union. */
   readonly status: Signal<ResourceStatus>
   /** Last error thrown by the loader, or `undefined` when not in error state. */
-  readonly error: Signal<unknown>
+  readonly error: Signal<Error | undefined>
   /** `true` while a fetch is in-flight (initial load or background revalidation). */
   readonly isLoading: Signal<boolean>
   /** `true` when the cached value exists but has exceeded `staleTime`. A background refetch is in-flight. */
   readonly isStale: Signal<boolean>
   /** `true` only during the very first fetch — no cached value exists yet. */
   readonly isInitialLoading: Signal<boolean>
-  /** Returns `true` if `value()` is not `undefined`. */
-  hasValue(): boolean
+  /**
+   * Returns `true` if `value()` is not `undefined`, narrowing `value` to `Signal<T>`.
+   * Mirrors `ResourceRef.hasValue()`.
+   */
+  hasValue(): this is Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> }
   /** Triggers an immediate refetch, bypassing staleness checks. Returns `false` if already loading. */
   reload(): boolean
   /** Destroys the underlying Angular resource and cancels any in-flight request. */
@@ -132,6 +140,20 @@ export interface CachedResourceOptions<T, P extends object> {
   params?: () => P | undefined
   /** Async data fetcher. Receives params and an `AbortSignal` for cancellation. */
   loader: (context: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
+  /**
+   * Value exposed by `value()` before the first load resolves, and after an error
+   * with nothing cached. Mirrors `resource()`'s `defaultValue`.
+   */
+  defaultValue?: NoInfer<T>
+  /**
+   * Forwarded to `resource()`'s `id`, which caches the resolved value in
+   * `TransferState` during server rendering and reuses it on the client, so
+   * hydration does not refetch. Must be identical on server and client.
+   *
+   * The transferred value populates the resource, not the `DataCache`: a later
+   * navigation back to the same key still fetches once to fill the cache.
+   */
+  id?: string
   /** Per-resource override for `ZifluxConfig.staleTime` (ms). */
   staleTime?: number
   /** Per-resource override for `ZifluxConfig.expireTime` (ms). */
@@ -140,6 +162,20 @@ export interface CachedResourceOptions<T, P extends object> {
   retry?: number | RetryConfig
   /** Auto-refetch interval in ms, or a function returning ms / `false` to disable. */
   refetchInterval?: number | (() => number | false)
+  /**
+   * Revalidate when the tab becomes visible again. Off by default.
+   *
+   * Respects `staleTime`: a still-fresh entry is served from cache without a
+   * request, so switching tabs on a short-lived dashboard costs nothing.
+   * Browser-only.
+   */
+  refetchOnWindowFocus?: boolean
+  /**
+   * Revalidate when the browser regains network connectivity. Off by default.
+   *
+   * Respects `staleTime` the same way `refetchOnWindowFocus` does. Browser-only.
+   */
+  refetchOnReconnect?: boolean
 }
 
 // --- cachedMutation ---

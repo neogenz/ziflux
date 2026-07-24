@@ -46,3 +46,9 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Locally linked third-party skills. They point into the ignored .agents/
+# directory, so committing them ships dangling symlinks and puts other
+# authors' skills under this repo's skills/ listing.
+skills/angular-developer
+skills/impeccable

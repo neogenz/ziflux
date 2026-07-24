@@ -158,50 +158,54 @@ describe('Integration — SWR lifecycle', () => {
     expect(ref.isStale()).toBe(false)
   })
 
-  it('invalidation preserves in-flight deduplication (avoids redundant fetches)', () => {
+  it('invalidation ends deduplication of the raced fetch (D-40)', async () => {
     const cache = TestBed.runInInjectionContext(() => new DataCache())
 
-    // Start an in-flight request via deduplicate
-    const pending = new Promise<string>(() => {}) // never resolves
-    const p1 = cache.deduplicate(['todos'], () => pending)
+    // In-flight request that will resolve with data the mutation is about to obsolete
+    let resolvePreMutation!: (v: string) => void
+    const p1 = cache.deduplicate(['todos'], () => {
+      return new Promise<string>(r => {
+        resolvePreMutation = r
+      })
+    })
 
-    // Simulate mutation + invalidation while fetch is in-flight
+    // Mutation + invalidation while that fetch is still running
     cache.invalidate(['todos'])
 
-    // After invalidation, deduplicate should reuse the existing in-flight fetch
+    // The next caller must NOT be served pre-mutation data: reusing p1 here is the
+    // cold-cache race. It gets its own request instead.
     let freshCalled = false
     const p2 = cache.deduplicate(['todos'], () => {
       freshCalled = true
       return Promise.resolve('post-mutation-data')
     })
 
-    expect(freshCalled).toBe(false) // DEDUP HIT — reuses existing promise
-    expect(p2).toBe(p1) // same promise
+    expect(freshCalled).toBe(true) // DEDUP MISS — by design
+    expect(p2).not.toBe(p1)
+    await expect(p2).resolves.toBe('post-mutation-data')
 
-    // Verify cache version was bumped
+    resolvePreMutation('pre-mutation-data')
+    await p1
+
     expect(cache.version()).toBe(1)
   })
 
-  it('rapid sequential invalidations deduplicate fetches (no redundant fetches)', () => {
+  it('deduplicates concurrent callers while no invalidation intervenes', () => {
     const cache = TestBed.runInInjectionContext(() => new DataCache())
     let fetchCount = 0
 
-    // Start initial fetch
     const p1 = cache.deduplicate(['budget', 'dashboard', '03', '2026'], () => {
       fetchCount++
       return new Promise<string>(() => {}) // slow network — never resolves in test
     })
 
-    // Simulate 6 mutations completing rapidly, each invalidating the same prefix
+    // 6 concurrent readers of the same key, no mutation in between
     for (let i = 0; i < 6; i++) {
-      cache.invalidate(['budget', 'dashboard'])
-
       const pN = cache.deduplicate(['budget', 'dashboard', '03', '2026'], () => {
         fetchCount++
         return Promise.resolve(`fetch-${fetchCount}`)
       })
 
-      // Each subsequent dedup should reuse the same in-flight promise
       expect(pN).toBe(p1)
     }
 

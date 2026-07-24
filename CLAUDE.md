@@ -11,7 +11,7 @@ ziflux fills the one gap Angular left open — **the data lifecycle** (fresh →
 
 - **Unopinionated** — No new patterns. No new mental models. If you know `resource()`, you know `cachedResource()`. If you know `signal()`, you already know how to read ziflux state.
 - **Idiomatic Angular** — Signals, `inject()`, `providedIn: 'root'`, `DestroyRef`, feature functions. Same naming conventions, same architecture patterns the Angular team documents.
-- **Crystal clear DX** — A junior and a 10-year veteran should both understand the API in minutes. Zero learning curve. No magic. No ceremony.
+- **Crystal clear DX** — A junior and a 10-year veteran should both understand the API in minutes. If you know `resource()`, you know most of it: what's left to learn is a cache with a freshness cycle and a mutation that invalidates it. No magic. No ceremony.
 - **Not NgRx. Not TanStack Query.** — Those are powerful but complex. ziflux is deliberately simpler: fewer concepts, less API surface, more clarity.
 
 Every API decision is filtered through one question: *"Would an Angular developer guess this API without reading docs?"*
@@ -28,7 +28,16 @@ Every API decision is filtered through one question: *"Would an Angular develope
 - `cd docs && pnpm dev` — Docs dev server
 
 ## Releasing
-`pnpm release:prepare` (bump + changelog + tag), then `git push --follow-tags`.
+Use the `/release` skill, not `pnpm release:prepare` on its own. changelogen bumps
+only the root manifest, while `projects/ziflux/package.json` is what actually ships;
+the skill syncs the two. Running the bare command republishes the previous version
+and npm rejects it as already published.
+
+changelogen also downshifts versions on 0.x (a `feat:` becomes a patch), so a release
+carrying breaking changes needs a `BREAKING CHANGE:` footer on one commit, or an
+explicit version, to land on the intended number.
+
+After the bump, `git push --follow-tags`.
 Pushing a `v*` tag runs `.github/workflows/release.yml`, which publishes `ngx-ziflux`
 to npm via Trusted Publishing (OIDC) — no token, no OTP, provenance attached.
 Never `npm publish` from a laptop — the account has 2FA on writes, so it fails with
@@ -42,9 +51,9 @@ that version has never been published.
 - `decision.md` — Chronological decision log (append-only, not current state). Add a new `D-XX` entry for every architectural or API decision.
 
 ## Rules
-- **NEVER** add patterns foreign to Angular — the API must feel like `resource()` extended, zero learning curve
+- **NEVER** add patterns foreign to Angular — the API must feel like `resource()` extended
 - **NEVER** wrap or abstract an existing Angular API — if Angular has it (`set()`, `update()`, `inject()`), use it directly
-- **NEVER** use Subjects, BehaviorSubjects, or Observables for state — Signals only. `firstValueFrom()` to bridge Observable → Promise in loaders
+- **NEVER** use Subjects, BehaviorSubjects, or Observables for state — Signals only. Bridge Observable → Promise in loaders with the abort-aware first-value helper, never `firstValueFrom()` (it ignores `abortSignal`, so the HTTP request outlives the cancelled loader)
 - **NEVER** use `any` or `as unknown as`
 - **NEVER** add an export without weighing the learning curve it introduces — every export is a concept to learn
 - Private class fields use `#` prefix

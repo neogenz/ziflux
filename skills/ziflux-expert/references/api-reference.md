@@ -71,11 +71,14 @@ Triggers LRU eviction of the oldest entry if `size > maxEntries`.
 Marks all entries whose serialized key starts with `JSON.stringify(prefix).slice(0, -1)` as stale.
 
 Internals:
-- Sets `createdAt` to `Date.now() - staleTime - 1` using `Math.min` clamping
-- **Idempotent**: repeated calls do not push the entry further into the past or cause expiry
-- Clears matching in-flight `deduplicate()` promises (prevents stale writes after invalidation)
+- Sets an `invalidated` flag on each matching entry. It never touches `createdAt` and never deletes
+- The flag is independent of any time window, so a resource reading with a per-resource `staleTime` larger than the cache's still sees the invalidation, and one reading with a smaller `expireTime` does not turn it into an eviction
+- **Idempotent**: a flag cannot be set twice, so repeated calls change nothing
+- Flags matching in-flight fetches as raced rather than dropping them. A raced fetch is never reused by a later caller, and its result is stored already-invalidated instead of masquerading as fresh
 - Bumps `version` signal
 - Empty prefix `[]` is explicitly a no-op
+
+Cost: because a raced fetch is never reused, invalidations spread over time cost one refetch each. Invalidations within a single tick collapse into one, since `version` is a signal.
 
 **Prefix matching safety:** `invalidate(['order'])` does NOT match `['orders']` or `['orderDetails']`. The JSON prefix `["order"` won't match `["orders"`.
 
@@ -145,10 +148,14 @@ interface CachedResourceOptions<T, P extends object> {
   cacheKey: string[] | ((params: NoInfer<P>) => string[])    // required
   params?: () => P | undefined                               // optional, defaults to () => ({})
   loader: (ctx: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>  // required
+  defaultValue?: NoInfer<T>   // optional; overload narrows value() to Signal<T>
+  id?: string                 // optional; forwarded to resource() for TransferState
   staleTime?: number          // per-resource override (ms)
   expireTime?: number         // per-resource override (ms)
   retry?: number | RetryConfig  // optional
   refetchInterval?: number | (() => number | false)  // optional polling
+  refetchOnWindowFocus?: boolean  // optional; default false, browser-only
+  refetchOnReconnect?: boolean    // optional; default false, browser-only
 }
 ```
 
@@ -156,7 +163,9 @@ interface CachedResourceOptions<T, P extends object> {
 - `params` returning `undefined` suspends the resource (status: `'idle'`, loader never called)
 - `params` omitted defaults to `() => ({})` — resource loads immediately
 - `cacheKey` as function receives resolved params (the primary pattern for dynamic keys)
-- `loader` can return `Observable<T>` (converted via `firstValueFrom`) or `Promise<T>`
+- `loader` can return `Observable<T>` or `Promise<T>`. An Observable is subscribed directly and unsubscribed when `abortSignal` fires, which cancels the underlying `HttpClient` request. Never use `firstValueFrom()` in a loader: it ignores `abortSignal`, so the request outlives the cancelled load
+- `defaultValue` mirrors `resource()`: with it, `value()` is `Signal<T>` instead of `Signal<T | undefined>`
+- `refetchOnWindowFocus`/`refetchOnReconnect` respect `staleTime`, so returning to a tab with a fresh entry costs no request. `refetchInterval` ignores it on purpose, since a configured interval should mean what it says
 - `staleTime`/`expireTime` passed to `cache.get()` as per-call overrides
 
 ### RetryConfig
@@ -175,6 +184,16 @@ Shorthand: `retry: 3` expands to `{ maxRetries: 3, baseDelay: 1000, maxDelay: 30
 Retry uses exponential backoff with jitter: `Math.random() * Math.min(maxDelay, baseDelay * 2^attempt)`.
 AbortSignal is respected during retry delays — destroy cancels pending retries.
 
+### Revalidation triggers
+
+`reload()` always hits the network. It bypasses the freshness check by design, so calling it inside the `staleTime` window still refetches.
+
+`refetchInterval` polls on the same forced path, so the configured interval is the network interval rather than something quantized by `staleTime`.
+
+`refetchOnWindowFocus` (`visibilitychange`) and `refetchOnReconnect` (`online`) are both off by default and go through the normal freshness check instead. Returning to a tab whose entry is still fresh costs no request; a stale entry refetches.
+
+All three are browser-only. No timer and no listener is registered during server rendering, because a recurring timer keeps a server render from stabilizing.
+
 ### refetchInterval
 
 - Static `number`: polls every N ms
@@ -186,12 +205,12 @@ AbortSignal is respected during retry delays — destroy cancels pending retries
 interface CachedResourceRef<T> {
   readonly value: Signal<T | undefined>
   readonly status: Signal<ResourceStatus>
-  readonly error: Signal<unknown>
+  readonly error: Signal<Error | undefined>
   readonly isLoading: Signal<boolean>
   readonly isStale: Signal<boolean>
   readonly isInitialLoading: Signal<boolean>
-  readonly hasValue: () => boolean
-  reload(): boolean
+  hasValue(): this is Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> }
+  reload(): boolean  // always hits the network, even inside the staleTime window
   destroy(): void
   set(value: T): void
   update(updater: (value: T | undefined) => T): void

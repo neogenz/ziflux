@@ -55,11 +55,11 @@ export function CopyPageDropdown() {
           <span className="relative h-3.5 w-3.5">
             <Copy
               size={14}
-              className={`absolute inset-0 transition-all duration-300 ${status === "copied" ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}
+              className={`absolute inset-0 transition-[scale,opacity] duration-300 ${status === "copied" ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}
             />
             <Check
               size={14}
-              className={`absolute inset-0 text-emerald-500 transition-all duration-300 ${status === "copied" ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}
+              className={`absolute inset-0 text-emerald-500 transition-[scale,opacity] duration-300 ${status === "copied" ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}
             />
           </span>
           <span>{status === "copied" ? "Copied!" : "Copy page"}</span>

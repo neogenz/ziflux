@@ -12,7 +12,7 @@ license: MIT
 
 # ziflux Expert
 
-You are now a ziflux expert. ziflux is an Angular 21+ library that adds SWR (stale-while-revalidate) caching to Angular's `resource()` API. Zero dependencies. Signal-native. Not a state manager — Angular signals + `resource()` IS the state layer. ziflux fills exactly one gap: the **data lifecycle** (fresh → stale → expired).
+You are now a ziflux expert. ziflux is an Angular 22+ library that adds SWR (stale-while-revalidate) caching to Angular's `resource()` API. Zero dependencies. Signal-native. Not a state manager — Angular signals + `resource()` IS the state layer. ziflux fills exactly one gap: the **data lifecycle** (fresh → stale → expired).
 
 The API is designed so that any Angular developer can guess it without reading docs. If you know `resource()`, you know `cachedResource()`.
 
@@ -119,9 +119,13 @@ cachedResource({
   cacheKey: params => ['orders', 'details', params.id],
   params: () => ({ id: this.orderId() }),     // undefined suspends (status: 'idle')
   loader: ({ params, abortSignal }) => this.#api.getOrder(params.id),
+  defaultValue: [],                           // optional; makes value() never undefined
   staleTime: 10_000,                          // optional per-resource override
   retry: { maxRetries: 3, baseDelay: 1000 },  // optional
-  refetchInterval: 30_000,                     // optional polling
+  refetchInterval: 30_000,                    // optional polling, ignores staleTime
+  refetchOnWindowFocus: true,                 // optional; respects staleTime, browser-only
+  refetchOnReconnect: true,                   // optional; respects staleTime, browser-only
+  id: 'orders',                               // optional; reuse the SSR value via TransferState
 })
 ```
 
@@ -131,9 +135,9 @@ Returns `CachedResourceRef<T>`:
 - `isLoading: Signal<boolean>` — true during any fetch
 - `isStale: Signal<boolean>` — true when showing stale data during background refetch
 - `isInitialLoading: Signal<boolean>` — true only on cold cache (use this for spinners)
-- `error: Signal<unknown>`
-- `hasValue(): boolean`
-- `reload(): boolean`
+- `error: Signal<Error | undefined>` — same type Angular's `resource()` exposes
+- `hasValue(): this is Omit<CachedResourceRef<T>, 'value'> & { value: Signal<T> }` — type guard, narrows `value()`
+- `reload(): boolean` — always hits the network, even inside the `staleTime` window
 - `set(value: T): void` — optimistic update, writes through to DataCache (status becomes `'local'`)
 - `update(updater: (T | undefined) => T): void` — optimistic update, writes through to DataCache
 - `destroy(): void`

@@ -564,4 +564,87 @@ describe('cachedMutation', () => {
     expect(mutation.status()).toBe('error')
     expect((mutation.error() as Error).message).toBe('obs-error')
   })
+
+  // --- invalidation configuration (D-44) ---
+
+  it('throws in dev mode when invalidateKeys is given without cache', () => {
+    expect(() =>
+      cachedMutation({
+        mutationFn: () => Promise.resolve('ok'),
+        invalidateKeys: () => [['todos']],
+      }),
+    ).toThrow(/invalidateKeys.*without.*cache/)
+  })
+
+  it('throws in dev mode when cache is given without invalidateKeys', () => {
+    expect(() =>
+      cachedMutation({
+        mutationFn: () => Promise.resolve('ok'),
+        cache: { invalidate: vi.fn() },
+      }),
+    ).toThrow(/cache.*without.*invalidateKeys/)
+  })
+
+  it('accepts both options, and neither', () => {
+    expect(() => cachedMutation({ mutationFn: () => Promise.resolve('ok') })).not.toThrow()
+    expect(() =>
+      cachedMutation({
+        mutationFn: () => Promise.resolve('ok'),
+        cache: { invalidate: vi.fn() },
+        invalidateKeys: () => [['todos']],
+      }),
+    ).not.toThrow()
+  })
+
+  it('a throwing invalidateKeys leaves the mutation successful', async () => {
+    const onSuccess = vi.fn()
+    const onError = vi.fn()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const mutation = cachedMutation({
+      mutationFn: () => Promise.resolve('created'),
+      cache: { invalidate: vi.fn() },
+      invalidateKeys: () => {
+        throw new Error('bad key builder')
+      },
+      onSuccess,
+      onError,
+    })
+
+    const result = await mutation.mutate()
+
+    expect(result).toBe('created')
+    expect(mutation.status()).toBe('success')
+    expect(mutation.data()).toBe('created')
+    expect(mutation.error()).toBeUndefined()
+    expect(onSuccess).toHaveBeenCalledWith('created', undefined)
+    expect(onError).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalled()
+
+    consoleError.mockRestore()
+  })
+
+  it('a throwing cache.invalidate leaves the mutation successful', async () => {
+    const onError = vi.fn()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const mutation = cachedMutation({
+      mutationFn: () => Promise.resolve('created'),
+      cache: {
+        invalidate: () => {
+          throw new Error('cache exploded')
+        },
+      },
+      invalidateKeys: () => [['todos']],
+      onError,
+    })
+
+    await mutation.mutate()
+
+    expect(mutation.status()).toBe('success')
+    expect(onError).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalled()
+
+    consoleError.mockRestore()
+  })
 })

@@ -542,10 +542,111 @@ Systematic audit (4 parallel code reviewers) found 4 bugs in `cachedMutation` an
 
 ---
 
+## D-40 — Invalidation is a flag on the entry, not a shift of its timestamp
+
+**Decision:** `invalidate()` sets `entry.invalidated = true` instead of backdating `createdAt`. `get()` computes `fresh` as `age < staleTime && !invalidated`. A `set()` clears the flag. In-flight fetches carry the same idea: `invalidate()` marks matching in-flight records `raced`, a raced fetch is never reused by a later caller, and its result is stored flagged rather than fresh. The `#dirtyPrefixes` / `#resolvedKeys` sets, `clearDirty()` and `staleAtCreation` are all deleted.
+
+**Rationale:** backdating measured staleness against the *cache-level* `staleTime`, but `cachedResource` reads with its own per-resource override. The two disagreed in both directions:
+
+- Override larger than the cache's (`staleTime: 120_000` on a 30s cache): the entry was backdated to an age of 30 001 ms, still inside the resource's 120 s window, so the loader short-circuited on a "fresh" entry and **the invalidation was silently lost**.
+- Override smaller in `expireTime` (`expireTime: 2_000`): the backdated age exceeded it, so `get()` **deleted the entry** — the exact opposite of D-08's "invalidate marks stale, never deletes".
+
+A flag is independent of every time window, so neither edge exists. It also subsumes the dirty-prefix machinery: "was this data fetched before the invalidation?" is answered by the in-flight record itself, which self-deletes on settle, instead of by two `Set`s that grew for the process lifetime.
+
+**Cold-cache race (fixed by the same mechanism):** the old reuse rule was `staleAtCreation || !isStale`, and `isStale` read `false` when no entry existed. So on a cold cache an in-flight fetch was *always* reusable, including after an `invalidate()` — a mutation landing during the initial load left pre-mutation data stored as fresh for a full `staleTime`. Now that fetch is `raced`, so it is neither reused nor written as fresh.
+
+**Ordering:** a raced fetch that resolves *after* a newer fetch already wrote would otherwise overwrite newer data with older. Records replaced by a newer fetch are marked `superseded` and their late result is dropped.
+
+**Trade-off:** a burst of N mutations during one in-flight fetch now costs up to N requests instead of one, because every running fetch predates the mutation that followed it. This is the correct price: the single-request behavior it replaces was serving data known to be obsolete. In a `cachedResource` the superseded requests are aborted (D-41), so only the last one completes.
+
+**Behavior change:** a fetch started *after* an invalidation is now stored **fresh**. Previously any `prefetch()` under an invalidated prefix stayed stale until a `cachedResource` loader called `clearDirty()`, which forced a needless extra revalidation of data that already reflected the mutation.
+
+---
+
+## D-41 — Observable loaders bridge through an abort-aware helper, not `firstValueFrom()`
+
+**Decision:** `cachedResource` subscribes to an Observable loader manually and unsubscribes when `abortSignal` fires. `firstValueFrom()` is no longer used *in `cachedResource`*. `cachedMutation` still uses it, deliberately: a mutation has no `abortSignal` to honor, and cancelling a write mid-flight is not a behavior the API offers.
+
+**Rationale:** `firstValueFrom()` has no `AbortSignal` parameter — it stays subscribed until the first emission whatever the resource does. The documented primary loader shape is `({ params }) => this.http.get(...)`, so an Angular abort (params changed, resource destroyed) left the HTTP request running to completion. Consequences: a typeahead leaked one live request per keystroke, and `destroy()` cancelled nothing. Angular's own `rxResource` unsubscribes on abort; ziflux claims to mirror `resource()` and did not.
+
+**Behavior:** the source is piped through `take(1)`, so a first emission tears it down and only the abort path unsubscribes explicitly. Abort rejects with `abortSignal.reason` when it is an `Error`, otherwise a standard `AbortError` `DOMException`. Completing without emitting rejects with a named error rather than rxjs `EmptyError` — rxjs deprecates constructing that class ("internal implementation detail"), and `cachedResource: the loader Observable completed without emitting` says more at a debugger than `EmptyError` does.
+
+**Collateral:** the abort-reason construction, previously duplicated inline in `retryWithBackoff` with two eslint suppressions, is now one `abortReason()` helper with none. Supersedes the CLAUDE.md rule naming `firstValueFrom()` as the bridge.
+
+---
+
+## D-42 — `reload()` and `refetchInterval` bypass the freshness check
+
+**Decision:** a `force` flag, set by `reload()` and by each polling tick, makes the next loader run skip the `entry?.fresh` short-circuit.
+
+**Rationale:** the loader's first act is to return cached data when the entry is fresh. `reload()` went through that path, so within `staleTime` it issued **zero** requests and resolved from cache — while its own JSDoc promised "triggers an immediate refetch, bypassing staleness checks". The example app's Reload button was a no-op for 5 s after every fetch.
+
+Polling inherited the same bug through `res.reload()`: `refetchInterval: 3_000` under `staleTime: 5_000` produced a request roughly every 6 s (only the ticks that happened to land on a stale entry), not every 3 s. A configured poll interval must mean the network interval.
+
+**Trade-off:** none. Both entry points are explicit user intent to refetch; the freshness short-circuit exists for reactive re-runs (params re-eval, version bumps), which still take it.
+
+---
+
+## D-43 — Recurring timers are browser-only
+
+**Decision:** `DataCache`'s `cleanupInterval` sweep and `cachedResource`'s `refetchInterval` effect are created only when `isPlatformBrowser()`. `PLATFORM_ID` is injected `{ optional: true }` and defaults to browser.
+
+**Rationale:** both timers started during SSR. On zone.js-based SSR a recurring `setInterval` keeps `ApplicationRef.isStable` false forever, so rendering hangs until the timeout for any app that configures either option — and `cleanupInterval` runs from a `providedIn: 'root'` service constructor, i.e. on every request. On zoneless SSR a render slower than `refetchInterval` reload-loops. `ZifluxDevtoolsComponent` already guarded this way; the cache and the resource did not.
+
+**Optional injection:** `DataCache` is documented as constructible in any injection context, including a bare `Injector.create()` that provides no `PLATFORM_ID`. Requiring the token would have thrown NG0201 there, so absence is treated as browser — the pre-existing behavior.
+
+---
+
+## D-44 — `cache` and `invalidateKeys` must be passed together
+
+**Decision:** `cachedMutation()` throws at creation, in dev mode only, when exactly one of `cache` / `invalidateKeys` is provided. Invalidation failures are caught and reported instead of rewriting the mutation's outcome.
+
+**Rationale:** the invalidation branch reads `if (invalidateKeys && cache)`, but the two options are independently optional. Passing `invalidateKeys` and forgetting `cache` (or the reverse) produced a mutation that succeeded, fired its callbacks, and invalidated nothing — a stale UI with no error, no warning, nothing in devtools. It is the most likely misconfiguration in the whole API and it was the quietest.
+
+**Rejected alternative:** collapsing the pair into a single `invalidate` option. It reads better, but it is a breaking change to the documented API for a problem a dev-mode guard solves, and `invalidateKeys(args, result)` returning keys is what makes result-derived invalidation (`todo => [['todos', String(todo.id)]]`) possible.
+
+**Isolation:** `invalidateKeys()` or `cache.invalidate()` throwing used to land in the mutation's own `catch`, flipping a succeeded mutation to `error` and firing `onError` after `onSuccess` had already run for the same call. The invalidation loop now has its own `try`/`catch`: status stays `success`, and dev mode logs the failure.
+
+---
+
+## D-45 — Close the measured `resource()` parity gaps
+
+**Decision:** `CachedResourceRef.error` is typed `Signal<Error | undefined>`, `hasValue()` is a type guard that narrows `value` to `Signal<T>`, and `cachedResource()` accepts `defaultValue` with the same overload pair Angular uses.
+
+**Rationale:** "mirrors `resource()` exactly" (D-04) is the headline claim, and three details contradicted it against Angular 22:
+
+- `error: Signal<unknown>` — the underlying `res.error` is already `Signal<Error | undefined>` (`@angular/core` `BaseWritableResource`), so ziflux widened a type for nothing and forced consumers to cast.
+- `hasValue(): boolean` — Angular declares `hasValue(): this is ResourceRef<Exclude<T, undefined>>`, so `if (r.hasValue())` narrows. ziflux returned a plain boolean and narrowed nothing.
+- no `defaultValue`, while `resource()` overloads on it: with the option, the ref's value is never `undefined`.
+
+**Narrowing shape:** Angular carries `| undefined` in the ref's generic (`ResourceRef<T | undefined>`), so `Exclude<T, undefined>` is enough. `CachedResourceRef<T>` instead declares `value: Signal<T | undefined>` with `T` as the data type, so the equivalent guard is `Omit<CachedResourceRef<T>, 'value'> & { readonly value: Signal<T> }`. The plain intersection without `Omit` does **not** narrow — the wide `value` signature stays first in overload order and `value()` still returns `T | undefined`. Both spec assertions are type-level and fail the build if that regresses.
+
+**`hasValue()` implementation:** now literally `value() !== undefined`, which is what its own doc always claimed. The previous status-based expression was equivalent for every reachable state but had to be re-derived by hand for `defaultValue`.
+
+**Trade-off:** one new option and two changed type signatures. `error` narrowing from `unknown` to `Error | undefined` is technically breaking for anyone who annotated it as `unknown`, but pre-1.0 and strictly more precise.
+
+---
+
+## D-46 - Focus and reconnect revalidation are opt-in listeners, not a background service
+
+**Decision:** `cachedResource` accepts `refetchOnWindowFocus` and `refetchOnReconnect`. Both default to off. When enabled in a browser, the resource listens to `visibilitychange` on `document` and `online` on `window`, and calls the resource's own `reload()` on each.
+
+**Rationale:** Revalidating on return is the behavior people expect from a stale-while-revalidate cache, and it belongs to the data lifecycle rather than to state management. Two event listeners cover it, so there is no scheduler, no shared service, and nothing new to inject. The option names match TanStack Query's, which means anyone arriving from that library can guess them.
+
+**Why they respect `staleTime`:** the handler calls the internal `res.reload()`, not the public `reload()`. The public one forces a network round trip by contract (D-42), which would turn every tab switch into a request. The internal path still runs the loader's freshness check, so an entry inside its `staleTime` is served from cache and costs nothing. A stale entry refetches, which is the point.
+
+**Why opt-in:** a library that starts refetching on events the developer never configured is surprising, and the cost lands on someone else's API. Defaulting to off also keeps the behavior of every existing call site unchanged.
+
+**Browser-only:** guarded by the same `isPlatformBrowser` check as the polling timer (D-43). `document` and `window` do not exist during server rendering.
+
+**Cleanup:** listeners are removed both by `DestroyRef.onDestroy` and by an explicit `destroy()` call, since the two can happen independently.
+
+---
+
 ## Open questions (resolved)
 
 - **Library name** — `ziflux` ✓ confirmed.
 - **`DataCache` config override per instance** — ✓ Yes. Priority: constructor arg > global provider > defaults.
 - **`prefetch()` on `DataCache` vs standalone function** — ✓ Method on `DataCache`.
-- **RxJS interop** — ✓ `firstValueFrom()` used internally in `cachedResource`. No helper needed.
+- **RxJS interop** — superseded by D-41: `cachedResource` bridges Observables with an abort-aware helper, because `firstValueFrom()` ignores `abortSignal`.
 - **`cachedResource` staleSnapshot exposure** — ✓ Kept internal. No public API for it.

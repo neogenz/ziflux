@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { signal, type ResourceStatus } from '@angular/core'
+import { PLATFORM_ID, signal, type ResourceStatus } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
-import { of, throwError } from 'rxjs'
+import { EMPTY, Observable, of, throwError } from 'rxjs'
 import { cachedResource } from './cached-resource'
 import { DataCache } from './data-cache'
 import type { CachedResourceRef } from './types'
@@ -237,6 +237,78 @@ describe('cachedResource', () => {
     await waitForStatus(ref, 'error')
     expect(ref.error()).toBe(boom)
     expect(ref.value()).toBeUndefined()
+  })
+
+  it('unsubscribes an Observable loader when the params change abort it', async () => {
+    // Regression (D-41): firstValueFrom() ignores abortSignal, so a superseded
+    // HttpClient request kept running to completion.
+    let teardowns = 0
+    const userId = signal(1)
+
+    TestBed.runInInjectionContext(() =>
+      cachedResource<string, { id: number }>({
+        cache,
+        cacheKey: p => ['user', String(p.id)],
+        params: () => ({ id: userId() }),
+        loader: () =>
+          new Observable<string>(() => {
+            return () => {
+              teardowns++
+            }
+          }),
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Superseding params abort the first loader → its subscription must tear down
+    userId.set(2)
+    await flushMicrotasks()
+    TestBed.tick()
+    await flushMicrotasks()
+
+    expect(teardowns).toBe(1)
+  })
+
+  it('unsubscribes an Observable loader on destroy()', async () => {
+    let teardowns = 0
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['never-resolves'],
+        params: () => ({}),
+        loader: () =>
+          new Observable<string>(() => {
+            return () => {
+              teardowns++
+            }
+          }),
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    ref.destroy()
+    await flushMicrotasks()
+
+    expect(teardowns).toBe(1)
+  })
+
+  it('rejects an Observable loader that completes without emitting', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['empty-obs'],
+        params: () => ({}),
+        loader: () => EMPTY,
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect((ref.error() as Error).message).toContain('completed without emitting')
   })
 
   // --- Deduplication ---
@@ -625,6 +697,94 @@ describe('cachedResource', () => {
     expect(ref.hasValue()).toBe(true)
   })
 
+  it('hasValue() narrows value() to a defined type', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['narrowing'],
+        params: () => ({}),
+        loader: () => Promise.resolve('data'),
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+
+    if (ref.hasValue()) {
+      // Type-level assertion: inside this branch `value()` is `string`, not
+      // `string | undefined`. This line fails to compile if narrowing regresses.
+      const narrowed: string = ref.value()
+      expect(narrowed).toBe('data')
+    } else {
+      throw new Error('expected hasValue() to be true')
+    }
+  })
+
+  // --- defaultValue ---
+
+  it('serves defaultValue before the first load resolves', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string[], Record<string, never>>({
+        cache,
+        cacheKey: ['with-default'],
+        params: () => ({}),
+        loader: () => Promise.resolve(['loaded']),
+        defaultValue: [],
+      }),
+    )
+
+    // Type-level: the defaultValue overload drops `undefined` from value()
+    const initial: string[] = ref.value()
+    expect(initial).toEqual([])
+    expect(ref.hasValue()).toBe(true)
+
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toEqual(['loaded'])
+  })
+
+  it('falls back to defaultValue on error with nothing cached', async () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string[], Record<string, never>>({
+        cache,
+        cacheKey: ['default-on-error'],
+        params: () => ({}),
+        loader: () => Promise.reject(new Error('boom')),
+        defaultValue: [],
+      }),
+    )
+
+    await waitForStatus(ref, 'error')
+    expect(ref.value()).toEqual([])
+  })
+
+  it('prefers cached data over defaultValue', () => {
+    cache.set(['default-vs-cache'], ['from-cache'])
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string[], Record<string, never>>({
+        cache,
+        cacheKey: ['default-vs-cache'],
+        params: () => ({}),
+        loader: () => Promise.resolve(['loaded']),
+        defaultValue: [],
+      }),
+    )
+
+    expect(ref.value()).toEqual(['from-cache'])
+  })
+
+  it('without defaultValue, value() is undefined before the first load', () => {
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['no-default'],
+        params: () => ({}),
+        loader: () => Promise.resolve('data'),
+      }),
+    )
+
+    expect(ref.value()).toBeUndefined()
+  })
+
   // --- per-resource staleTime ---
 
   it('staleTime: 0 overrides cache default — data is always stale', async () => {
@@ -679,6 +839,94 @@ describe('cachedResource', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('revalidates after invalidate() even when staleTime exceeds the cache staleTime', async () => {
+    // Regression (D-40): invalidate() used to backdate createdAt by the CACHE
+    // staleTime (30s), which stayed inside this resource's 120s window — so the
+    // loader short-circuited on a "fresh" entry and the invalidation was lost.
+    let loaderCalls = 0
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['long-stale'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          return Promise.resolve(`data-${loaderCalls}`)
+        },
+        staleTime: 120_000,
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+    expect(loaderCalls).toBe(1)
+
+    cache.invalidate(['long-stale'])
+    await waitForStatus(ref, 'resolved')
+
+    expect(loaderCalls).toBe(2)
+    expect(ref.value()).toBe('data-2')
+  })
+
+  it('keeps the entry when invalidate() meets a smaller expireTime override', async () => {
+    // Regression (D-40): backdating pushed the entry past a small expireTime
+    // override, so get() evicted it — invalidate() must only ever mark stale.
+    cache.set(['short-expire'], 'cached')
+    cache.invalidate(['short-expire'])
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['short-expire'],
+        params: () => ({}),
+        loader: () => Promise.resolve('refetched'),
+        staleTime: 1_000,
+        expireTime: 2_000,
+      }),
+    )
+
+    // The invalidated entry is still there, served as stale while revalidating
+    expect(ref.value()).toBe('cached')
+    await waitForStatus(ref, 'resolved')
+    expect(ref.value()).toBe('refetched')
+  })
+
+  it('does not serve pre-mutation data as fresh when invalidate races the initial load', async () => {
+    // Regression (D-40): the cold-cache race — "no entry" read as "not stale", so
+    // the in-flight fetch was reused and its pre-mutation data stored as fresh.
+    let resolveFirst!: (v: string) => void
+    let loaderCalls = 0
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['racy'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          if (loaderCalls === 1) {
+            return new Promise<string>(r => {
+              resolveFirst = r
+            })
+          }
+          return Promise.resolve('post-mutation')
+        },
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Mutation lands while the initial load is still in flight
+    cache.invalidate(['racy'])
+    resolveFirst('pre-mutation')
+
+    await waitForStatus(ref, 'resolved')
+
+    expect(ref.value()).toBe('post-mutation')
+    expect(cache.get(['racy'])?.data).toBe('post-mutation')
+    expect(cache.get(['racy'])?.fresh).toBe(true)
   })
 
   // --- error handling ---
@@ -824,6 +1072,75 @@ describe('cachedResource', () => {
     await waitForStatus(ref, 'resolved')
     expect(ref.value()).toBe('fresh-B')
     expect(ref.error()).toBeUndefined()
+  })
+
+  // --- reload ---
+
+  it('reload() refetches even while the cached entry is fresh', async () => {
+    // Regression (D-42): the loader short-circuited on a fresh entry, so reload()
+    // resolved from cache and issued no request — contradicting its own contract.
+    let loaderCalls = 0
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['reloadable'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          return Promise.resolve(`data-${loaderCalls}`)
+        },
+        staleTime: 60_000,
+      }),
+    )
+
+    await waitForStatus(ref, 'resolved')
+    expect(loaderCalls).toBe(1)
+
+    ref.reload()
+    await waitForStatus(ref, 'resolved')
+
+    expect(loaderCalls).toBe(2)
+    expect(ref.value()).toBe('data-2')
+  })
+
+  it('a reload() that does not start leaves no force pending', async () => {
+    let loaderCalls = 0
+    let resolveFirst!: (v: string) => void
+
+    const ref = TestBed.runInInjectionContext(() =>
+      cachedResource<string, Record<string, never>>({
+        cache,
+        cacheKey: ['reload-busy'],
+        params: () => ({}),
+        loader: () => {
+          loaderCalls++
+          if (loaderCalls === 1) {
+            return new Promise<string>(r => {
+              resolveFirst = r
+            })
+          }
+          return Promise.resolve(`data-${loaderCalls}`)
+        },
+        staleTime: 60_000,
+      }),
+    )
+
+    await flushMicrotasks()
+    TestBed.tick()
+
+    // Already loading → reload() is refused and must not arm the force flag
+    expect(ref.reload()).toBe(false)
+
+    resolveFirst('data-1')
+    await waitForStatus(ref, 'resolved')
+    expect(loaderCalls).toBe(1)
+
+    // A cache write for the same key must still be served from cache, not refetched
+    cache.set(['reload-busy'], 'from-elsewhere')
+    await flushMicrotasks()
+    TestBed.tick()
+    expect(loaderCalls).toBe(1)
   })
 
   // --- destroy ---
@@ -1118,6 +1435,83 @@ describe('cachedResource', () => {
       }
     })
 
+    it('polls at the configured interval even when the entry is still fresh', async () => {
+      // Regression (D-42): polling went through reload(), which the loader's
+      // freshness short-circuit swallowed — a 50ms interval under a 60s staleTime
+      // produced zero requests instead of one per tick.
+      vi.useFakeTimers()
+      try {
+        let loadCount = 0
+
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache,
+            cacheKey: ['poll-fresh'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve(`data-${loadCount}`)
+            },
+            refetchInterval: 50,
+            staleTime: 60_000,
+          }),
+        )
+
+        await vi.advanceTimersByTimeAsync(10)
+        TestBed.tick()
+        expect(loadCount).toBe(1)
+
+        // Three ticks of a 50ms interval, entry fresh the whole time
+        for (let i = 0; i < 3; i++) {
+          await vi.advanceTimersByTimeAsync(50)
+          TestBed.tick()
+          await vi.advanceTimersByTimeAsync(0)
+        }
+
+        expect(loadCount).toBe(4)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('does not schedule polling on the server', async () => {
+      vi.useFakeTimers()
+      try {
+        TestBed.resetTestingModule()
+        TestBed.configureTestingModule({
+          providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
+        })
+        const serverCache = TestBed.runInInjectionContext(() => new DataCache({ staleTime: 10 }))
+        let loadCount = 0
+
+        TestBed.runInInjectionContext(() =>
+          cachedResource<string, Record<string, never>>({
+            cache: serverCache,
+            cacheKey: ['ssr-poll'],
+            params: () => ({}),
+            loader: () => {
+              loadCount++
+              return Promise.resolve(`data-${loadCount}`)
+            },
+            refetchInterval: 50,
+            staleTime: 10,
+          }),
+        )
+
+        await vi.advanceTimersByTimeAsync(10)
+        TestBed.tick()
+        const afterInitial = loadCount
+
+        await vi.advanceTimersByTimeAsync(500)
+        TestBed.tick()
+
+        // Only the initial render load — no recurring timer to keep SSR from stabilizing
+        expect(loadCount).toBe(afterInitial)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('no polling when option absent', async () => {
       vi.useFakeTimers()
       try {
@@ -1378,6 +1772,151 @@ describe('cachedResource', () => {
       // A's loader writing to cache must NOT cause B to reload (no version bump on set).
       expect(loadCountA).toBe(1)
       expect(loadCountB).toBe(1)
+    })
+  })
+  // --- refetchOnWindowFocus / refetchOnReconnect (D-46) ---
+
+  describe('focus and reconnect revalidation', () => {
+    it('refetches when the tab becomes visible and the entry is stale', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['focus-stale'],
+          params: () => ({}),
+          staleTime: 0,
+          refetchOnWindowFocus: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      expect(fetches).toBe(1)
+
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(2)
+    })
+
+    it('does not hit the network on focus while the entry is still fresh', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['focus-fresh'],
+          params: () => ({}),
+          staleTime: 60_000,
+          refetchOnWindowFocus: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      expect(fetches).toBe(1)
+
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(1)
+    })
+
+    it('refetches when the browser comes back online', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['reconnect'],
+          params: () => ({}),
+          staleTime: 0,
+          refetchOnReconnect: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      expect(fetches).toBe(1)
+
+      window.dispatchEvent(new Event('online'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(2)
+    })
+
+    it('adds no listeners when both options are off', () => {
+      const docSpy = vi.spyOn(document, 'addEventListener')
+      const winSpy = vi.spyOn(window, 'addEventListener')
+      TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache,
+          cacheKey: ['no-listeners'],
+          params: () => ({}),
+          loader: () => Promise.resolve('x'),
+        }),
+      )
+      expect(docSpy).not.toHaveBeenCalledWith('visibilitychange', expect.anything())
+      expect(winSpy).not.toHaveBeenCalledWith('online', expect.anything())
+      docSpy.mockRestore()
+      winSpy.mockRestore()
+    })
+
+    it('stops revalidating after destroy()', async () => {
+      let fetches = 0
+      const ref = TestBed.runInInjectionContext(() =>
+        cachedResource<number, Record<string, never>>({
+          cache,
+          cacheKey: ['focus-destroy'],
+          params: () => ({}),
+          staleTime: 0,
+          refetchOnWindowFocus: true,
+          loader: () => {
+            fetches++
+            return Promise.resolve(fetches)
+          },
+        }),
+      )
+      await waitForStatus(ref, 'resolved')
+      const afterLoad = fetches
+
+      ref.destroy()
+      document.dispatchEvent(new Event('visibilitychange'))
+      await flushMicrotasks()
+      TestBed.tick()
+      await flushMicrotasks()
+
+      expect(fetches).toBe(afterLoad)
+    })
+
+    it('registers no listeners on the server', () => {
+      TestBed.resetTestingModule()
+      TestBed.configureTestingModule({
+        providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
+      })
+      const serverCache = TestBed.runInInjectionContext(() => new DataCache())
+      const docSpy = vi.spyOn(document, 'addEventListener')
+      TestBed.runInInjectionContext(() =>
+        cachedResource<string, Record<string, never>>({
+          cache: serverCache,
+          cacheKey: ['ssr-focus'],
+          params: () => ({}),
+          refetchOnWindowFocus: true,
+          loader: () => Promise.resolve('x'),
+        }),
+      )
+      expect(docSpy).not.toHaveBeenCalledWith('visibilitychange', expect.anything())
+      docSpy.mockRestore()
     })
   })
 })

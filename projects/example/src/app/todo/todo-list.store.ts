@@ -28,15 +28,12 @@ export class TodoListStore {
         completed: false,
         createdAt: new Date().toISOString(),
       }
-      const updated = [...current, optimistic]
-      this.todos.set(updated)
-      this.#api.listCache.set(['todos'], updated)
+      this.todos.set([...current, optimistic])
       return current
     },
     onError: (_err, _title, previousList) => {
       if (previousList) {
         this.todos.set(previousList)
-        this.#api.listCache.set(['todos'], previousList)
       }
     },
   })
@@ -53,15 +50,12 @@ export class TodoListStore {
     invalidateKeys: () => [['todos']],
     onMutate: todo => {
       const current = this.todos.value() ?? []
-      const filtered = current.filter(t => t.id !== todo.id)
-      this.todos.set(filtered)
-      this.#api.listCache.set(['todos'], filtered)
+      this.todos.set(current.filter(t => t.id !== todo.id))
       return current
     },
     onError: (_err, _todo, previousList) => {
       if (previousList) {
         this.todos.set(previousList)
-        this.#api.listCache.set(['todos'], previousList)
       }
     },
   })

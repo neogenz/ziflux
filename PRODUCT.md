@@ -10,7 +10,7 @@ Angular developers (junior to senior) building real-world SPAs. Already know `si
 
 ## Product Purpose
 
-ziflux is a small SWR caching layer for Angular's `resource()`. It does one thing: cache HTTP-backed signal data with `staleTime` / `expireTime` semantics, deduped requests, optimistic updates, and prefix-based invalidation. Zero dependencies. Signal-native. About 2KB. The landing page exists so an Angular developer can evaluate the library — its scope, its fit, and its philosophy — in under 60 seconds. Success means the developer either installs and tries, or definitively decides "not for me." Both outcomes beat ambiguity.
+ziflux is a small SWR caching layer for Angular's `resource()`. It does one thing: cache HTTP-backed signal data with `staleTime` / `expireTime` semantics, deduped requests, optimistic updates, and prefix-based invalidation. Zero dependencies. Signal-native. About 6.2 kB brotli, measured and enforced in CI. The landing page exists so an Angular developer can evaluate the library — its scope, its fit, and its philosophy — in under 60 seconds. Success means the developer either installs and tries, or definitively decides "not for me." Both outcomes beat ambiguity.
 
 ## Brand Personality
 

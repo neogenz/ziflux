@@ -10,7 +10,7 @@ const tabs = [
     description: "Own one per domain, in your API service (singleton).",
     code: `class DataCache {
   readonly name: string                   // devtools label (auto-generated if omitted)
-  readonly version: Signal<number>        // auto-increments on invalidate()
+  readonly version: Signal<number>        // auto-increments on invalidate() and clear()
   readonly staleTime: number              // resolved config value
   readonly expireTime: number             // resolved config value
 
@@ -50,20 +50,25 @@ this.cache.invalidate(['order'])  // prefix match`,
   cacheKey: string[] | ((params: P) => string[])
   params?: () => P | undefined     // undefined = idle
   loader: (ctx: { params: P; abortSignal: AbortSignal }) => Observable<T> | Promise<T>
+  defaultValue?: NoInfer<T>             // value before the first load; narrows value() to Signal<T>
   staleTime?: number
   expireTime?: number
   retry?: number | RetryConfig          // auto-retry with exponential backoff
-  refetchInterval?: number | (() => number | false)  // polling
+  refetchInterval?: number | (() => number | false)  // polling, ignores staleTime
+  refetchOnWindowFocus?: boolean        // revalidate on tab focus, respects staleTime
+  refetchOnReconnect?: boolean          // revalidate when the network returns
+  id?: string                           // reuse the SSR value via TransferState
 }): CachedResourceRef<T>`,
     usage: `interface CachedResourceRef<T> {
   readonly value: Signal<T | undefined>        // preserves last cached value on error
   readonly status: Signal<ResourceStatus>
-  readonly error: Signal<unknown>
+  readonly error: Signal<Error | undefined>
   readonly isLoading: Signal<boolean>
   readonly isStale: Signal<boolean>            // SWR in progress
   readonly isInitialLoading: Signal<boolean>   // true only on cold cache
-  hasValue(): boolean
-  reload(): boolean
+  hasValue(): this is Omit<CachedResourceRef<T>, 'value'>
+    & { readonly value: Signal<T> }            // type guard, narrows value()
+  reload(): boolean                            // refetches now, bypassing staleTime
   destroy(): void
   set(value: T): void
   update(updater: (prev: T | undefined) => T): void
@@ -71,8 +76,8 @@ this.cache.invalidate(['order'])  // prefix match`,
 
 interface RetryConfig {
   maxRetries: number
-  baseDelay?: number              // default: 1_000 ms
-  maxDelay?: number               // default: 30_000 ms
+  baseDelay?: number              // upper bound of retry 1, jittered. default: 1_000 ms
+  maxDelay?: number               // ceiling for the backoff. default: 30_000 ms
   retryIf?: (error: unknown) => boolean  // default: retry all
 }`,
   },
@@ -84,13 +89,13 @@ interface RetryConfig {
   mutationFn: (args: A) => Observable<R> | Promise<R>
   cache?: { invalidate(prefix: string[]): void }
   invalidateKeys?: (args: A, result: R) => string[][]
-  onMutate?: (args: A) => C | Promise<C>       // runs before API call — return value → "context" in onError
+  onMutate?: (args: A) => C | Promise<C>       // runs before the API call; its return value becomes "context" in onError
   onSuccess?: (result: R, args: A) => void
   onError?: (error: unknown, args: A, context: C | undefined) => void
 }): CachedMutationRef<A, R>
 
-// Lifecycle: onMutate → mutationFn → onSuccess | onError → invalidateKeys
-// mutate() never rejects — errors are captured in the error signal`,
+// Lifecycle: onMutate → mutationFn → (onSuccess → invalidateKeys) | onError
+// mutate() never rejects; errors are captured in the error signal`,
     usage: `interface CachedMutationRef<A, R> {
   mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
   readonly status: Signal<CachedMutationStatus>  // 'idle' | 'pending' | 'success' | 'error'
@@ -107,7 +112,7 @@ readonly deleteMutation = cachedMutation({
   invalidateKeys: (id) => [['order']],
   onMutate: (id) => {
     const prev = this.orders.value()                    // 1. snapshot
-    this.orders.update(list => list?.filter(o => o.id !== id))  // 2. optimistic update
+    this.orders.update(list => (list ?? []).filter(o => o.id !== id))  // 2. optimistic update
     return prev                                         // 3. → becomes "context" in onError
   },
   onError: (_err, _id, prev) => {
@@ -199,7 +204,7 @@ console.log(config.staleTime, config.expireTime)`,
   {
     id: "cache-registry",
     label: "CacheRegistry",
-    description: "Advanced — most apps won't need this directly. Global registry of all DataCache instances.",
+    description: "Advanced. Most apps will not need this directly. Global registry of all DataCache instances.",
     code: `class CacheRegistry {
   readonly caches: Signal<Map<string, DataCache>>
   inspectAll(): { name: string; inspection: CacheInspection<unknown> }[]
@@ -221,7 +226,7 @@ export function ApiReference() {
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
         <a href="#api" className="hover:no-underline">API reference <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
-      <p className="mt-2 text-muted-foreground">All runtime exports — signatures and usage examples.</p>
+      <p className="mt-2 text-muted-foreground">All runtime exports, with signatures and usage examples.</p>
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2">

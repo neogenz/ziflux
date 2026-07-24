@@ -7,8 +7,8 @@ const CONFIG_CODE = `import { provideZiflux } from 'ngx-ziflux'
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZiflux({
-      staleTime: 30_000,   // 30s — data considered fresh
-      expireTime: 300_000, // 5min — stale data evicted
+      staleTime: 30_000,   // 30s, data considered fresh
+      expireTime: 300_000, // 5min, stale data evicted
     }),
   ],
 }`
@@ -84,14 +84,14 @@ export function QuickStart() {
 
       {/* Step 4 */}
       <p className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">4 · Template</p>
-      <p className="mt-2 mb-4 text-sm text-muted-foreground">isInitialLoading() is true only when there's no cached data. Subsequent visits skip the spinner entirely.</p>
+      <p className="mt-2 mb-4 text-sm text-muted-foreground">isInitialLoading() is true only when there's no cached data, so a return visit skips the spinner as long as the entry has not passed expireTime.</p>
       <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
 
       {/* Closing */}
-      <p className="mt-8 text-sm text-muted-foreground">That's it. Navigate away, come back — data loads instantly from cache.</p>
+      <p className="mt-8 text-sm text-muted-foreground">That's it. Navigate away, come back, and data loads instantly from cache.</p>
 
       <p className="mt-4 text-sm text-muted-foreground italic">
-        For read-only use cases, you can skip the Store layer entirely — see{" "}
+        For read-only use cases, you can skip the Store layer entirely, see{" "}
         <a href="#advanced-usage" className="underline underline-offset-4 transition-colors hover:text-foreground">
           Factory pattern
         </a>.

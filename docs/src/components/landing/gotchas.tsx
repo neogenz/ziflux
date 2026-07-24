@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { CodeBlock } from "./code-block"
 
-const INVALIDATE_EMPTY_WRONG = `// This does nothing — empty prefix matches nothing
+const INVALIDATE_EMPTY_WRONG = `// This does nothing: an empty prefix matches no key
 cache.invalidate([])`
 
 const INVALIDATE_EMPTY_RIGHT = `// Use clear() to wipe the entire cache
@@ -24,7 +24,7 @@ ref.update(prev => ({ ...prev, name: 'updated' }))
 // To trigger a fresh server fetch after an optimistic update:
 cache.invalidate(['order', 'details', '42'])`
 
-const UNTYPED_KEYS_CODE = `// Nothing prevents this — both compile fine
+const UNTYPED_KEYS_CODE = `// Nothing prevents this: both compile fine
 cache.set(['user', '1'], { name: 'Alice' })       // User
 const entry = cache.get<Order[]>(['user', '1'])    // reads as Order[]
 
@@ -54,7 +54,7 @@ const GOTCHAS: Gotcha[] = [
   {
     key: "invalidate-prefix",
     title: <><code>invalidate()</code> is prefix-based, not exact-match</>,
-    description: "A prefix matches all keys that start with it — including nested sub-keys.",
+    description: "A prefix matches all keys that start with it, including nested sub-keys.",
     code: INVALIDATE_PREFIX_CODE,
   },
   {

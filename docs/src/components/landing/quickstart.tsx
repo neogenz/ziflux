@@ -7,8 +7,8 @@ const CONFIG_CODE = `import { provideZiflux } from 'ngx-ziflux'
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZiflux({
-      staleTime: 30_000,   // 30s — data considered fresh
-      expireTime: 300_000, // 5min — stale data evicted
+      staleTime: 30_000,   // 30s, data considered fresh
+      expireTime: 300_000, // 5min, stale data evicted
     }),
   ],
 }`
@@ -88,10 +88,10 @@ export function QuickStart() {
       <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
 
       {/* Closing */}
-      <p className="mt-8 text-sm text-muted-foreground">That's it. Navigate away, come back — data loads instantly from cache.</p>
+      <p className="mt-8 text-sm text-muted-foreground">That's it. Navigate away, come back, and data loads instantly from cache.</p>
 
       <p className="mt-4 text-sm text-muted-foreground italic">
-        For read-only use cases, you can skip the Store layer entirely — see{" "}
+        For read-only use cases, you can skip the Store layer entirely, see{" "}
         <a href="#advanced-usage" className="underline underline-offset-4 transition-colors hover:text-foreground">
           Factory pattern
         </a>.

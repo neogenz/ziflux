@@ -85,7 +85,7 @@ export class OrderListComponent {
     if (result !== undefined) {
       this.#toast.show('Order deleted')
     }
-    // No try/catch needed — errors land in store.deleteOrder.error()
+    // No try/catch needed: errors land in store.deleteOrder.error()
   }
 }`
 
@@ -123,7 +123,7 @@ const OPTIMISTIC_TEMPLATE_CODE = `@for (order of store.orders.value(); track ord
 }
 
 @if (store.updateOrder.error()) {
-  <div class="error-banner">Update failed — changes have been rolled back.</div>
+  <div class="error-banner">Update failed, changes have been rolled back.</div>
 }`
 
 const ANY_LOADING_CODE = `readonly isAnythingLoading = anyLoading(
@@ -179,7 +179,7 @@ export function Guide() {
         Quick Start gave you the basics. Now: detail views, error handling, mutations, and optimistic updates.
       </p>
 
-      {/* Architecture overview — collapsible */}
+      {/* Architecture overview, collapsible */}
       <details className="group/arch mt-10" open>
         <summary className="mb-6 flex cursor-pointer list-none items-center gap-2 text-lg font-semibold [&::-webkit-details-marker]:hidden">
           <svg className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open/arch:rotate-90" viewBox="0 0 16 16" fill="none">
@@ -197,7 +197,7 @@ export function Guide() {
               gridTemplateRows: "auto auto auto auto",
             }}
           >
-            {/* Row 1 — ziflux pill spanning Store + API Service */}
+            {/* Row 1: ziflux pill spanning Store + API Service */}
             <div />
             <div />
             <div className="text-center pb-3" style={{ gridColumn: "3 / 6" }}>
@@ -206,7 +206,7 @@ export function Guide() {
             <div />
             <div />
 
-            {/* Row 2 — blocks + arrows */}
+            {/* Row 2: blocks + arrows */}
             {/* Component */}
             <div className="rounded-xl border border-border bg-muted/40 px-5 py-5 text-center">
               <p className="text-[13px] font-semibold tracking-tight">Component</p>
@@ -240,7 +240,7 @@ export function Guide() {
               <p className="mt-1.5 text-[11px] text-muted-foreground/60">via loader</p>
             </div>
 
-            {/* Row 3 — tags below Store */}
+            {/* Row 3: tags below Store */}
             <div />
             <div />
             <div className="flex flex-wrap justify-center gap-1.5 pt-2.5">
@@ -252,7 +252,7 @@ export function Guide() {
             <div />
             <div />
 
-            {/* Row 4 — return flow */}
+            {/* Row 4: return flow */}
             <div className="flex items-center pt-4" style={{ gridColumn: "1 / -1" }}>
               <svg className="h-3 w-3 text-muted-foreground/30" viewBox="0 0 12 12" fill="none">
                 <path d="M10 6H2M5 3L2 6l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -290,14 +290,14 @@ export function Guide() {
             </ul>
             <p className="mt-2">
               You can&apos;t merge both lifetimes without losing one or the other. The 3-file pattern solves this by separating the cache host (API service, root) from the reactive state (Store, route-scoped).
-              The API service is a natural choice — but <code>DataCache</code> works anywhere with an injection context. A dedicated <code>OrderCache</code> service works just as well.
+              The API service is a natural choice, but <code>DataCache</code> works anywhere with an injection context. A dedicated <code>OrderCache</code> service works just as well.
             </p>
           </Callout>
         </div>
 
         <div className="mt-4">
           <Callout variant="tip">
-            The library works without a store layer — use <code>cachedResource</code> directly in a component if your use case is simple.
+            The library works without a store layer. Use <code>cachedResource</code> directly in a component if your use case is simple.
           </Callout>
         </div>
 
@@ -307,8 +307,8 @@ export function Guide() {
           <ol className="list-decimal list-inside space-y-1.5 text-sm text-muted-foreground">
             <li>Components <strong>shouldn&apos;t</strong> inject an API service directly</li>
             <li>Keep HTTP logic in the API service, not the store</li>
-            <li>The store <strong>shouldn&apos;t</strong> instantiate a <code>DataCache</code> — it reads <code>this.#api.cache</code></li>
-            <li>Mutations invalidate the cache via <code>invalidateKeys</code> — the store handles this, not the API service</li>
+            <li>The store <strong>shouldn&apos;t</strong> instantiate a <code>DataCache</code>, it reads <code>this.#api.cache</code></li>
+            <li>Mutations invalidate the cache via <code>invalidateKeys</code>, and the store handles that, not the API service</li>
           </ol>
         </div>
 
@@ -352,7 +352,7 @@ export function Guide() {
       <div id="usage" className="mt-10">
         <h3 className="mb-2 text-lg font-semibold">Recipes</h3>
         <p className="mt-2 mb-4 text-sm text-muted-foreground">
-          Picks up where Quick Start left off — using the same API service and list store from there.
+          Picks up where Quick Start left off, using the same API service and list store from there.
         </p>
 
         {/* 1. Detail Store */}
@@ -402,10 +402,10 @@ export function Guide() {
             <Callout variant="important" title="Mutation lifecycle">
               <ol className="mt-1 space-y-2">
                 <li>
-                  <code className="text-foreground">onMutate(args)</code> — Runs <strong>before</strong> the API call. Snapshot the current state, apply the optimistic change, and <strong>return the snapshot</strong>.
+                  <code className="text-foreground">onMutate(args)</code> runs <strong>before</strong> the API call. Snapshot the current state, apply the optimistic change, and <strong>return the snapshot</strong>.
                 </li>
                 <li>
-                  <code className="text-foreground">mutationFn(args)</code> — The actual API call.
+                  <code className="text-foreground">mutationFn(args)</code> is the actual API call.
                 </li>
                 <li>
                   <strong className="text-foreground">Success:</strong> <code>onSuccess</code> fires, then <code>invalidateKeys</code> marks cache entries stale so <code>cachedResource</code> refetches from the server.
@@ -431,8 +431,8 @@ export function Guide() {
           <h4 className="mb-2 text-sm font-semibold">5. Combine loading states</h4>
           <CodeBlock code={ANY_LOADING_CODE} filename="order-list.store.ts" />
           <p className="mt-3 text-sm text-muted-foreground">
-            <code>isLoading</code> is for <code>cachedResource</code> — true while fetching data (initial load or background revalidation).{" "}
-            <code>isPending</code> is for <code>cachedMutation</code> — true while the mutation is in-flight.{" "}
+            <code>isLoading</code> is for <code>cachedResource</code> and is true while fetching data (initial load or background revalidation).{" "}
+            <code>isPending</code> is for <code>cachedMutation</code> and is true while the mutation is in flight.{" "}
             Both are <code>Signal&lt;boolean&gt;</code>, so <code>anyLoading()</code> combines them seamlessly.
           </p>
         </div>

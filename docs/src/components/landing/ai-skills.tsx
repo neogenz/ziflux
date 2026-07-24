@@ -7,7 +7,7 @@ export function AiSkills() {
     <section id="ai-skills" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
       <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">AI skills</h2>
       <p className="mt-2 text-center text-muted-foreground">
-        Give your AI coding agent deep ziflux expertise — works with Claude Code, Cursor, Windsurf, and any{" "}
+        Give your AI coding agent deep ziflux expertise. Works with Claude Code, Cursor, Windsurf, and any{" "}
         <a
           href="https://skills.sh"
           target="_blank"

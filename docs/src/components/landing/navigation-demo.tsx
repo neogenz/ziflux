@@ -295,7 +295,7 @@ function MutationPanel({
   return (
     <DemoPanel label={label} accent={accent} glow={accent && phase === "done"}>
       <div className="relative">
-        {/* Data rows — dimmed when dialog is open */}
+        {/* Data rows, dimmed when dialog is open */}
         <div className={`space-y-3 transition-opacity duration-200 ${isEditing ? "opacity-30" : ""}`}>
           <DataRow name="Alice Martin" detail="Engineering" />
           <DataRow

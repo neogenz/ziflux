@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ziflux.dev"),
-  title: "ziflux — SWR caching for Angular resource()",
+  title: "ziflux: SWR caching for Angular resource()",
   description:
     "Zero-dependency, signal-native caching layer for Angular 22+. Stale-while-revalidate semantics for resource(): cached data paints instantly on return visits, refreshes happen in the background.",
   keywords: [
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     "ziflux",
   ],
   openGraph: {
-    title: "ziflux — SWR caching for Angular resource()",
+    title: "ziflux: SWR caching for Angular resource()",
     description:
       "Instant navigations and silent background refreshes. SWR caching for Angular resource().",
     type: "website",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ziflux — SWR caching for Angular resource()",
+    title: "ziflux: SWR caching for Angular resource()",
     description:
       "Instant navigations and silent background refreshes. SWR caching for Angular resource().",
     images: ["/og.png"],

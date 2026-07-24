@@ -54,7 +54,10 @@ this.cache.invalidate(['order'])  // prefix match`,
   staleTime?: number
   expireTime?: number
   retry?: number | RetryConfig          // auto-retry with exponential backoff
-  refetchInterval?: number | (() => number | false)  // polling
+  refetchInterval?: number | (() => number | false)  // polling, ignores staleTime
+  refetchOnWindowFocus?: boolean        // revalidate on tab focus, respects staleTime
+  refetchOnReconnect?: boolean          // revalidate when the network returns
+  id?: string                           // reuse the SSR value via TransferState
 }): CachedResourceRef<T>`,
     usage: `interface CachedResourceRef<T> {
   readonly value: Signal<T | undefined>        // preserves last cached value on error
@@ -86,13 +89,13 @@ interface RetryConfig {
   mutationFn: (args: A) => Observable<R> | Promise<R>
   cache?: { invalidate(prefix: string[]): void }
   invalidateKeys?: (args: A, result: R) => string[][]
-  onMutate?: (args: A) => C | Promise<C>       // runs before API call — return value → "context" in onError
+  onMutate?: (args: A) => C | Promise<C>       // runs before the API call; its return value becomes "context" in onError
   onSuccess?: (result: R, args: A) => void
   onError?: (error: unknown, args: A, context: C | undefined) => void
 }): CachedMutationRef<A, R>
 
 // Lifecycle: onMutate → mutationFn → (onSuccess → invalidateKeys) | onError
-// mutate() never rejects — errors are captured in the error signal`,
+// mutate() never rejects; errors are captured in the error signal`,
     usage: `interface CachedMutationRef<A, R> {
   mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
   readonly status: Signal<CachedMutationStatus>  // 'idle' | 'pending' | 'success' | 'error'
@@ -201,7 +204,7 @@ console.log(config.staleTime, config.expireTime)`,
   {
     id: "cache-registry",
     label: "CacheRegistry",
-    description: "Advanced — most apps won't need this directly. Global registry of all DataCache instances.",
+    description: "Advanced. Most apps will not need this directly. Global registry of all DataCache instances.",
     code: `class CacheRegistry {
   readonly caches: Signal<Map<string, DataCache>>
   inspectAll(): { name: string; inspection: CacheInspection<unknown> }[]
@@ -223,7 +226,7 @@ export function ApiReference() {
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
         <a href="#api" className="hover:no-underline">API reference <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
-      <p className="mt-2 text-muted-foreground">All runtime exports — signatures and usage examples.</p>
+      <p className="mt-2 text-muted-foreground">All runtime exports, with signatures and usage examples.</p>
 
       {/* Tabs */}
       <div className="mt-8 flex flex-wrap gap-2">

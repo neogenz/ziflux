@@ -40,14 +40,13 @@ export function Hero() {
 
         {/* Value proposition */}
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Every time your user navigates back to a page they already visited, they see a spinner.
-          ziflux removes that spinner for as long as the entry is still within{" "}
-          <code>expireTime</code>, using{" "}
-          <strong className="text-foreground">stale-while-revalidate</strong> (SWR) semantics:
-          the cached value paints immediately and the refresh happens behind it.
-          {" "}If you know <code>resource()</code> and signals, most of this is already familiar.
-          Three APIs to learn, no runtime dependencies, 6.2 kB brotli measured with a 6.4 kB
-          ceiling enforced in CI.
+          Go back to a page you already visited and you get the spinner again. ziflux paints the
+          cached value immediately and refreshes behind it, for as long as the entry is within{" "}
+          <code>expireTime</code>.
+        </p>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          If you know <code>resource()</code> and signals, most of this is already familiar. Three
+          APIs, no runtime dependencies, 6.2 kB brotli enforced in CI.
         </p>
 
         {/* Install */}
@@ -55,7 +54,7 @@ export function Hero() {
           <CodeBlock code={INSTALL_CODE} language="bash" />
         </div>
 
-        {/* Primary CTAs — explicit paths after install snippet */}
+        {/* Primary CTAs, explicit paths after install snippet */}
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <a
             href="#quickstart"
@@ -75,7 +74,7 @@ export function Hero() {
           </a>
         </div>
 
-        {/* Usage — the signature code */}
+        {/* Usage, the signature code */}
         <div className="mt-6">
           <CodeBlock code={USAGE_CODE} filename="order-list.store.ts" />
         </div>

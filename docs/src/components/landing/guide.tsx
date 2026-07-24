@@ -91,7 +91,8 @@ export class OrderListComponent {
 
 const OPTIMISTIC_CODE = `readonly updateOrder = cachedMutation({
   cache: this.#api.cache,
-  mutationFn: (args) => this.#api.update$(args.id, args.data),
+  mutationFn: (args: { id: string; data: Partial<Order> }) =>
+    this.#api.update$(args.id, args.data),
   invalidateKeys: (args) => [['order', 'details', args.id], ['order', 'list']],
 
   // 1. Runs BEFORE the API call

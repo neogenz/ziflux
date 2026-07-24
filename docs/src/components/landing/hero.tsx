@@ -41,11 +41,13 @@ export function Hero() {
         {/* Value proposition */}
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           Every time your user navigates back to a page they already visited, they see a spinner.
-          ziflux eliminates that. One cache layer with{" "}
+          ziflux removes that spinner for as long as the entry is still within{" "}
+          <code>expireTime</code>, using{" "}
           <strong className="text-foreground">stale-while-revalidate</strong> (SWR) semantics:
-          return visits are instant, background refreshes are silent.
-          {" "}If you know <code>resource()</code> and signals, you already know ziflux.
-          3 core functions, zero runtime dependencies, 5.9 kB brotli — measured, and enforced in CI.
+          the cached value paints immediately and the refresh happens behind it.
+          {" "}If you know <code>resource()</code> and signals, most of this is already familiar.
+          Three APIs to learn, no runtime dependencies, 6.2 kB brotli measured with a 6.4 kB
+          ceiling enforced in CI.
         </p>
 
         {/* Install */}

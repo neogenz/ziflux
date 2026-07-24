@@ -18,7 +18,7 @@ export function PriorArt() {
         <div className="rounded-xl border border-border bg-muted/30 p-5">
           <p className="text-sm font-semibold">NgRx</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Two things under one name: the classic Redux store (reducers, effects, selectors, time-travel) and <code>@ngrx/signals</code> SignalStore, which is signal-first. Pick either when caching is a side-effect of complex global state, not the goal — ziflux composes with SignalStore rather than replacing it.
+            Two things under one name: the classic Redux store (reducers, effects, selectors, time-travel) and <code>@ngrx/signals</code> SignalStore, which is signal-first. Pick either when caching is a side-effect of complex global state, not the goal. ziflux is meant to sit alongside SignalStore rather than replace it, though the repo ships no interop test yet.
           </p>
         </div>
         <div className="rounded-xl border border-accent/20 bg-accent/[0.03] p-5">

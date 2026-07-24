@@ -84,7 +84,7 @@ export function QuickStart() {
 
       {/* Step 4 */}
       <p className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">4 · Template</p>
-      <p className="mt-2 mb-4 text-sm text-muted-foreground">isInitialLoading() is true only when there's no cached data. Subsequent visits skip the spinner entirely.</p>
+      <p className="mt-2 mb-4 text-sm text-muted-foreground">isInitialLoading() is true only when there's no cached data, so a return visit skips the spinner as long as the entry has not passed expireTime.</p>
       <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
 
       {/* Closing */}

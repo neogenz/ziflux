@@ -63,7 +63,8 @@ this.cache.invalidate(['order'])  // prefix match`,
   readonly isLoading: Signal<boolean>
   readonly isStale: Signal<boolean>            // SWR in progress
   readonly isInitialLoading: Signal<boolean>   // true only on cold cache
-  hasValue(): this is { readonly value: Signal<T> }   // type guard, narrows value()
+  hasValue(): this is Omit<CachedResourceRef<T>, 'value'>
+    & { readonly value: Signal<T> }            // type guard, narrows value()
   reload(): boolean                            // refetches now, bypassing staleTime
   destroy(): void
   set(value: T): void
@@ -72,8 +73,8 @@ this.cache.invalidate(['order'])  // prefix match`,
 
 interface RetryConfig {
   maxRetries: number
-  baseDelay?: number              // default: 1_000 ms
-  maxDelay?: number               // default: 30_000 ms
+  baseDelay?: number              // upper bound of retry 1, jittered. default: 1_000 ms
+  maxDelay?: number               // ceiling for the backoff. default: 30_000 ms
   retryIf?: (error: unknown) => boolean  // default: retry all
 }`,
   },

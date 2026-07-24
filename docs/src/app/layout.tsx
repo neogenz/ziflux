@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://ziflux.dev"),
   title: "ziflux — SWR caching for Angular resource()",
   description:
-    "Zero-dependency, signal-native caching layer for Angular 22+. Stale-while-revalidate semantics for resource() — instant navigations, background refreshes, no spinners on return visits.",
+    "Zero-dependency, signal-native caching layer for Angular 22+. Stale-while-revalidate semantics for resource(): cached data paints instantly on return visits, refreshes happen in the background.",
   keywords: [
     "angular",
     "cache",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ziflux — SWR caching for Angular resource()",
     description:
-      "Instant navigations, background refreshes, zero spinners. SWR caching for Angular resource().",
+      "Instant navigations and silent background refreshes. SWR caching for Angular resource().",
     type: "website",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
   },
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ziflux — SWR caching for Angular resource()",
     description:
-      "Instant navigations, background refreshes, zero spinners. SWR caching for Angular resource().",
+      "Instant navigations and silent background refreshes. SWR caching for Angular resource().",
     images: ["/og.png"],
   },
 }

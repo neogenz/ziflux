@@ -565,7 +565,7 @@ A flag is independent of every time window, so neither edge exists. It also subs
 
 ## D-41 — Observable loaders bridge through an abort-aware helper, not `firstValueFrom()`
 
-**Decision:** `cachedResource` subscribes to an Observable loader manually and unsubscribes when `abortSignal` fires. `firstValueFrom()` is no longer used.
+**Decision:** `cachedResource` subscribes to an Observable loader manually and unsubscribes when `abortSignal` fires. `firstValueFrom()` is no longer used *in `cachedResource`*. `cachedMutation` still uses it, deliberately: a mutation has no `abortSignal` to honor, and cancelling a write mid-flight is not a behavior the API offers.
 
 **Rationale:** `firstValueFrom()` has no `AbortSignal` parameter — it stays subscribed until the first emission whatever the resource does. The documented primary loader shape is `({ params }) => this.http.get(...)`, so an Angular abort (params changed, resource destroyed) left the HTTP request running to completion. Consequences: a typeahead leaked one live request per keystroke, and `destroy()` cancelled nothing. Angular's own `rxResource` unsubscribes on abort; ziflux claims to mirror `resource()` and did not.
 

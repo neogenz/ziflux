@@ -31,9 +31,9 @@ const LIMITS: Limit[] = [
     alternative: "Debounce the input; cache only the stable result keys you actually want to revisit.",
   },
   {
-    key: "ng-pre-21",
+    key: "ng-pre-22",
     title: "Angular before v22",
-    reason: "ziflux is built on Angular's `resource()` API.",
+    reason: "ziflux declares `@angular/core ^22.0.0` as its peer range, so npm will refuse to install it on older majors. The code itself only needs `resource()`, which shipped earlier, but v22 is the supported floor.",
     alternative: "Stay on whatever cache pattern you have today; revisit when you upgrade.",
   },
   {

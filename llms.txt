@@ -68,7 +68,22 @@ export class ProductListStore {
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
 import { ProductListStore } from './product-list.store'
 
-@Component({ providers: [ProductListStore], changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({
+  selector: 'app-product-list',
+  providers: [ProductListStore],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    @if (store.products.isInitialLoading()) {
+      <p>Loading…</p>
+    } @else {
+      <ul>
+        @for (product of store.products.value(); track product.id) {
+          <li>{{ product.name }}</li>
+        }
+      </ul>
+    }
+  `,
+})
 export class ProductListComponent {
   readonly store = inject(ProductListStore)
 }

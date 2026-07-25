@@ -54,9 +54,9 @@ export function NotAFit() {
         SWR caching is narrow on purpose. If your problem looks like one of these, reach for something else.
       </p>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+      <div className="mt-8 grid gap-x-10 gap-y-7 sm:grid-cols-2">
         {LIMITS.map((limit) => (
-          <div key={limit.key} className="rounded-xl border border-border bg-muted/30 p-5">
+          <div key={limit.key} className="border-t border-border pt-4">
             <h3 className="text-sm font-semibold">{limit.title}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               <span className="text-foreground/80">Why not: </span>

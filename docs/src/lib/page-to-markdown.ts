@@ -34,12 +34,12 @@ export function pageToMarkdown(): string {
     el.remove()
   }
 
-  // Strip interactive demos (NavigationDemo — aria-hidden visual-only)
+  // Strip decorative glyphs (CTA arrows, demo panels)
   for (const el of clone.querySelectorAll('[aria-hidden="true"]')) {
     el.remove()
   }
 
-  // Strip visual-only elements (diagrams, phase bars, trees)
+  // Strip visual-only elements (diagrams, phase bars, trees, NavigationDemo)
   for (const el of clone.querySelectorAll("[data-md-visual]")) {
     el.remove()
   }

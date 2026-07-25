@@ -12,36 +12,44 @@ export function Freshness() {
         Every cached entry goes through three phases. <code>invalidate()</code> marks entries stale &mdash; it never deletes them.
       </p>
 
-      {/* Timeline, phase bars */}
-      <div data-md-visual className="mt-8 flex gap-1">
-        <div className="flex-[3] rounded-l-md bg-emerald-500/80 py-3 px-4">
-          <p className="text-sm font-bold text-white">FRESH</p>
+      {/* Timeline. Below sm each phase stacks as one group; at sm the wrappers
+          dissolve so the nine cells align on real grid tracks. */}
+      <div
+        data-md-visual
+        className="mt-8 grid gap-x-1 gap-y-6 sm:grid-flow-col sm:grid-cols-[3fr_3fr_2fr] sm:grid-rows-[auto_auto_auto] sm:gap-y-3"
+      >
+        <div className="sm:contents">
+          <div className="rounded-md bg-ok/80 px-4 py-3 sm:rounded-r-none">
+            <p className="text-sm font-bold text-status-foreground">FRESH</p>
+          </div>
+          <div className="mt-2 text-xs sm:mt-0">
+            <p className="font-semibold text-ok-strong">Return cached data</p>
+            <p className="mt-0.5 text-muted-foreground">No network request</p>
+          </div>
+          <div className="mt-1.5 text-xs text-muted-foreground sm:mt-0">Data written to cache</div>
         </div>
-        <div className="flex-[3] bg-amber-500/80 py-3 px-4">
-          <p className="text-sm font-bold text-white">STALE</p>
+
+        <div className="sm:contents">
+          <div className="rounded-md bg-caution/80 px-4 py-3 sm:rounded-none">
+            <p className="text-sm font-bold text-status-foreground">STALE</p>
+          </div>
+          <div className="mt-2 text-xs sm:mt-0">
+            <p className="font-semibold text-caution-strong">Return cached + re-fetch</p>
+            <p className="mt-0.5 text-muted-foreground">User sees data instantly, refresh in background</p>
+          </div>
+          <div className="mt-1.5 text-xs text-muted-foreground sm:mt-0"><code className="font-semibold text-foreground">staleTime</code> elapsed &mdash; data may be outdated</div>
         </div>
-        <div className="flex-[2] rounded-r-md bg-red-400/80 py-3 px-4">
-          <p className="text-sm font-bold text-white">EVICTED</p>
+
+        <div className="sm:contents">
+          <div className="rounded-md bg-danger/80 px-4 py-3 sm:rounded-l-none">
+            <p className="text-sm font-bold text-status-foreground">EVICTED</p>
+          </div>
+          <div className="mt-2 text-xs sm:mt-0">
+            <p className="font-semibold text-danger-strong">Fetch from server</p>
+            <p className="mt-0.5 text-muted-foreground">Cache entry removed</p>
+          </div>
+          <div className="mt-1.5 text-xs text-muted-foreground sm:mt-0"><code className="font-semibold text-foreground">expireTime</code> elapsed &mdash; entry evicted</div>
         </div>
-      </div>
-      <div data-md-visual className="mt-3 flex gap-1 text-xs">
-        <div className="flex-[3]">
-          <p className="font-semibold text-emerald-500">Return cached data</p>
-          <p className="mt-0.5 text-muted-foreground">No network request</p>
-        </div>
-        <div className="flex-[3]">
-          <p className="font-semibold text-amber-500">Return cached + re-fetch</p>
-          <p className="mt-0.5 text-muted-foreground">User sees data instantly, refresh in background</p>
-        </div>
-        <div className="flex-[2]">
-          <p className="font-semibold text-red-400">Fetch from server</p>
-          <p className="mt-0.5 text-muted-foreground">Cache entry removed</p>
-        </div>
-      </div>
-      <div data-md-visual className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
-        <div className="flex-[3]">Data written to cache</div>
-        <div className="flex-[3]"><code className="font-semibold text-foreground">staleTime</code> elapsed &mdash; data may be outdated</div>
-        <div className="flex-[2]"><code className="font-semibold text-foreground">expireTime</code> elapsed &mdash; entry evicted</div>
       </div>
 
       {/* Loading states table */}
@@ -66,22 +74,22 @@ export function Freshness() {
               </tr>
               <tr>
                 <td className="px-4 py-3 font-medium">Return visit (data &lt; staleTime)</td>
-                <td className="px-4 py-3 text-emerald-500">fresh</td>
+                <td className="px-4 py-3 text-ok-strong">fresh</td>
                 <td className="px-4 py-3 text-muted-foreground">Data instantly, no fetch</td>
               </tr>
               <tr>
                 <td className="px-4 py-3 font-medium">Return visit (data &gt; staleTime)</td>
-                <td className="px-4 py-3 text-amber-500">stale</td>
+                <td className="px-4 py-3 text-caution-strong">stale</td>
                 <td className="px-4 py-3 text-muted-foreground">Stale data instantly &rarr; silent refresh &rarr; fresh data</td>
               </tr>
               <tr>
                 <td className="px-4 py-3 font-medium">After mutation</td>
-                <td className="px-4 py-3 text-amber-500">stale</td>
+                <td className="px-4 py-3 text-caution-strong">stale</td>
                 <td className="px-4 py-3 text-muted-foreground">Data + silent refresh (cache invalidated by mutation)</td>
               </tr>
               <tr>
                 <td className="px-4 py-3 font-medium">Network error, had cache</td>
-                <td className="px-4 py-3 text-amber-500">stale</td>
+                <td className="px-4 py-3 text-caution-strong">stale</td>
                 <td className="px-4 py-3 text-muted-foreground">Stale data shown, no crash</td>
               </tr>
             </tbody>
@@ -101,7 +109,7 @@ export function Freshness() {
         <div data-md-visual className="font-mono text-sm">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-accent font-bold">{`['order']`}</span>
+              <span className="text-accent-strong font-bold">{`['order']`}</span>
               <span className="text-xs text-muted-foreground">&larr; invalidate here, everything below becomes stale</span>
             </div>
             <div className="ml-4 space-y-1 border-l-2 border-border pl-4">
@@ -132,9 +140,9 @@ export function Freshness() {
       {/* When to cache */}
       <div className="mt-10">
         <h3 className="mb-4 text-lg font-semibold">When to cache</h3>
-        <div className="grid gap-x-8 gap-y-6 text-sm sm:grid-cols-2">
-          <div className="border-l-2 border-emerald-500 pl-4">
-            <p className="mb-2 font-semibold text-emerald-500">Cache</p>
+        <div className="grid text-sm sm:grid-cols-2">
+          <div className="pb-6 sm:pb-0 sm:pr-8">
+            <p className="mb-2 font-semibold">Cache</p>
             <ul className="space-y-1.5 text-muted-foreground">
               <li>GET, entity lists</li>
               <li>GET, entity details</li>
@@ -142,8 +150,8 @@ export function Freshness() {
               <li>Predictable access patterns (tabs, navigation)</li>
             </ul>
           </div>
-          <div className="border-l-2 border-red-400 pl-4">
-            <p className="mb-2 font-semibold text-red-400">Don&apos;t cache</p>
+          <div className="border-t border-border pt-6 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-8">
+            <p className="mb-2 font-semibold">Don&apos;t cache</p>
             <ul className="space-y-1.5 text-muted-foreground">
               <li>POST / PUT / DELETE</li>
               <li>Search results with volatile params</li>

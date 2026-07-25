@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="border-t border-border">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-8">
         <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-          <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-accent" aria-hidden="true">
+          <svg viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-accent-strong" aria-hidden="true">
             <rect x="110" y="110" width="45" height="45" fill="currentColor"/>
             <rect x="165" y="110" width="45" height="45" fill="currentColor"/>
             <rect x="220" y="110" width="45" height="45" fill="currentColor"/>
@@ -27,7 +27,7 @@ export function Footer() {
           href="https://github.com/neogenz/ziflux"
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
+          className="relative rounded-lg p-2 text-muted-foreground transition-colors before:absolute before:left-1/2 before:top-1/2 before:h-11 before:w-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-[''] hover:text-foreground"
           aria-label="GitHub"
         >
           <Github size={18} />

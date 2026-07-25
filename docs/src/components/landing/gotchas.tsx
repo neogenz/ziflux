@@ -85,7 +85,7 @@ export function Gotchas() {
         {GOTCHAS.map((gotcha) => (
           <div key={gotcha.key} className="rounded-xl border border-border bg-muted/30 p-5">
             <div className="flex items-start gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-600 dark:text-amber-400">!</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-caution/10 text-xs font-bold text-caution-strong">!</span>
               <div>
                 <h3 className="text-sm font-semibold">{gotcha.title}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{gotcha.description}</p>
@@ -95,11 +95,11 @@ export function Gotchas() {
             {gotcha.wrong && gotcha.right && (
               <div className="mt-4 space-y-3">
                 <div>
-                  <span className="mb-1.5 inline-block rounded-md bg-red-400/10 px-2 py-0.5 font-mono text-[11px] text-red-400">{gotcha.wrongLabel}</span>
+                  <span className="mb-1.5 inline-block rounded-md bg-danger/10 px-2 py-0.5 font-mono text-[11px] text-danger-strong">{gotcha.wrongLabel}</span>
                   <CodeBlock code={gotcha.wrong} />
                 </div>
                 <div>
-                  <span className="mb-1.5 inline-block rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-500">{gotcha.rightLabel}</span>
+                  <span className="mb-1.5 inline-block rounded-md bg-ok/10 px-2 py-0.5 font-mono text-[11px] text-ok-strong">{gotcha.rightLabel}</span>
                   <CodeBlock code={gotcha.right} />
                 </div>
               </div>

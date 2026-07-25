@@ -6,8 +6,9 @@ import { pageToMarkdown } from "@/lib/page-to-markdown"
 
 export function CopyPageDropdown() {
   const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState<"idle" | "copied">("idle")
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle")
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -18,7 +19,9 @@ export function CopyPageDropdown() {
       }
     }
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false)
+      if (e.key !== "Escape") return
+      setOpen(false)
+      triggerRef.current?.focus()
     }
 
     document.addEventListener("mousedown", handleClick)
@@ -29,11 +32,20 @@ export function CopyPageDropdown() {
     }
   }, [open])
 
-  const copyPage = async () => {
-    const md = pageToMarkdown()
-    await navigator.clipboard.writeText(md)
-    setStatus("copied")
+  // Closing unmounts whatever item was focused, so focus goes back to the
+  // trigger rather than being dropped on <body>.
+  const closeMenu = () => {
     setOpen(false)
+    triggerRef.current?.focus()
+  }
+
+  const copyPage = async () => {
+    try {
+      await navigator.clipboard.writeText(pageToMarkdown())
+      setStatus("copied")
+    } catch {
+      setStatus("failed")
+    }
     setTimeout(() => setStatus("idle"), 2000)
   }
 
@@ -41,15 +53,15 @@ export function CopyPageDropdown() {
     const md = pageToMarkdown()
     const blob = new Blob([md], { type: "text/plain" })
     window.open(URL.createObjectURL(blob), "_blank")
-    setOpen(false)
+    closeMenu()
   }
 
   return (
     <div ref={ref} className="relative">
-      <div className="flex items-center rounded-lg border border-border">
+      <div className="flex items-center rounded-lg border border-border-strong">
         <button
           onClick={copyPage}
-          className="flex cursor-pointer items-center gap-2 rounded-l-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="flex cursor-pointer items-center gap-2 rounded-l-lg px-3 py-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
           aria-label="Copy page as Markdown"
         >
           <span className="relative h-3.5 w-3.5">
@@ -59,25 +71,38 @@ export function CopyPageDropdown() {
             />
             <Check
               size={14}
-              className={`absolute inset-0 text-emerald-500 transition-[scale,opacity] duration-300 ${status === "copied" ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}
+              className={`absolute inset-0 text-ok-strong transition-[scale,opacity] duration-300 ${status === "copied" ? "scale-100 opacity-100" : "scale-0 opacity-0"}`}
             />
           </span>
-          <span>{status === "copied" ? "Copied!" : "Copy page"}</span>
+          <span>
+            {status === "copied"
+              ? "Copied!"
+              : status === "failed"
+                ? "Copy failed"
+                : "Copy page"}
+          </span>
         </button>
         <button
+          ref={triggerRef}
           onClick={() => setOpen((v) => !v)}
-          className="cursor-pointer border-l border-border px-1.5 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
+          className="flex min-w-11 cursor-pointer items-center justify-center rounded-r-lg border-l border-border py-3 text-muted-foreground transition-colors hover:text-foreground"
           aria-label="More copy options"
+          aria-expanded={open}
         >
           <ChevronDown size={14} />
         </button>
       </div>
 
+      {/* Left-anchored on phones, where the trigger sits at the left edge and a
+          right-anchored w-52 panel would hang off the viewport. */}
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-background p-1 shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-2 w-52 rounded-xl border border-border bg-background p-1 shadow-lg sm:left-auto sm:right-0">
           <button
-            onClick={copyPage}
-            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+            onClick={() => {
+              copyPage()
+              closeMenu()
+            }}
+            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors hover:bg-muted"
           >
             <Copy size={16} className="shrink-0 text-muted-foreground" />
             <div>
@@ -89,7 +114,7 @@ export function CopyPageDropdown() {
           </button>
           <button
             onClick={viewAsMarkdown}
-            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+            className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors hover:bg-muted"
           >
             <FileText size={16} className="shrink-0 text-muted-foreground" />
             <div>

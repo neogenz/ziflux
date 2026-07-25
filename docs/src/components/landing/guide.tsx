@@ -134,7 +134,7 @@ const ANY_LOADING_CODE = `readonly isAnythingLoading = anyLoading(
 function ArrowCell() {
   return (
     <div className="flex items-center justify-center">
-      <svg className="w-5 text-border" viewBox="0 0 20 12" fill="none">
+      <svg className="w-5 text-border-strong" viewBox="0 0 20 12" fill="none">
         <line x1="0" y1="6" x2="14" y2="6" stroke="currentColor" strokeWidth="1.5" />
         <path d="M12 2l5 4-5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -142,29 +142,25 @@ function ArrowCell() {
   )
 }
 
-function Tag({ children, accent }: { children: React.ReactNode; accent?: boolean }) {
+function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className={`rounded-md px-2 py-0.5 font-mono text-[11px] leading-relaxed ${
-      accent
-        ? "bg-accent/10 text-accent"
-        : "bg-muted text-muted-foreground"
-    }`}>
+    <span className="rounded-md bg-accent/10 px-2 py-0.5 font-mono text-[11px] leading-relaxed text-accent-strong">
       {children}
     </span>
   )
 }
 
-function DomainCard({ step, file, role, scope }: { step: number; file: string; role: string; scope: string }) {
+function DomainStep({ step, file, role, scope }: { step: number; file: string; role: string; scope: string }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-5">
+    <div className="border-t border-border pt-4">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent-strong">
           {step}
         </span>
         <code className="text-[13px] font-semibold">{file}</code>
       </div>
       <p className="mt-3 text-sm text-muted-foreground">{role}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground/60">{scope}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{scope}</p>
     </div>
   )
 }
@@ -186,10 +182,11 @@ export function Guide() {
             <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Architecture
-          <span className="text-sm font-normal text-muted-foreground">(skip if you just want recipes <a href="#usage" className="underline underline-offset-4 transition-colors hover:text-foreground">&darr;</a>)</span>
+          <span className="text-sm font-normal text-muted-foreground">(skip if you just want recipes <a href="#usage" aria-label="Skip to recipes" className="underline underline-offset-4 transition-colors hover:text-foreground">&darr;</a>)</span>
         </summary>
 
-        <div data-md-visual className="overflow-x-auto">
+        {/* Scrolls below 628px, so it needs to be reachable by keyboard. */}
+        <div data-md-visual role="region" aria-label="Architecture diagram" tabIndex={0} className="overflow-x-auto">
           <div
             className="grid min-w-[580px] items-center"
             style={{
@@ -201,7 +198,7 @@ export function Guide() {
             <div />
             <div />
             <div className="text-center pb-3" style={{ gridColumn: "3 / 6" }}>
-              <span className="inline-block rounded-full border border-accent/20 bg-accent/5 px-3 py-0.5 text-[11px] font-medium text-accent">ziflux</span>
+              <span className="inline-block rounded-full border border-accent/20 bg-accent/5 px-3 py-0.5 text-[11px] font-medium text-accent-strong">ziflux</span>
             </div>
             <div />
             <div />
@@ -225,10 +222,10 @@ export function Guide() {
 
             {/* API Service containing DataCache */}
             <div className="rounded-xl border border-border bg-muted/40 p-3 text-center">
-              <p className="text-[11px] font-medium text-muted-foreground">API Service <span className="text-muted-foreground/50">(root scope)</span></p>
-              <div className="mt-2 rounded-lg border border-accent/20 bg-accent/[0.06] px-4 py-3">
+              <p className="text-[11px] font-medium text-muted-foreground">API Service (root scope)</p>
+              <div className="mt-2 rounded-lg border border-accent/20 bg-accent/[0.03] px-4 py-3">
                 <p className="text-[13px] font-semibold tracking-tight">DataCache</p>
-                <p className="mt-1 text-[11px] text-muted-foreground/80">SWR &middot; dedup &middot; invalidation</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">SWR &middot; dedup &middot; invalidation</p>
               </div>
             </div>
 
@@ -237,15 +234,15 @@ export function Guide() {
             {/* Server */}
             <div className="rounded-xl border border-border/50 bg-muted/20 px-5 py-5 text-center">
               <p className="text-[13px] font-semibold tracking-tight text-muted-foreground">Server</p>
-              <p className="mt-1.5 text-[11px] text-muted-foreground/60">via loader</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">via loader</p>
             </div>
 
             {/* Row 3: tags below Store */}
             <div />
             <div />
             <div className="flex flex-wrap justify-center gap-1.5 pt-2.5">
-              <Tag accent>cachedResource()</Tag>
-              <Tag accent>cachedMutation()</Tag>
+              <Tag>cachedResource()</Tag>
+              <Tag>cachedMutation()</Tag>
             </div>
             <div />
             <div />
@@ -254,11 +251,11 @@ export function Guide() {
 
             {/* Row 4: return flow */}
             <div className="flex items-center pt-4" style={{ gridColumn: "1 / -1" }}>
-              <svg className="h-3 w-3 text-muted-foreground/30" viewBox="0 0 12 12" fill="none">
+              <svg className="h-3 w-3 text-border-strong" viewBox="0 0 12 12" fill="none">
                 <path d="M10 6H2M5 3L2 6l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <div className="mx-2 h-px flex-1 bg-gradient-to-r from-muted-foreground/25 via-muted-foreground/10 to-transparent" />
-              <span className="text-[11px] text-muted-foreground/50">Signals flow back to Component</span>
+              <span className="text-[11px] text-muted-foreground">Signals flow back to Component</span>
             </div>
           </div>
         </div>
@@ -270,10 +267,10 @@ export function Guide() {
           A recommended structure for most features:
         </p>
 
-        <div data-md-visual className="grid gap-3 sm:grid-cols-3">
-          <DomainCard step={1} file="order.api.ts" role="HTTP + cache" scope="singleton" />
-          <DomainCard step={2} file="order-list.store.ts" role="cachedResource + mutations" scope="route-scoped" />
-          <DomainCard step={3} file="order-list.component.ts" role="inject(Store), read signals" scope="view scope" />
+        <div data-md-visual className="grid gap-6 sm:grid-cols-3">
+          <DomainStep step={1} file="order.api.ts" role="HTTP + cache" scope="singleton" />
+          <DomainStep step={2} file="order-list.store.ts" role="cachedResource + mutations" scope="route-scoped" />
+          <DomainStep step={3} file="order-list.component.ts" role="inject(Store), read signals" scope="view scope" />
         </div>
 
         {/* Why singleton */}

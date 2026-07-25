@@ -63,17 +63,17 @@ export function AdvancedUsage() {
       {/* When to Use Which */}
       <div className="mt-10">
         <h3 className="mb-4 text-lg font-semibold">When to use which</h3>
-        <div className="grid gap-x-8 gap-y-6 text-sm sm:grid-cols-2">
-          <div className="border-l-2 border-accent pl-4">
-            <p className="mb-2 font-semibold text-accent">3-file pattern (API + Store + Component)</p>
+        <div className="grid text-sm sm:grid-cols-2">
+          <div className="pb-6 sm:pb-0 sm:pr-8">
+            <p className="mb-2 font-semibold">3-file pattern (API + Store + Component)</p>
             <ul className="space-y-1.5 text-muted-foreground">
               <li>Mutations + optimistic updates</li>
               <li>Derived state, complex UI logic</li>
               <li>Multiple resources coordinated</li>
             </ul>
           </div>
-          <div className="border-l-2 border-emerald-500 pl-4">
-            <p className="mb-2 font-semibold text-emerald-500">Factory pattern (ApiCached + Component)</p>
+          <div className="border-t border-border pt-6 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-8">
+            <p className="mb-2 font-semibold">Factory pattern (ApiCached + Component)</p>
             <ul className="space-y-1.5 text-muted-foreground">
               <li>Read-only data fetching</li>
               <li>Simple list / detail views</li>

@@ -234,9 +234,10 @@ export function ApiReference() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`rounded-lg px-3.5 py-2 text-sm font-mono transition-colors ${
+            aria-pressed={activeTab === tab.id}
+            className={`relative rounded-lg px-3.5 py-2 text-sm font-mono transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-[''] ${
               activeTab === tab.id
-                ? "bg-accent text-white"
+                ? "bg-accent text-accent-foreground"
                 : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >

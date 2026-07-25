@@ -79,22 +79,31 @@ export function Scenarios() {
         Three patterns where SWR caching on <code>resource()</code> earns its keep.
       </p>
 
-      <div className="mt-8 space-y-6">
-        {SCENARIOS.map((scenario) => (
-          <div key={scenario.key} className="rounded-xl border border-border bg-muted/30 p-5">
-            <h3 className="text-base font-semibold">{scenario.title}</h3>
-            <p className="mt-3 text-sm">
-              <span className="mr-2 inline-block rounded-md bg-red-400/10 px-2 py-0.5 font-mono text-[11px] text-red-400">Pain</span>
-              <span className="text-muted-foreground">{scenario.pain}</span>
-            </p>
-            <p className="mt-2 text-sm">
-              <span className="mr-2 inline-block rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] text-emerald-500">Fix</span>
-              <span className="text-muted-foreground">{scenario.fix}</span>
-            </p>
-            <div className="mt-4">
-              <CodeBlock code={scenario.code} />
+      <div className="mt-8 space-y-12">
+        {SCENARIOS.map((scenario, i) => (
+          <article key={scenario.key} className="grid gap-x-5 sm:grid-cols-[2.75rem_1fr]">
+            <span
+              data-md-visual
+              aria-hidden="true"
+              className="hidden font-mono text-sm tabular-nums text-muted-foreground sm:block sm:pt-1"
+            >
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div>
+              <h3 className="text-base font-semibold">{scenario.title}</h3>
+              <p className="mt-3 text-sm">
+                <span className="mr-2 inline-block rounded-md bg-danger/10 px-2 py-0.5 font-mono text-[11px] text-danger-strong">Pain</span>
+                <span className="text-muted-foreground">{scenario.pain}</span>
+              </p>
+              <p className="mt-2 text-sm">
+                <span className="mr-2 inline-block rounded-md bg-ok/10 px-2 py-0.5 font-mono text-[11px] text-ok-strong">Fix</span>
+                <span className="text-muted-foreground">{scenario.fix}</span>
+              </p>
+              <div className="mt-4">
+                <CodeBlock code={scenario.code} />
+              </div>
             </div>
-          </div>
+          </article>
         ))}
       </div>
     </section>

@@ -15,22 +15,22 @@ export function Hero() {
   return (
     <section className="relative mx-auto max-w-4xl px-6 pt-20 pb-10 sm:pt-28 sm:pb-14">
       {/* Ambient glow */}
-      <div className="pointer-events-none absolute inset-x-0 -top-20 h-[500px] bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,115,22,0.08)_0%,transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-x-0 -top-20 h-[500px] bg-[radial-gradient(ellipse_at_50%_0%,color-mix(in_oklab,var(--accent)_8%,transparent)_0%,transparent_60%)]" />
 
       <div className="relative">
-        <div className="mb-6 flex items-start justify-between">
+        {/* flex-col-reverse keeps the badge first in DOM order for the Markdown
+            scrape while putting the control on top on phones. */}
+        <div className="mb-6 flex flex-col-reverse items-start gap-3 sm:flex-row sm:justify-between">
           <p className="inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
             Angular 22+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
           </p>
-          <div className="hidden sm:block">
-            <CopyPageDropdown />
-          </div>
+          <CopyPageDropdown />
         </div>
 
         {/* Headline */}
         <h1 className="text-4xl font-bold leading-[1.15] tracking-tight sm:text-5xl">
           SWR caching for Angular{" "}
-          <span className="text-accent glow-accent">resource()</span>
+          <span className="text-accent-display">resource()</span>
         </h1>
 
         {/* One-liner subtitle */}
@@ -67,7 +67,7 @@ export function Hero() {
             href="https://www.npmjs.com/package/ngx-ziflux"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-[color,background-color,scale] duration-150 hover:bg-muted active:scale-[0.96]"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border-strong px-4 py-2 text-sm font-medium text-foreground transition-[color,background-color,scale] duration-150 hover:bg-muted active:scale-[0.96]"
           >
             View on npm
             <span aria-hidden="true">↗</span>

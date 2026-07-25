@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const INVALIDATE_EMPTY_WRONG = `// This does nothing: an empty prefix matches no key
 cache.invalidate([])`

@@ -1,6 +1,7 @@
-import { CodeBlock } from "./code-block"
+import Link from "next/link"
+import { CodeBlock } from "@/components/shared/code-block"
 import { NavigationDemo } from "./navigation-demo"
-import { CopyPageDropdown } from "./copy-page-dropdown"
+import { CopyPageDropdown } from "@/components/shared/copy-page-dropdown"
 
 const INSTALL_CODE = `npm install ngx-ziflux`
 
@@ -56,13 +57,13 @@ export function Hero() {
 
         {/* Primary CTAs, explicit paths after install snippet */}
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <a
-            href="#quickstart"
+          <Link
+            href="/docs#quickstart"
             className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-[opacity,scale] duration-150 hover:opacity-90 active:scale-[0.96]"
           >
             Quick start
             <span aria-hidden="true">→</span>
-          </a>
+          </Link>
           <a
             href="https://www.npmjs.com/package/ngx-ziflux"
             target="_blank"

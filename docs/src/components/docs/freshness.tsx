@@ -1,4 +1,4 @@
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const CACHE_KEYS_CODE = `cache.invalidate(['order'])   // ← one call, everything refreshes`
 

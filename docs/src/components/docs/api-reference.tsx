@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const tabs = [
   {

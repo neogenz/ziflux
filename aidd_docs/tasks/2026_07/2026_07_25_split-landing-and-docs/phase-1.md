@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Route split
@@ -22,6 +22,7 @@ docs/
 │   ├── components/
 │   │   ├── landing/                    ✏️ keeps hero, demo, not-a-fit, prior-art, ai-skills
 │   │   ├── docs/                       ✅ new home for the reference sections
+│   │   │   ├── quickstart.tsx          ✏️ moved from landing/
 │   │   │   ├── guide.tsx               ✏️ moved from landing/
 │   │   │   ├── freshness.tsx           ✏️ moved from landing/
 │   │   │   ├── scenarios.tsx           ✏️ moved from landing/
@@ -97,7 +98,7 @@ Screen A — "/"                          Screen B — "/docs"
 
 > `/docs` renders the reference sections, in their current reading order.
 
-1. Create `src/components/docs/` and move `guide`, `freshness`, `scenarios`, `advanced-usage`, `testing`, `api-reference`, `gotchas` into it.
+1. Create `src/components/docs/` and move `quickstart`, `guide`, `freshness`, `scenarios`, `advanced-usage`, `testing`, `api-reference`, `gotchas` into it.
 2. Create `src/app/docs/page.tsx` rendering them in that order.
 3. Create `src/app/docs/layout.tsx` holding the docs chrome and its own `metadata` (title, description, canonical).
 4. Keep every section `id` byte-identical. They are the anchor contract.

@@ -16,7 +16,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ziflux.dev"),
-  title: "ziflux: SWR caching for Angular resource()",
+  // Routes override the title; the template keeps the brand on every tab.
+  title: {
+    default: "ziflux: SWR caching for Angular resource()",
+    template: "%s — ziflux",
+  },
   description:
     "Zero-dependency, signal-native caching layer for Angular 22+. Stale-while-revalidate semantics for resource(): cached data paints instantly on return visits, refreshes happen in the background.",
   keywords: [

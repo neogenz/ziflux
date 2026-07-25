@@ -1,6 +1,8 @@
 import { NodeHtmlMarkdown } from "node-html-markdown"
 
-let cached: string | null = null
+// Keyed by route: `/` and `/docs` render different `#main` content, and a
+// client-side navigation between them would otherwise serve the first one twice.
+const cache = new Map<string, string>()
 
 const PHASE_DIAGRAM = `| Phase | Behavior | Transition |
 |-------|----------|------------|
@@ -22,7 +24,9 @@ const DOMAIN_PATTERN = `| # | File | Role | Scope |
 | 3 | \`order-list.component.ts\` | inject(Store), read signals | view scope |`
 
 export function pageToMarkdown(): string {
-  if (cached) return cached
+  const route = window.location.pathname
+  const hit = cache.get(route)
+  if (hit) return hit
 
   const main = document.querySelector("#main")
   if (!main) return ""
@@ -59,7 +63,9 @@ export function pageToMarkdown(): string {
     bulletMarker: "-",
   })
 
-  cached = md
+  // The three injections below target sections that live on /docs. On the
+  // landing they find no anchor and no-op, which is the intended behaviour.
+  const result = md
     // Clean anchor link artifacts: [Quick Start #](#quickstart) → [Quick Start](#quickstart)
     .replace(/\[([^\]]+?)\s+#\]/g, "[$1]")
     // Remove orphaned ### Architecture heading (diagram was stripped)
@@ -89,5 +95,6 @@ export function pageToMarkdown(): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim()
 
-  return cached
+  cache.set(route, result)
+  return result
 }

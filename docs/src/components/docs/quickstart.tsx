@@ -1,4 +1,4 @@
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const INSTALL_CODE = `npm install ngx-ziflux`
 

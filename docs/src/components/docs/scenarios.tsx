@@ -1,4 +1,4 @@
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const ADMIN_TABS_CODE = `// Each tab is a route. Each route's store reads from a shared cache.
 @Injectable() export class OrdersStore {

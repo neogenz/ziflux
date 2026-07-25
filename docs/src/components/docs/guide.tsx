@@ -1,5 +1,5 @@
-import { CodeBlock } from "./code-block"
-import { Callout } from "./callout"
+import { CodeBlock } from "@/components/shared/code-block"
+import { Callout } from "@/components/shared/callout"
 
 const DETAIL_STORE_CODE = `@Injectable()
 export class OrderDetailStore {

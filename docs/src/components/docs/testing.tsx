@@ -1,4 +1,4 @@
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const STORE_TEST_CODE = `describe('OrderListStore', () => {
   let store: OrderListStore

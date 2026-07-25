@@ -1,4 +1,4 @@
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const FACTORY_SERVICE_CODE = `@Injectable({ providedIn: 'root' })
 export class OrderApiCached {

@@ -1,0 +1,50 @@
+---
+title: Caching
+description: Understand cache freshness, loading states, hierarchical keys, and cache selection.
+---
+
+Every cached entry goes through three phases. `invalidate()` marks entries stale;
+it never deletes them.
+
+| Phase | Read behavior | Boundary |
+| --- | --- | --- |
+| **Fresh** | Return cached data. No network request. | Data was written to cache. |
+| **Stale** | Return cached data and re-fetch in the background. | `staleTime` elapsed. |
+| **Evicted** | Fetch from the server. | `expireTime` elapsed and the entry was removed. |
+
+## What the user sees
+
+| Scenario | Cache | UI |
+| --- | --- | --- |
+| First visit ever | miss | Spinner → data |
+| Return visit, data younger than `staleTime` | fresh | Data immediately, no fetch |
+| Return visit, data older than `staleTime` | stale | Stale data immediately → silent refresh → fresh data |
+| After mutation | stale | Data + silent refresh because the mutation invalidated the cache |
+| Network error with cached data | stale | Stale data remains visible, no crash |
+
+## Cache keys
+
+You delete an order. The list, the detail page, and every filtered view all need
+to refresh. Hierarchical cache keys make this one call:
+
+```text
+['order']                              ← invalidate here
+└── ['order', 'list']                  all orders page
+    └── ['order', 'list', 'pending']   filtered view
+└── ['order', 'details', '42']         detail page
+```
+
+```ts
+cache.invalidate(['order'])   // ← one call, everything refreshes
+```
+
+See the [Guide](/docs/guide/) for full optimistic update and mutation examples.
+
+## When to cache
+
+| Cache | Do not cache |
+| --- | --- |
+| GET entity lists | POST, PUT, or DELETE |
+| GET entity details | Search results with volatile params |
+| Data shared across screens | Real-time data from WebSocket or SSE |
+| Predictable access patterns such as tabs and navigation | Large binaries |

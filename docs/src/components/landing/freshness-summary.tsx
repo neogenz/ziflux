@@ -50,7 +50,7 @@ export function FreshnessSummary() {
 
       <p className="mt-10 max-w-[68ch] text-sm text-muted-foreground">
         The{" "}
-        <a href="/docs#freshness" className="underline underline-offset-4 hover:text-foreground transition-colors">
+        <a href="/docs/caching/" className="underline underline-offset-4 hover:text-foreground transition-colors">
           docs
         </a>
         {" "}add the loading-state table, cache keys and when to cache.

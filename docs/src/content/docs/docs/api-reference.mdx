@@ -1,15 +1,16 @@
-"use client"
+---
+title: API reference
+description: Runtime exports, signatures, options, signals, and usage examples.
+---
 
-import { useState } from "react"
-import { CodeBlock } from "@/components/shared/code-block"
-import { SectionHeading } from "@/components/docs/section-heading"
+## `DataCache`
 
-const tabs = [
-  {
-    id: "data-cache",
-    label: "DataCache",
-    description: "Own one per domain, in your API service (singleton).",
-    code: `class DataCache {
+Own one per domain in a singleton API service.
+
+### Signature
+
+```ts
+class DataCache {
   readonly name: string                   // devtools label (auto-generated if omitted)
   readonly version: Signal<number>        // auto-increments on invalidate() and clear()
   readonly staleTime: number              // resolved config value
@@ -32,21 +33,30 @@ const tabs = [
   clear(): void
   cleanup(): number                       // evict expired entries, return count
   inspect(): CacheInspection<unknown>     // point-in-time snapshot for devtools
-}`,
-    usage: `readonly cache = new DataCache({ name: 'orders', maxEntries: 100 })
+}
+```
+
+### Usage
+
+```ts
+readonly cache = new DataCache({ name: 'orders', maxEntries: 100 })
 
 // Read from cache
 const entry = this.cache.get(['order', 'details', '42'])
 if (entry?.fresh) return entry.data
 
 // Invalidate all "order" entries
-this.cache.invalidate(['order'])  // prefix match`,
-  },
-  {
-    id: "cached-resource",
-    label: "cachedResource()",
-    description: "resource() extended with cache awareness. Same mental model.",
-    code: `function cachedResource<T, P extends object>(options: {
+this.cache.invalidate(['order'])  // prefix match
+```
+
+## `cachedResource()`
+
+Extends `resource()` with cache awareness while keeping the same mental model.
+
+### Signature
+
+```ts
+function cachedResource<T, P extends object>(options: {
   cache: DataCache
   cacheKey: string[] | ((params: P) => string[])
   params?: () => P | undefined     // undefined = idle
@@ -59,8 +69,13 @@ this.cache.invalidate(['order'])  // prefix match`,
   refetchOnWindowFocus?: boolean        // revalidate on tab focus, respects staleTime
   refetchOnReconnect?: boolean          // revalidate when the network returns
   id?: string                           // reuse the SSR value via TransferState
-}): CachedResourceRef<T>`,
-    usage: `interface CachedResourceRef<T> {
+}): CachedResourceRef<T>
+```
+
+### Returned reference
+
+```ts
+interface CachedResourceRef<T> {
   readonly value: Signal<T | undefined>        // preserves last cached value on error
   readonly status: Signal<ResourceStatus>
   readonly error: Signal<Error | undefined>
@@ -68,7 +83,7 @@ this.cache.invalidate(['order'])  // prefix match`,
   readonly isStale: Signal<boolean>            // SWR in progress
   readonly isInitialLoading: Signal<boolean>   // true only on cold cache
   hasValue(): this is Omit<CachedResourceRef<T>, 'value'>
-    & { readonly value: Signal<T> }            // type guard, narrows value()
+    & { readonly value: Signal<T> }             // type guard, narrows value()
   reload(): boolean                            // refetches now, bypassing staleTime
   destroy(): void
   set(value: T): void
@@ -80,13 +95,18 @@ interface RetryConfig {
   baseDelay?: number              // upper bound of retry 1, jittered. default: 1_000 ms
   maxDelay?: number               // ceiling for the backoff. default: 30_000 ms
   retryIf?: (error: unknown) => boolean  // default: retry all
-}`,
-  },
-  {
-    id: "cached-mutation",
-    label: "cachedMutation()",
-    description: "Wraps any mutation with signal-based lifecycle, optimistic updates, and automatic cache invalidation.",
-    code: `function cachedMutation<A = void, R = void, C = void>(options: {
+}
+```
+
+## `cachedMutation()`
+
+Wraps any mutation with a signal lifecycle, optimistic updates, and automatic
+cache invalidation.
+
+### Signature
+
+```ts
+function cachedMutation<A = void, R = void, C = void>(options: {
   mutationFn: (args: A) => Observable<R> | Promise<R>
   cache?: { invalidate(prefix: string[]): void }
   invalidateKeys?: (args: A, result: R) => string[][]
@@ -96,8 +116,13 @@ interface RetryConfig {
 }): CachedMutationRef<A, R>
 
 // Lifecycle: onMutate → mutationFn → (onSuccess → invalidateKeys) | onError
-// mutate() never rejects; errors are captured in the error signal`,
-    usage: `interface CachedMutationRef<A, R> {
+// mutate() never rejects; errors are captured in the error signal
+```
+
+### Returned reference and usage
+
+```ts
+interface CachedMutationRef<A, R> {
   mutate(...args: A extends void ? [] : [args: A]): Promise<R | undefined>
   readonly status: Signal<CachedMutationStatus>  // 'idle' | 'pending' | 'success' | 'error'
   readonly isPending: Signal<boolean>
@@ -119,15 +144,24 @@ readonly deleteMutation = cachedMutation({
   onError: (_err, _id, prev) => {
     if (prev) this.orders.set(prev)                     // 4. rollback on failure
   },
-})`,
-  },
-  {
-    id: "any-loading",
-    label: "anyLoading()",
-    description: "Aggregate loading state from multiple signals. Returns true if any signal is true.",
-    code: `function anyLoading(...signals: Signal<boolean>[]): Signal<boolean>
-// Implementation: computed(() => signals.some(s => s()))`,
-    usage: `// Combine loading states from multiple resources
+})
+```
+
+## `anyLoading()`
+
+Returns true when any input loading signal is true.
+
+### Signature
+
+```ts
+function anyLoading(...signals: Signal<boolean>[]): Signal<boolean>
+// Implementation: computed(() => signals.some(s => s()))
+```
+
+### Usage
+
+```ts
+// Combine loading states from multiple resources
 readonly isLoading = anyLoading(
   this.orders.isLoading,
   this.products.isLoading,
@@ -137,17 +171,26 @@ readonly isLoading = anyLoading(
 // In template
 @if (store.isLoading()) {
   <app-progress-bar />
-}`,
-  },
-  {
-    id: "provide-ziflux",
-    label: "provideZiflux()",
-    description: "Global configuration. One line in app.config.ts.",
-    code: `provideZiflux({
-  staleTime: 30_000,  // ms before fresh → stale   (default: 30s)
-  expireTime: 300_000,    // ms before stale → evicted  (default: 5min)
-})`,
-    usage: `// app.config.ts
+}
+```
+
+## `provideZiflux()`
+
+Global configuration. Add it once in `app.config.ts`.
+
+### Signature
+
+```ts
+provideZiflux({
+  staleTime: 30_000,     // ms before fresh → stale   (default: 30s)
+  expireTime: 300_000,   // ms before stale → evicted (default: 5min)
+})
+```
+
+### Usage
+
+```ts
+// app.config.ts
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZiflux({ staleTime: 30_000, expireTime: 300_000 }),
@@ -155,18 +198,28 @@ export const appConfig: ApplicationConfig = {
 }
 
 // Priority: constructor arg > global provider > defaults
-readonly cache = new DataCache({ staleTime: 60_000 })`,
-  },
-  {
-    id: "with-devtools",
-    label: "withDevtools()",
-    description: "Enables cache inspector and structured console logging. Only active in dev mode.",
-    code: `function withDevtools(config?: DevtoolsConfig): ZifluxFeature
+readonly cache = new DataCache({ staleTime: 60_000 })
+```
+
+## `withDevtools()`
+
+Enables the cache inspector and structured console logging. It is active only in
+development mode.
+
+### Signature
+
+```ts
+function withDevtools(config?: DevtoolsConfig): ZifluxFeature
 
 interface DevtoolsConfig {
   logOperations?: boolean  // default: true in dev mode
-}`,
-    usage: `// app.config.ts
+}
+```
+
+### Usage
+
+```ts
+// app.config.ts
 provideZiflux(
   { staleTime: 30_000, expireTime: 300_000 },
   withDevtools()                    // no config needed
@@ -176,96 +229,71 @@ provideZiflux(
 provideZiflux(
   { staleTime: 30_000 },
   withDevtools({ logOperations: false })
-)`,
-  },
-  {
-    id: "devtools-component",
-    label: "ZifluxDevtoolsComponent",
-    description: "Floating overlay for inspecting live cache state. Standalone component.",
-    code: `@Component({
+)
+```
+
+## `ZifluxDevtoolsComponent`
+
+Standalone floating overlay for inspecting live cache state.
+
+### Signature
+
+```ts
+@Component({
   selector: 'ziflux-devtools',
   standalone: true,
 })
-export class ZifluxDevtoolsComponent`,
-    usage: `// In your root component template
+export class ZifluxDevtoolsComponent
+```
+
+### Usage
+
+```html
+<!-- In your root component template -->
 <ziflux-devtools />
 
-// Toggle with Ctrl+Shift+Z (Cmd+Shift+Z on Mac)
-// Shows per-cache entries, freshness state, TTL, and in-flight requests`,
-  },
-  {
-    id: "ziflux-config",
-    label: "ZIFLUX_CONFIG",
-    description: "Injection token holding the resolved global config. Useful for reading config at runtime.",
-    code: `const ZIFLUX_CONFIG: InjectionToken<ZifluxConfig>`,
-    usage: `// Read global config in any injection context
+<!-- Toggle with Ctrl+Shift+Z (Cmd+Shift+Z on Mac) -->
+<!-- Shows per-cache entries, freshness state, TTL, and in-flight requests -->
+```
+
+## `ZIFLUX_CONFIG`
+
+Injection token holding the resolved global config.
+
+### Signature
+
+```ts
+const ZIFLUX_CONFIG: InjectionToken<ZifluxConfig>
+```
+
+### Usage
+
+```ts
+// Read global config in any injection context
 const config = inject(ZIFLUX_CONFIG)
-console.log(config.staleTime, config.expireTime)`,
-  },
-  {
-    id: "cache-registry",
-    label: "CacheRegistry",
-    description: "Advanced. Most apps will not need this directly. Global registry of all DataCache instances.",
-    code: `class CacheRegistry {
+console.log(config.staleTime, config.expireTime)
+```
+
+## `CacheRegistry`
+
+Advanced API. Most applications do not need it directly. It is the global
+registry of all `DataCache` instances.
+
+### Signature
+
+```ts
+class CacheRegistry {
   readonly caches: Signal<Map<string, DataCache>>
   inspectAll(): { name: string; inspection: CacheInspection<unknown> }[]
-}`,
-    usage: `// Auto-managed when withDevtools() is enabled
+}
+```
+
+### Usage
+
+```ts
+// Auto-managed when withDevtools() is enabled
 // Useful for building custom monitoring dashboards
 
 const registry = inject(CacheRegistry)
-const allCaches = registry.inspectAll()`,
-  },
-] as const
-
-export function ApiReference() {
-  const [activeTab, setActiveTab] = useState<string>("data-cache")
-  const active = tabs.find((t) => t.id === activeTab)!
-
-  return (
-    <section className="py-10 sm:py-12">
-      <SectionHeading level={2} id="api" label="API reference">
-        API reference
-      </SectionHeading>
-      <p className="mt-2 text-muted-foreground">All runtime exports, with signatures and usage examples.</p>
-
-      {/* Tabs */}
-      <div className="mt-8 flex flex-wrap gap-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            aria-pressed={activeTab === tab.id}
-            className={`relative rounded-lg px-3.5 py-2 text-sm font-mono transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-[''] ${
-              activeTab === tab.id
-                ? "bg-accent text-accent-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="mt-6">
-        <p className="mb-4 text-sm text-muted-foreground">{active.description}</p>
-
-        <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Signature
-            </p>
-            <CodeBlock code={active.code} />
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Usage
-            </p>
-            <CodeBlock code={active.usage} />
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
+const allCaches = registry.inspectAll()
+```

@@ -1,9 +1,49 @@
 ---
 title: Documentation
-description: Quick start, caching model, patterns, testing, API reference, and gotchas for ziflux.
-tableOfContents: false
+description: Learn how to add stale-while-revalidate caching to Angular resource().
 ---
 
-import { DocsPage } from "../../../components/docs/docs-page"
+ziflux adds stale-while-revalidate caching to Angular `resource()`. Start with one
+cached resource, then add cache invalidation and mutations only where the UI needs them.
 
-<DocsPage />
+<div id="quickstart"></div>
+
+## [Quick start](/docs/quick-start/)
+
+Install ziflux, configure the cache lifetimes, and create your first `cachedResource()`.
+
+## [Guide](/docs/guide/)
+
+Structure a domain, handle stale errors, run mutations, and implement optimistic updates.
+
+<div id="freshness"></div>
+
+## [Caching](/docs/caching/)
+
+Understand fresh, stale, and evicted entries, hierarchical keys, and when caching pays off.
+
+<div id="scenarios"></div>
+
+## [Use cases](/docs/use-cases/)
+
+Apply SWR caching to route tabs, list/detail navigation, and dependent form data.
+
+<div id="advanced-usage"></div>
+
+## [Patterns](/docs/patterns/)
+
+Choose between the recommended API + Store + Component structure and a leaner factory service.
+
+## [Testing](/docs/testing/)
+
+Test stores and standalone `DataCache` instances inside Angular's injection context.
+
+<div id="api"></div>
+
+## [API reference](/docs/api-reference/)
+
+Browse every runtime export, signature, option, signal, and usage example.
+
+## [Gotchas](/docs/gotchas/)
+
+Avoid invalidation, optimistic update, and untyped cache-key pitfalls.

@@ -1,0 +1,73 @@
+---
+title: Use cases
+description: See where stale-while-revalidate caching pays off in Angular applications.
+---
+
+Three patterns where SWR caching on `resource()` earns its keep.
+
+## Admin dashboard with tabs
+
+**Pain:** The user switches between Orders, Invoices, and Customers. Every tab
+shows a spinner even when its data has not changed.
+
+**Fix:** Tabs read from a shared cache. The first visit fetches; every return is
+immediate. Background refresh starts only when data is stale.
+
+```ts
+// Each tab is a route. Each route's store reads from a shared cache.
+@Injectable() export class OrdersStore {
+  readonly orders = cachedResource({
+    cache: this.api.cache,
+    cacheKey: ['orders', 'list'],
+    loader: () => this.api.getOrders$(),
+  })
+}
+
+// Tab switch → store destroyed → cache survives in the API service.
+// Switch back → cachedResource reads cache → instant. Background refetch
+// kicks off if the entry is stale.
+```
+
+## E-commerce list → detail → back
+
+**Pain:** The user filters a list, opens a product, edits something, then
+navigates back. Filter state survives, but the list reloads from scratch.
+
+**Fix:** Use hierarchical keys. One `invalidate(['product'])` after the mutation
+refreshes both views.
+
+```ts
+// List + detail share a key prefix. One mutation invalidates both.
+cacheKey: params => ['product', 'list', params.status, params.sortBy]
+cacheKey: params => ['product', 'details', params.id]
+
+// After a mutation:
+cache.invalidate(['product'])  // marks BOTH list and details stale
+// Background refetch on the visible view, untouched cache for the rest.
+```
+
+## Multi-step form with dependent data
+
+**Pain:** Step 2 depends on Step 1. The user goes back, changes Step 1, then
+returns to Step 2. The dependent fetch runs every time.
+
+**Fix:** `params` returns `undefined` until ready. Once selected, the fetch runs
+once and caches per key. Re-selecting an earlier value is immediate.
+
+```ts
+// Step 2's params depend on Step 1's selection.
+readonly categoryId = signal<string | null>(null)
+
+readonly products = cachedResource({
+  cache: this.api.cache,
+  cacheKey: p => ['product', 'by-category', p.categoryId],
+  params: () => {
+    const id = this.categoryId()
+    return id ? { categoryId: id } : undefined  // idle until set
+  },
+  loader: ({ params }) => this.api.getByCategory$(params.categoryId),
+})
+
+// User backs to Step 1, picks a different category → resource refetches.
+// Re-picks the original category → instant from cache.
+```

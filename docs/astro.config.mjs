@@ -26,7 +26,17 @@ export default defineConfig({
       sidebar: [
         {
           label: "Documentation",
-          items: [{ label: "Overview", slug: "docs" }],
+          items: [
+            { label: "Overview", slug: "docs" },
+            { label: "Quick start", slug: "docs/quick-start" },
+            { label: "Guide", slug: "docs/guide" },
+            { label: "Caching", slug: "docs/caching" },
+            { label: "Use cases", slug: "docs/use-cases" },
+            { label: "Patterns", slug: "docs/patterns" },
+            { label: "Testing", slug: "docs/testing" },
+            { label: "API reference", slug: "docs/api-reference" },
+            { label: "Gotchas", slug: "docs/gotchas" },
+          ],
         },
       ],
     }),

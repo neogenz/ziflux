@@ -1,6 +1,6 @@
 ---
 objective: "The ziflux website is one statically exported Astro application whose custom landing remains at `/` and whose multi-page documentation is authored and served by Starlight under `/docs`."
-status: in-progress
+status: done
 ---
 
 # Plan: Migrate the documentation to Starlight

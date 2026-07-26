@@ -1,46 +1,40 @@
-# ziflux docs
+# ziflux documentation
 
-Documentation site for [ziflux](https://ziflux.dev) — built with Next.js 16, React 19, and Tailwind 4.
+Astro hosts the custom landing page at `/`. Starlight renders the documentation
+tree under `/docs`.
 
-## Getting Started
+## Local development
 
 ```bash
-cd docs
 pnpm install
 pnpm dev
 ```
 
-Opens at [http://localhost:3000](http://localhost:3000).
+Astro serves the site at [http://localhost:4321](http://localhost:4321).
 
-## Build
+## Validation and production build
 
 ```bash
-pnpm build    # Production build
-pnpm start    # Serve locally
+pnpm check
+pnpm build
+pnpm start
 ```
 
-## Structure
+The static production output is written to `dist/`. No server adapter is required.
 
-```
-docs/src/
-├── app/
-│   ├── layout.tsx       # Root layout, fonts, theme provider
-│   └── page.tsx         # Landing page — assembles all sections
-└── components/landing/
-    ├── hero.tsx          # Headline, install, interactive demo
-    ├── quickstart.tsx    # 4-step setup guide
-    ├── guide.tsx         # Architecture, domain pattern, usage walkthrough
-    ├── testing.tsx       # Store + DataCache testing examples
-    ├── freshness.tsx     # Cache lifecycle, cache keys, when to cache
-    ├── advanced-usage.tsx # Factory pattern alternative
-    ├── api-reference.tsx # Tabbed API docs for all exports
-    ├── gotchas.tsx       # Common pitfalls
-    ├── prior-art.tsx     # Comparison + install CTA
-    └── navbar.tsx        # Sticky nav with theme toggle
+## Content
+
+```text
+src/
+├── content/docs/docs/   # Starlight MDX pages
+├── pages/index.astro    # custom landing page
+├── components/landing/ # interactive React islands
+└── styles/              # separate landing and Starlight themes
 ```
 
-All content is in a single landing page — no routing, no separate pages.
+Edit documentation in `src/content/docs/docs/*.mdx`. Frontmatter owns page titles
+and descriptions; Markdown headings own the table of contents and search anchors.
+`astro.config.mjs` owns the ordered sidebar.
 
-## Editing Content
-
-Each section is a self-contained React component. Code examples are defined as template literal constants at the top of each file. To update a code example, edit the constant — the component renders it via `<CodeBlock>`.
+The production build also emits `llms.txt`, `llms-full.txt`, and cleaned Markdown
+copies for documentation tools.

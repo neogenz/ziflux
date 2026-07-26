@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Restore brand parity and remove the legacy stack
@@ -31,10 +31,10 @@ docs/
     │   └── starlight.css                  ✅ supported Starlight token overrides
     ├── components/shared/
     │   ├── callout.tsx                    ❌ replaced by Starlight asides
-    │   ├── code-block.tsx                 ❌ replaced by Expressive Code
+    │   ├── code-block.tsx                 ✏️ retained for landing-only code examples
     │   ├── copy-button.tsx                ✏️ retained only for the landing hero
     │   ├── copy-page-dropdown.tsx         ❌ replaced by the Starlight plugin
-    │   └── inline-code.tsx                ❌ Markdown owns inline code
+    │   └── inline-code.tsx                ✏️ retained for landing prose with inline code
     └── lib/
         └── page-to-markdown.ts            ❌ plugin generates clean Markdown pages
 ```

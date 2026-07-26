@@ -1,6 +1,5 @@
 import { CodeBlock } from "@/components/shared/code-block"
 import { NavigationDemo } from "./navigation-demo"
-import { CopyPageDropdown } from "@/components/shared/copy-page-dropdown"
 
 const INSTALL_CODE = `npm install ngx-ziflux`
 
@@ -18,14 +17,9 @@ export function Hero() {
       <div className="pointer-events-none absolute inset-x-0 -top-20 h-[500px] bg-[radial-gradient(ellipse_at_50%_0%,color-mix(in_oklab,var(--accent)_8%,transparent)_0%,transparent_60%)]" />
 
       <div className="relative mx-auto max-w-2xl">
-        {/* flex-col-reverse keeps the badge first in DOM order for the Markdown
-            scrape while putting the control on top on phones. */}
-        <div className="mb-6 flex flex-col-reverse items-start gap-3 sm:flex-row sm:justify-between">
-          <p className="inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-            Angular 22+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
-          </p>
-          <CopyPageDropdown />
-        </div>
+        <p className="mb-6 inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-medium text-muted-foreground">
+          Angular 22+ &middot; Zero dependencies &middot; Signal-native &middot; Tree-shakeable
+        </p>
 
         {/* Headline */}
         <h1 className="text-[clamp(2.75rem,6vw,5rem)] font-[750] leading-[0.98] tracking-[-0.035em]">

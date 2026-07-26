@@ -1,0 +1,84 @@
+:root {
+  color-scheme: dark;
+  --sl-font: "Archivo Variable";
+  --sl-font-mono: "Sometype Mono Variable";
+
+  --sl-color-white: oklch(0.985 0 0);
+  --sl-color-gray-1: oklch(0.922 0 0);
+  --sl-color-gray-2: oklch(0.78 0 0);
+  --sl-color-gray-3: oklch(0.715 0 0);
+  --sl-color-gray-4: oklch(0.48 0 0);
+  --sl-color-gray-5: oklch(0.269 0 0);
+  --sl-color-gray-6: oklch(0.205 0 0);
+  --sl-color-black: oklch(0.145 0 0);
+
+  --sl-color-accent-high: oklch(0.76 0.17 38);
+  --sl-color-accent: oklch(0.69 0.22 38);
+  --sl-color-accent-low: oklch(0.25 0.065 38);
+  --sl-color-text: var(--sl-color-gray-2);
+  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-text-invert: oklch(0.145 0 0);
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: oklch(0.17 0 0);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-bg-accent: var(--sl-color-accent);
+  --sl-color-hairline-light: var(--sl-color-gray-5);
+  --sl-color-hairline: var(--sl-color-gray-6);
+  --sl-color-hairline-shade: var(--sl-color-black);
+
+  --sl-hue-orange: 38;
+  --sl-color-orange-high: var(--sl-color-accent-high);
+  --sl-color-orange: var(--sl-color-accent);
+  --sl-color-orange-low: var(--sl-color-accent-low);
+
+  --sl-content-width: 48rem;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --sl-color-white: oklch(0.145 0 0);
+  --sl-color-gray-1: oklch(0.205 0 0);
+  --sl-color-gray-2: oklch(0.34 0 0);
+  --sl-color-gray-3: oklch(0.517 0 0);
+  --sl-color-gray-4: oklch(0.635 0 0);
+  --sl-color-gray-5: oklch(0.85 0 0);
+  --sl-color-gray-6: oklch(0.922 0 0);
+  --sl-color-gray-7: oklch(0.97 0 0);
+  --sl-color-black: oklch(0.985 0 0);
+
+  --sl-color-accent-high: oklch(0.54 0.18 38);
+  --sl-color-accent: oklch(0.69 0.22 38);
+  --sl-color-accent-low: oklch(0.94 0.035 38);
+  --sl-color-text: var(--sl-color-gray-2);
+  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-text-invert: oklch(0.145 0 0);
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: var(--sl-color-gray-7);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-bg-accent: var(--sl-color-accent);
+  --sl-color-hairline-light: var(--sl-color-gray-6);
+  --sl-color-hairline: var(--sl-color-gray-6);
+  --sl-color-hairline-shade: var(--sl-color-black);
+
+  --sl-color-orange-high: var(--sl-color-accent-high);
+  --sl-color-orange: var(--sl-color-accent);
+  --sl-color-orange-low: var(--sl-color-accent-low);
+}
+
+:focus-visible {
+  outline-color: var(--sl-color-text-accent);
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

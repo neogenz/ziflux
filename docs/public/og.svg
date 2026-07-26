@@ -8,13 +8,13 @@
     <rect x="275" y="110" width="45" height="45" fill="white"/>
     <rect x="330" y="110" width="45" height="45" fill="white"/>
     <!-- Diagonal - dissolving -->
-    <rect x="275" y="165" width="45" height="45" fill="white" opacity="0.8"/>
-    <rect x="330" y="165" width="45" height="45" fill="white" opacity="0.15"/>
-    <rect x="220" y="220" width="45" height="45" fill="white" opacity="0.5"/>
-    <rect x="275" y="220" width="45" height="45" fill="white" opacity="0.1"/>
-    <rect x="165" y="275" width="45" height="45" fill="white" opacity="0.3"/>
-    <rect x="220" y="275" width="45" height="45" fill="white" opacity="0.08"/>
-    <rect x="110" y="330" width="45" height="45" fill="white" opacity="0.15"/>
+    <rect x="275" y="165" width="45" height="45" fill="#ff5811"/>
+    <rect x="330" y="165" width="45" height="45" fill="#ff5811" opacity="0.18"/>
+    <rect x="220" y="220" width="45" height="45" fill="#ff5811" opacity="0.6"/>
+    <rect x="275" y="220" width="45" height="45" fill="#ff5811" opacity="0.12"/>
+    <rect x="165" y="275" width="45" height="45" fill="#ff5811" opacity="0.38"/>
+    <rect x="220" y="275" width="45" height="45" fill="#ff5811" opacity="0.1"/>
+    <rect x="110" y="330" width="45" height="45" fill="#ff5811" opacity="0.2"/>
     <!-- Bottom row -->
     <rect x="110" y="385" width="45" height="45" fill="white"/>
     <rect x="165" y="385" width="45" height="45" fill="white"/>
@@ -22,7 +22,7 @@
     <rect x="275" y="385" width="45" height="45" fill="white"/>
     <rect x="330" y="385" width="45" height="45" fill="white"/>
   </g>
-  <text x="600" y="360" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="48" font-weight="700" fill="white" text-anchor="middle">ziflux</text>
-  <text x="600" y="408" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="24" font-weight="400" fill="#a1a1aa" text-anchor="middle">SWR caching for Angular resource()</text>
-  <text x="600" y="446" font-family="ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace" font-size="18" font-weight="400" fill="#71717a" text-anchor="middle">Instant navigations · Background refreshes · Zero spinners</text>
+  <text x="600" y="360" font-family="Archivo, system-ui, sans-serif" font-size="52" font-weight="750" letter-spacing="-1.5" fill="white" text-anchor="middle">ziflux</text>
+  <text x="600" y="408" font-family="'Sometype Mono', ui-monospace, monospace" font-size="24" font-weight="500" fill="#a1a1aa" text-anchor="middle">SWR caching for Angular <tspan fill="#f34f08">resource()</tspan></text>
+  <text x="600" y="446" font-family="'Sometype Mono', ui-monospace, monospace" font-size="18" font-weight="400" fill="#71717a" text-anchor="middle">Instant navigations · Background refreshes · Zero spinners</text>
 </svg>

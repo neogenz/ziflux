@@ -11,7 +11,7 @@ export default function HomePage() {
   return (
     <>
       <Navbar />
-      <main id="main" className="relative">
+      <main id="main" className="landing-register relative">
         <Hero />
         <FreshnessSummary />
         <NotAFit />

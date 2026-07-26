@@ -20,8 +20,8 @@
   --color-info: var(--info);
   --color-info-strong: var(--info-strong);
   --color-status-foreground: var(--status-foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-archivo);
+  --font-mono: var(--font-sometype-mono);
 }
 
 :root {
@@ -40,12 +40,12 @@
   /* Brand and status hues live at two lightnesses. The vivid value is a *fill*
      and is identical in both themes. Its -strong twin is the same hue darkened
      so it clears 4.5:1 as *text* on a near-white page; a vivid fill never can. */
-  --accent: oklch(0.7049 0.1867 47.6);
-  --accent-strong: oklch(0.54 0.15 47.6);
+  --accent: oklch(0.69 0.22 38);
+  --accent-strong: oklch(0.54 0.18 38);
   /* Display-only: large text clears AA at 3:1, not 4.5:1, so it can stay far
-     closer to the brand orange. 3.26:1 — valid ONLY at >=24px, or >=18.66px
+     closer to the brand orange. 3.39:1 — valid ONLY at >=24px, or >=18.66px
      bold. Anything smaller must use --accent-strong. */
-  --accent-display: oklch(0.654 0.1797 47.6);
+  --accent-display: oklch(0.65 0.21 38);
   --ok: oklch(0.6959 0.1491 162.48);
   --ok-strong: oklch(0.515 0.113 162.48);
   --caution: oklch(0.7686 0.1647 70.08);
@@ -130,9 +130,14 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-archivo), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.landing-register h1,
+.landing-register h2 {
+  font-stretch: 110%;
 }
 
 h1,
@@ -142,6 +147,7 @@ h3 {
 }
 
 p {
+  max-width: 72ch;
   text-wrap: pretty;
 }
 
@@ -164,7 +170,7 @@ pre {
 }
 
 pre code {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: var(--font-sometype-mono), ui-monospace, monospace;
 }
 
 code:not(pre code) {
@@ -173,7 +179,7 @@ code:not(pre code) {
   border-radius: 6px;
   padding: 0.15em 0.4em;
   font-size: 0.875em;
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-family: var(--font-sometype-mono), ui-monospace, monospace;
 }
 
 .token-keyword { color: var(--code-keyword); }
@@ -209,8 +215,8 @@ pre {
   }
 }
 
-/* Selection. Pinning the ink too: muted-foreground on the accent tint is only
-   3.89:1, so the selection has to supply its own contrast. */
+/* Selection supplies its own ink so contrast does not depend on the selected
+   element's text token. */
 ::selection {
   background: color-mix(in oklab, var(--accent) 20%, transparent);
   color: var(--foreground);

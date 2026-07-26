@@ -29,7 +29,7 @@ export function Hero() {
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl font-bold leading-[1.15] tracking-tight sm:text-5xl">
+        <h1 className="text-[clamp(2.75rem,6vw,5rem)] font-[750] leading-[0.98] tracking-[-0.035em]">
           SWR caching for Angular{" "}
           <span className="text-accent-display">resource()</span>
         </h1>

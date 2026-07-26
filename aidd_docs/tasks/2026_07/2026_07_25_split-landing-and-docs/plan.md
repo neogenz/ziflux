@@ -1,6 +1,6 @@
 ---
 objective: "The ziflux site serves two jobs on two routes with two registers: `/` is brand and lets a developer decide in 60 seconds, `/docs` is product and carries the reference, on the existing Next.js stack and with a typography and colour identity that is chosen rather than inherited."
-status: in-progress
+status: implemented
 ---
 
 # Plan: Split the landing page from the documentation

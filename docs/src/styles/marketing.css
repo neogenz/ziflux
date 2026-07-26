@@ -1,0 +1,227 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-display: var(--accent-display);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ok: var(--ok);
+  --color-ok-strong: var(--ok-strong);
+  --color-caution: var(--caution);
+  --color-caution-strong: var(--caution-strong);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+  --color-info: var(--info);
+  --color-info-strong: var(--info-strong);
+  --color-status-foreground: var(--status-foreground);
+  --font-sans: var(--font-archivo);
+  --font-mono: var(--font-sometype-mono);
+}
+
+:root {
+  --font-archivo: "Archivo Variable";
+  --font-sometype-mono: "Sometype Mono Variable";
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.145 0 0);
+  --muted: oklch(0.97 0 0);
+  /* 5.34:1 on the page, 5.12:1 on --muted. Deliberately above the 4.5 floor:
+     at the floor this reads washed out, and it carries most of the page's prose. */
+  --muted-foreground: oklch(0.517 0 0);
+  --border: oklch(0.922 0 0);
+  /* --border is a decorative card edge. --border-strong is the 3:1 variant, for
+     boundaries that carry meaning on their own: outlined buttons, diagram
+     strokes, focus rings. */
+  --border-strong: oklch(0.635 0 0);
+
+  /* Fresh tangerine: one brand hue at three intensities. */
+  --accent: oklch(0.58 0.15 50);
+  --accent-strong: oklch(0.52 0.13 50);
+  /* Display-only accent. 3.06:1 on the page, valid for the large hero type. */
+  --accent-display: oklch(0.68 0.17 50);
+  --ok: oklch(0.6959 0.1491 162.48);
+  --ok-strong: oklch(0.515 0.113 162.48);
+  --caution: oklch(0.7686 0.1647 70.08);
+  --caution-strong: oklch(0.54 0.118 70.08);
+  --danger: oklch(0.7106 0.1661 22.22);
+  --danger-strong: oklch(0.545 0.166 22.22);
+  --info: oklch(0.6231 0.188 259.81);
+  --info-strong: oklch(0.53 0.188 259.81);
+
+  /* White on the primary fill measures 4.53:1. */
+  --accent-foreground: oklch(0.985 0 0);
+  --status-foreground: oklch(0.145 0 0);
+
+  --ring: var(--foreground);
+
+  /* Code block syntax highlighting — Catppuccin Mocha, theme-independent.
+     --code-comment is lifted off Mocha's Overlay0 (3.36:1) to clear 4.5:1. */
+  --code-bg: oklch(0.2429 0.0304 283.91);
+  --code-fg: oklch(0.8787 0.0426 272.28);
+  --code-keyword: oklch(0.7871 0.1187 304.77);
+  --code-string: oklch(0.8577 0.1092 142.72);
+  --code-comment: oklch(0.625 0.0345 277.1);
+  --code-type: oklch(0.7664 0.1113 259.88);
+  --code-fn: oklch(0.9193 0.0704 86.53);
+  --code-punctuation: oklch(0.6865 0.0374 274.73);
+  --code-number: oklch(0.8237 0.1015 52.63);
+}
+
+.dark,
+:root[data-theme="dark"] {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --muted: oklch(0.205 0 0);
+  --muted-foreground: oklch(0.715 0 0);
+  --border: oklch(0.269 0 0);
+  --border-strong: oklch(0.48 0 0);
+
+  /* Brighter tangerine carries links and display type on the near-black surface.
+     CTA fills stay on --accent so their white label keeps AA contrast. */
+  --accent-strong: oklch(0.74 0.16 50);
+  --accent-display: oklch(0.74 0.16 50);
+  --ok-strong: var(--ok);
+  --caution-strong: var(--caution);
+  --danger-strong: var(--danger);
+  --info-strong: var(--info);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* PRODUCT.md commits to a visible ring on every interactive element. The offset
+   gap is transparent, so the ring reads against the surface actually behind the
+   control instead of a hardcoded offset colour. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* The header is sticky and 57px tall, so an anchor target would otherwise land
+   underneath it and hide its own heading. */
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* PRODUCT.md commits to this: no decorative motion for readers who opted out. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.landing-register h1,
+.landing-register h2 {
+  font-stretch: 110%;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  max-width: 72ch;
+  text-wrap: pretty;
+}
+
+/* Dynamic figures must not reflow their container as they change. */
+.tabular-nums,
+[data-tabular] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Code block syntax highlighting — Catppuccin Mocha */
+pre {
+  background: var(--code-bg) !important;
+  color: var(--code-fg);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+pre code {
+  font-family: var(--font-sometype-mono), ui-monospace, monospace;
+}
+
+code:not(pre code) {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
+  font-size: 0.875em;
+  font-family: var(--font-sometype-mono), ui-monospace, monospace;
+}
+
+.token-keyword { color: var(--code-keyword); }
+.token-string { color: var(--code-string); }
+.token-comment { color: var(--code-comment); font-style: italic; }
+.token-type { color: var(--code-type); }
+.token-fn { color: var(--code-fn); }
+.token-punctuation { color: var(--code-punctuation); }
+.token-number { color: var(--code-number); }
+
+/* Code block depth */
+pre {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+.dark pre {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Navigation demo row entrance */
+.nav-row-enter {
+  animation: navRowIn 250ms ease-out both;
+}
+
+@keyframes navRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Selection supplies its own ink so contrast does not depend on the selected
+   element's text token. */
+::selection {
+  background: color-mix(in oklab, var(--accent) 20%, transparent);
+  color: var(--foreground);
+}
+
+/* Code keeps its own ink. The code surface stays dark under the tint in both
+   themes, so the light-theme --foreground would land on it at 1.63:1. */
+pre::selection,
+pre ::selection {
+  color: var(--code-fg);
+}

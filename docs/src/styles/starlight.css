@@ -1,0 +1,97 @@
+:root {
+  color-scheme: dark;
+  --sl-font: "Archivo Variable";
+  --sl-font-mono: "Sometype Mono Variable";
+
+  --sl-color-white: oklch(0.985 0 0);
+  --sl-color-gray-1: oklch(0.922 0 0);
+  --sl-color-gray-2: oklch(0.78 0 0);
+  --sl-color-gray-3: oklch(0.715 0 0);
+  --sl-color-gray-4: oklch(0.48 0 0);
+  --sl-color-gray-5: oklch(0.269 0 0);
+  --sl-color-gray-6: oklch(0.205 0 0);
+  --sl-color-black: oklch(0.145 0 0);
+
+  --sl-color-accent-high: oklch(0.74 0.16 50);
+  --sl-color-accent: oklch(0.58 0.15 50);
+  --sl-color-accent-low: oklch(0.25 0.05 50);
+  --ziflux-orange-display: oklch(0.74 0.16 50);
+  --sl-color-text: var(--sl-color-gray-2);
+  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-text-invert: oklch(0.985 0 0);
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: oklch(0.17 0 0);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-bg-accent: var(--sl-color-accent);
+  --sl-color-hairline-light: var(--sl-color-gray-5);
+  --sl-color-hairline: var(--sl-color-gray-6);
+  --sl-color-hairline-shade: var(--sl-color-black);
+
+  --sl-hue-orange: 70;
+  --sl-color-orange-high: oklch(0.82 0.14 70);
+  --sl-color-orange: oklch(0.7 0.15 70);
+  --sl-color-orange-low: oklch(0.25 0.05 70);
+
+  --sl-content-width: 48rem;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --sl-color-white: oklch(0.145 0 0);
+  --sl-color-gray-1: oklch(0.205 0 0);
+  --sl-color-gray-2: oklch(0.34 0 0);
+  --sl-color-gray-3: oklch(0.517 0 0);
+  --sl-color-gray-4: oklch(0.635 0 0);
+  --sl-color-gray-5: oklch(0.85 0 0);
+  --sl-color-gray-6: oklch(0.922 0 0);
+  --sl-color-gray-7: oklch(0.97 0 0);
+  --sl-color-black: oklch(0.985 0 0);
+
+  --sl-color-accent-high: oklch(0.52 0.13 50);
+  --sl-color-accent: oklch(0.58 0.15 50);
+  --sl-color-accent-low: oklch(0.95 0.035 50);
+  --ziflux-orange-display: oklch(0.68 0.17 50);
+  --sl-color-text: var(--sl-color-gray-2);
+  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-text-invert: oklch(0.985 0 0);
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: var(--sl-color-gray-7);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-bg-accent: var(--sl-color-accent);
+  --sl-color-hairline-light: var(--sl-color-gray-6);
+  --sl-color-hairline: var(--sl-color-gray-6);
+  --sl-color-hairline-shade: var(--sl-color-black);
+
+  --sl-color-orange-high: oklch(0.49 0.11 70);
+  --sl-color-orange: oklch(0.7 0.15 70);
+  --sl-color-orange-low: oklch(0.95 0.04 70);
+}
+
+:focus-visible {
+  outline-color: var(--sl-color-text-accent);
+  outline-width: 2px;
+  outline-offset: 2px;
+}
+
+nav[aria-label="Main"] a[aria-current="page"] {
+  background: transparent;
+  color: var(--ziflux-orange-display);
+  font-weight: 700;
+}
+
+/* These links are large enough for the brighter 3:1 display orange. */
+.sl-markdown-content h2 > a {
+  color: var(--ziflux-orange-display);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

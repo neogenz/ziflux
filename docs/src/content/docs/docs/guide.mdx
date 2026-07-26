@@ -1,0 +1,262 @@
+---
+title: Guide
+description: Structure a ziflux domain, handle stale errors, and implement cache-aware mutations.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Quick start covered the basics. This guide adds detail views, error handling,
+mutations, and optimistic updates.
+
+## Architecture
+
+```text
+Component → route-scoped Store → root API service + DataCache → server
+    ↑              │                    │
+    └──────── signals ─────── cachedResource() / cachedMutation()
+```
+
+The component reads signals from a route-scoped Store. The Store composes
+`cachedResource()` and `cachedMutation()`. A root-scoped API service owns the
+long-lived `DataCache` and the HTTP calls.
+
+### Domain pattern
+
+A recommended structure for most features:
+
+| Step | File | Role | Scope |
+| --- | --- | --- | --- |
+| 1 | `order.api.ts` | HTTP + cache | singleton |
+| 2 | `order-list.store.ts` | cached resource + mutations | route |
+| 3 | `order-list.component.ts` | inject Store, read signals | view |
+
+<Aside type="caution" title="Why the cache must be a singleton">
+
+Two things need different lifetimes:
+
+- The cache must be `providedIn: 'root'`. It survives route navigation so SWR
+  works across pages.
+- Reactive params such as filters and IDs are route-scoped. Each route instance
+  gets independent state.
+
+The three-file pattern separates the cache host from reactive state. The API
+service is a natural cache host, but `DataCache` works anywhere with an injection
+context. A dedicated `OrderCache` service works too.
+
+</Aside>
+
+<Aside type="tip">
+
+The library does not require a Store layer. Use `cachedResource()` directly in a
+component for a simple use case, or use the [factory pattern](/docs/patterns/).
+
+</Aside>
+
+Guidelines:
+
+1. Components should not inject an API service directly.
+2. Keep HTTP logic in the API service, not the Store.
+3. The Store should not instantiate a `DataCache`; it reads `this.#api.cache`.
+4. Mutations invalidate via `invalidateKeys`. The Store owns that behavior, not
+   the API service.
+
+Naming conventions:
+
+| Concept | Class | File |
+| --- | --- | --- |
+| API service | `OrderApi` | `order.api.ts` |
+| List store | `OrderListStore` | `order-list.store.ts` |
+| Detail store | `OrderDetailStore` | `order-detail.store.ts` |
+
+## Recipes
+
+These recipes continue with the API service and list Store from
+[Quick start](/docs/quick-start/).
+
+### 1. Fetch one resource by ID
+
+Returning `undefined` from `params` keeps the resource idle until an ID exists.
+
+```ts title="order-detail.store.ts"
+@Injectable()
+export class OrderDetailStore {
+  readonly #api = inject(OrderApi)
+
+  readonly #id = signal<string | null>(null)
+
+  readonly order = cachedResource({
+    cache: this.#api.cache,
+    cacheKey: params => ['order', 'details', params.id],
+    params: () => {
+      const id = this.#id()
+      return id ? { id } : undefined // undefined = idle, loader doesn't run
+    },
+    loader: ({ params }) => this.#api.getById$(params.id),
+  })
+
+  load(id: string) {
+    this.#id.set(id)
+  }
+}
+```
+
+### 2. Display cached data in templates
+
+```html title="order-list.component.html"
+@if (store.orders.isInitialLoading()) {
+  <app-spinner />
+} @else {
+  <app-order-list [orders]="store.orders.value()" />
+}
+```
+
+When the server fails but stale data exists, show both the error and the cached
+value:
+
+```html title="order-list.component.html"
+@if (store.orders.error()) {
+  <div class="error-banner">Failed to refresh. Showing cached data.</div>
+}
+@if (store.orders.isInitialLoading()) {
+  <app-spinner />
+} @else {
+  @let list = store.orders.value();
+  @if (list) {
+    <app-order-list [orders]="list" [stale]="store.orders.isStale()" />
+  } @else {
+    <app-empty-state />
+  }
+}
+```
+
+### 3. Invalidate after a mutation
+
+`cachedMutation()` replaces hand-written pending and error signals, `try/catch`,
+and post-success invalidation with one declarative definition.
+
+```ts title="order-list.store.ts"
+@Injectable()
+export class OrderListStore {
+  readonly #api = inject(OrderApi)
+
+  readonly orders = cachedResource({ /* ... */ })
+
+  readonly deleteOrder = cachedMutation({
+    cache: this.#api.cache,
+    mutationFn: (id: string) => this.#api.delete$(id),
+    invalidateKeys: (id) => [['order', 'details', id], ['order', 'list']],
+  })
+}
+```
+
+```html title="order-list.component.html"
+<button
+  (click)="store.deleteOrder.mutate(order.id)"
+  [disabled]="store.deleteOrder.isPending()"
+>
+  @if (store.deleteOrder.isPending()) { Deleting... } @else { Delete }
+</button>
+
+@if (store.deleteOrder.error()) {
+  <div class="error-banner">
+    Delete failed. Please try again.
+    <button (click)="store.deleteOrder.reset()">Dismiss</button>
+  </div>
+}
+```
+
+When TypeScript needs the result:
+
+```ts title="order-list.component.ts"
+@Component({
+  template: `
+    <button (click)="onDelete(order.id)" [disabled]="store.deleteOrder.isPending()">
+      Delete
+    </button>
+  `,
+})
+export class OrderListComponent {
+  readonly store = inject(OrderListStore)
+
+  async onDelete(id: string) {
+    const result = await this.store.deleteOrder.mutate(id)
+
+    if (result !== undefined) {
+      this.#toast.show('Order deleted')
+    }
+    // No try/catch needed: errors land in store.deleteOrder.error()
+  }
+}
+```
+
+### 4. Update the UI before the server responds
+
+Optimistic updates apply a change immediately, then roll it back if the server
+call fails.
+
+<Aside type="caution" title="Mutation lifecycle">
+
+1. `onMutate(args)` runs before the API call. Snapshot the current state, apply
+   the optimistic change, and return the snapshot.
+2. `mutationFn(args)` runs the API call.
+3. On success, `onSuccess` runs, then `invalidateKeys` marks cache entries stale
+   so `cachedResource()` re-fetches from the server.
+4. On error, `onError` receives the snapshot as its third `context` argument.
+   Restore it to roll back the UI.
+
+</Aside>
+
+```ts title="order-list.store.ts"
+readonly updateOrder = cachedMutation({
+  cache: this.#api.cache,
+  mutationFn: (args: { id: string; data: Partial<Order> }) =>
+    this.#api.update$(args.id, args.data),
+  invalidateKeys: (args) => [['order', 'details', args.id], ['order', 'list']],
+
+  // 1. Runs BEFORE the API call
+  onMutate: (args) => {
+    const prev = this.orders.value()              // snapshot current state
+    this.orders.update(list =>                    // apply change to UI immediately
+      (list ?? []).map(o => (o.id === args.id ? { ...o, ...args.data } : o)),
+    )
+    return prev                                   // → becomes "context" in onError
+  },
+
+  // 2. Only runs if the API call fails
+  onError: (_err, _args, context) => {
+    if (context) this.orders.set(context)         // restore the snapshot → UI rolls back
+  },
+})
+```
+
+```html title="order-list.component.html"
+@for (order of store.orders.value(); track order.id) {
+  <div class="order-row">
+    <span>{{ order.name }}</span>
+    <button
+      (click)="store.updateOrder.mutate({ id: order.id, data: { name: newName } })"
+      [disabled]="store.updateOrder.isPending()"
+    >
+      Save
+    </button>
+  </div>
+}
+
+@if (store.updateOrder.error()) {
+  <div class="error-banner">Update failed, changes have been rolled back.</div>
+}
+```
+
+### 5. Combine loading states
+
+```ts title="order-list.store.ts"
+readonly isAnythingLoading = anyLoading(
+  this.orders.isLoading,
+  this.deleteOrder.isPending,
+)
+```
+
+`isLoading` belongs to `cachedResource()` and is true during the initial load or
+background revalidation. `isPending` belongs to `cachedMutation()` and is true
+while the mutation is in flight. Both are `Signal<boolean>`, so `anyLoading()`
+combines them.

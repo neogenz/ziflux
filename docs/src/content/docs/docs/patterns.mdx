@@ -1,0 +1,61 @@
+---
+title: Patterns
+description: Choose a domain structure for cached Angular resources.
+---
+
+The [Guide](/docs/guide/) shows the recommended three-file pattern. A singleton
+factory service is leaner for simple read-only screens.
+
+## Factory pattern
+
+A singleton service owns HTTP, cache, and factory methods. It returns
+`CachedResourceRef` directly. The consumer provides reactive params and Angular
+manages the lifecycle. No separate Store is needed.
+
+```ts title="order.api-cached.ts"
+@Injectable({ providedIn: 'root' })
+export class OrderApiCached {
+  readonly #http = inject(HttpClient)
+  readonly #cache = new DataCache()
+
+  getAll(params: () => OrderFilters | undefined) {
+    return cachedResource({
+      cache: this.#cache,
+      cacheKey: p => ['order', 'list', p.status],
+      params,
+      loader: ({ params }) => this.#http.get<Order[]>('/orders', { params: { ...params } }),
+    })
+  }
+
+  getById(id: () => string | null) {
+    return cachedResource({
+      cache: this.#cache,
+      cacheKey: p => ['order', 'details', p.id],
+      params: () => { const v = id(); return v ? { id: v } : undefined },
+      loader: ({ params }) => this.#http.get<Order>(`/orders/${params.id}`),
+    })
+  }
+}
+```
+
+### Consumer
+
+```ts title="order-list.component.ts"
+readonly #api = inject(OrderApiCached)
+readonly filters = signal<OrderFilters>({ status: 'all' })
+readonly orders = this.#api.getAll(() => this.filters())
+```
+
+This keeps HTTP, cache, and keys together. Consumers do not wire `cache` or
+`cacheKey`, while the returned `CachedResourceRef` retains every SWR signal.
+
+## When to use which
+
+| API + Store + Component | ApiCached + Component |
+| --- | --- |
+| Mutations and optimistic updates | Read-only data fetching |
+| Derived state and complex UI logic | Simple list or detail views |
+| Multiple coordinated resources | Fewer files and less boilerplate |
+
+Both patterns use the same library API. `cachedResource()` behaves identically;
+this is an organizational choice.

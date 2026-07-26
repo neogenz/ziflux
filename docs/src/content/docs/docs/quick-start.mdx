@@ -1,0 +1,94 @@
+---
+title: Quick start
+description: Install ziflux and create your first cached Angular resource.
+---
+
+## 1. Install and configure
+
+One provider, two durations.
+
+```bash
+npm install ngx-ziflux
+```
+
+```ts title="app.config.ts"
+import { provideZiflux } from 'ngx-ziflux'
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideZiflux({
+      staleTime: 30_000,   // 30s, data considered fresh
+      expireTime: 300_000, // 5min, stale data evicted
+    }),
+  ],
+}
+```
+
+## 2. Add a cache to your API service
+
+Add a `DataCache` instance to your existing API service. One line.
+
+```ts title="order.api.ts"
+import { inject, Injectable } from '@angular/core'
+import { HttpClient } from '@angular/common/http'
+import { DataCache } from 'ngx-ziflux'
+
+@Injectable({ providedIn: 'root' })
+export class OrderApi {
+  readonly cache = new DataCache()      // ← this is new
+  readonly #http = inject(HttpClient)
+
+  getAll$(filters: OrderFilters) {
+    return this.#http.get<Order[]>('/orders', { params: { ...filters } })
+  }
+}
+```
+
+## 3. Use `cachedResource()`
+
+Same shape as `resource()`, plus `cache` and `cacheKey`. It returns stale data
+immediately and re-fetches in the background.
+
+```ts title="order-list.store.ts"
+import { cachedResource } from 'ngx-ziflux'
+
+@Injectable()
+export class OrderListStore {
+  readonly #api = inject(OrderApi)
+
+  readonly filters = signal<OrderFilters>({ status: 'all' })
+
+  readonly orders = cachedResource({
+    cache: this.#api.cache,
+    cacheKey: params => ['order', 'list', params.status],
+    params: () => this.filters(),
+    loader: ({ params }) => this.#api.getAll$(params),
+  })
+}
+```
+
+## 4. Read the resource in a template
+
+`isInitialLoading()` is true only when there is no cached data, so a return visit
+skips the spinner as long as the entry has not passed `expireTime`.
+
+```ts title="order-list.component.ts"
+@Component({
+  providers: [OrderListStore],
+  template: `
+    @if (store.orders.isInitialLoading()) {
+      <app-spinner />
+    } @else {
+      <app-order-list [orders]="store.orders.value()" />
+    }
+  `,
+})
+export class OrderListComponent {
+  readonly store = inject(OrderListStore)
+}
+```
+
+Navigate away, come back, and the data loads immediately from cache.
+
+For read-only use cases, you can skip the Store layer entirely. See the
+[factory pattern](/docs/patterns/#factory-pattern).

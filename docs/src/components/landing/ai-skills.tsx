@@ -1,12 +1,16 @@
-import { CodeBlock } from "./code-block"
+import { CodeBlock } from "@/components/shared/code-block"
 
 const INSTALL_CODE = `npx skills add https://github.com/neogenz/ziflux --skill ziflux-expert`
 
+// max-w-3xl, not 2xl: the install command is 70 chars and overflows a 672px code
+// block. Not adjacent to the other 3xl section, so the width rhythm still holds.
 export function AiSkills() {
   return (
-    <section id="ai-skills" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">AI skills</h2>
-      <p className="mt-2 text-center text-muted-foreground">
+    <section id="ai-skills" className="mx-auto max-w-3xl px-6 pt-8 pb-20 sm:pb-28">
+      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
+        <a href="#ai-skills" className="hover:no-underline">AI skills <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
+      </h2>
+      <p className="mt-2 max-w-[68ch] text-muted-foreground">
         Give your AI coding agent deep ziflux expertise. Works with Claude Code, Cursor, Windsurf, and any{" "}
         <a
           href="https://skills.sh"
@@ -21,33 +25,6 @@ export function AiSkills() {
 
       <div className="mt-8">
         <CodeBlock code={INSTALL_CODE} language="bash" />
-      </div>
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-muted/30 p-5">
-          <p className="text-sm font-semibold">Implementation patterns</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Domain architecture, cachedResource setup, mutations, optimistic updates, polling, and retry.
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-muted/30 p-5">
-          <p className="text-sm font-semibold">Code review checklist</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Architecture rules, cache key design, signal usage, and common anti-patterns to catch.
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-muted/30 p-5">
-          <p className="text-sm font-semibold">Debugging guide</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Stale data issues, NG0203 errors, idle resources, duplicate requests, and devtools usage.
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-muted/30 p-5">
-          <p className="text-sm font-semibold">Testing patterns</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            TestBed setup, store testing, DataCache testing, mutation testing, and fake timers.
-          </p>
-        </div>
       </div>
     </section>
   )

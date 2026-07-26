@@ -1,0 +1,24 @@
+---
+import { AiSkills } from "@/components/landing/ai-skills"
+import { ClosingCta } from "@/components/landing/closing-cta"
+import { FreshnessSummary } from "@/components/landing/freshness-summary"
+import { Hero } from "@/components/landing/hero"
+import { NotAFit } from "@/components/landing/not-a-fit"
+import { PriorArt } from "@/components/landing/prior-art"
+import Footer from "@/components/shared/footer.astro"
+import Navbar from "@/components/shared/navbar.astro"
+import MarketingLayout from "@/layouts/marketing-layout.astro"
+---
+
+<MarketingLayout>
+  <Navbar />
+  <main id="main" class="landing-register relative">
+    <Hero client:load />
+    <FreshnessSummary />
+    <NotAFit />
+    <PriorArt />
+    <AiSkills client:visible />
+    <ClosingCta client:visible />
+  </main>
+  <Footer />
+</MarketingLayout>

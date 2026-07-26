@@ -1,0 +1,56 @@
+---
+title: Testing
+description: Test cached resources and DataCache inside Angular's injection context.
+---
+
+`DataCache` and `cachedResource` require an Angular injection context. Use
+`TestBed`.
+
+## Testing a store
+
+```ts title="order-list.store.spec.ts"
+describe('OrderListStore', () => {
+  let store: OrderListStore
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideZiflux(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        OrderApi,
+        OrderListStore,
+      ],
+    })
+    store = TestBed.inject(OrderListStore)
+  })
+
+  it('loads orders', async () => {
+    const httpTesting = TestBed.inject(HttpTestingController)
+
+    // Flush the HTTP request
+    httpTesting.expectOne('/orders').flush([{ id: '1', status: 'pending' }])
+    await new Promise(r => setTimeout(r, 0)); TestBed.tick()
+
+    expect(store.orders.value()).toHaveLength(1)
+  })
+})
+```
+
+## Testing a standalone `DataCache`
+
+Use `runInInjectionContext` when you need a bare cache without the full store setup.
+
+```ts title="data-cache.spec.ts"
+let cache: DataCache
+
+beforeEach(() => {
+  TestBed.configureTestingModule({})
+  cache = TestBed.runInInjectionContext(() => new DataCache())
+})
+
+it('stores and retrieves data', () => {
+  cache.set(['key'], 'value')
+  expect(cache.get<string>(['key'])?.data).toBe('value')
+})
+```

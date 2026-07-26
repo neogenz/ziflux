@@ -5,15 +5,15 @@ import { RotateCcw } from "lucide-react"
 
 // ─── Shared ──────────────────────────────────────────────
 
-function ReplayButton({ onClick }: { onClick: () => void }) {
+function ReplayButton({ onClick, played }: { onClick: () => void; played: boolean }) {
   return (
-    <div className="mt-4 flex justify-center nav-row-enter">
+    <div className="mt-4 flex justify-center">
       <button
         onClick={onClick}
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-['']"
       >
         <RotateCcw size={12} />
-        Replay
+        {played ? "Replay" : "Play"}
       </button>
     </div>
   )
@@ -34,7 +34,7 @@ function DemoPanel({
     <div
       className={`overflow-hidden rounded-2xl border transition-[border-color,background-color,opacity] duration-300 ${
         glow
-          ? "border-accent/40 shadow-[0_0_20px_rgba(249,115,22,0.1)]"
+          ? "border-accent/40 shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_10%,transparent)]"
           : accent
             ? "border-accent/20"
             : "border-border"
@@ -43,7 +43,7 @@ function DemoPanel({
       <div className="px-5 pt-4 pb-4">
         <span
           className={`text-sm font-semibold ${
-            accent ? "text-accent" : "text-muted-foreground"
+            accent ? "text-accent-strong" : "text-muted-foreground"
           }`}
         >
           {label}
@@ -87,7 +87,7 @@ function DataRow({
       } ${pending ? "opacity-40" : ""}`}
     >
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-foreground/80">{name}</p>
+        <p className="text-xs font-medium text-foreground">{name}</p>
         {pending && (
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
         )}
@@ -130,16 +130,18 @@ const NAV_TIMELINE: { at: number; left: NavState; right: NavState }[] = [
   { at: 6300, left: { tab: 0, loading: false }, right: { tab: 0, loading: false, cached: true } },
 ]
 
+// The settled last frame. Any earlier one still holds a skeleton or a spinner,
+// which would animate forever while the reader is parsing the headline.
+const NAV_POSTER = NAV_TIMELINE[4]
+
 function NavDemo() {
-  const [left, setLeft] = useState<NavState>(NAV_INITIAL)
-  const [right, setRight] = useState<NavState>(NAV_INITIAL)
-  const [done, setDone] = useState(false)
+  const [left, setLeft] = useState<NavState>(NAV_POSTER.left)
+  const [right, setRight] = useState<NavState>(NAV_POSTER.right)
   const [runKey, setRunKey] = useState(0)
 
+  // runKey 0 is the poster frame: nothing moves until the reader asks for it.
   useEffect(() => {
-    setDone(false)
-    setLeft(NAV_INITIAL)
-    setRight(NAV_INITIAL)
+    if (runKey === 0) return
 
     const timeouts = NAV_TIMELINE.map(({ at, left: l, right: r }) =>
       setTimeout(() => {
@@ -147,20 +149,24 @@ function NavDemo() {
         setRight(r)
       }, at),
     )
-    timeouts.push(setTimeout(() => setDone(true), 6900))
 
     return () => timeouts.forEach(clearTimeout)
   }, [runKey])
 
-  const replay = useCallback(() => setRunKey((k) => k + 1), [])
+  // Rewinding belongs to the click, not to the effect.
+  const replay = useCallback(() => {
+    setLeft(NAV_INITIAL)
+    setRight(NAV_INITIAL)
+    setRunKey((k) => k + 1)
+  }, [])
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
         <NavPanel label="Without cache" state={left} accent={false} />
         <NavPanel label="With cachedResource()" state={right} accent />
       </div>
-      {done && <ReplayButton onClick={replay} />}
+      <ReplayButton onClick={replay} played={runKey > 0} />
     </>
   )
 }
@@ -184,9 +190,9 @@ function NavPanel({
             className={`rounded-md px-3 py-1 text-xs transition-[background-color,color,opacity] duration-200 ${
               state.tab === i
                 ? accent
-                  ? "bg-accent/10 font-medium text-accent"
+                  ? "bg-accent/10 font-medium text-accent-strong"
                   : "bg-muted font-medium text-foreground"
-                : "text-muted-foreground/40"
+                : "text-muted-foreground"
             }`}
           >
             {tab}
@@ -206,7 +212,7 @@ function NavPanel({
               ))}
             </div>
             {state.cached && (
-              <p className="mt-3 text-xs font-medium text-accent">
+              <p className="mt-3 text-xs font-medium text-accent-strong">
                 &larr; from cache
               </p>
             )}
@@ -221,24 +227,17 @@ function NavPanel({
 
 type MutationPhase = "idle" | "dialog" | "saving" | "done"
 
-const MUTATION_ITEMS = [
-  { name: "Alice Martin", detail: "Engineering" },
-  { name: "Bob Chen", detail: "Editor" },
-  { name: "Carol Wu", detail: "Marketing" },
-]
-
 const NEW_ROLE = "Lead Design"
 
 function MutationDemo() {
-  const [leftPhase, setLeftPhase] = useState<MutationPhase>("idle")
-  const [rightPhase, setRightPhase] = useState<MutationPhase>("idle")
-  const [done, setDone] = useState(false)
+  // Both settled: "saving" would spin forever before the reader presses Play.
+  const [leftPhase, setLeftPhase] = useState<MutationPhase>("done")
+  const [rightPhase, setRightPhase] = useState<MutationPhase>("done")
   const [runKey, setRunKey] = useState(0)
 
+  // runKey 0 is the poster frame: nothing moves until the reader asks for it.
   useEffect(() => {
-    setDone(false)
-    setLeftPhase("idle")
-    setRightPhase("idle")
+    if (runKey === 0) return
 
     const timeouts: ReturnType<typeof setTimeout>[] = []
 
@@ -261,21 +260,23 @@ function MutationDemo() {
       setLeftPhase("done")
     }, 4200))
 
-    // t=5000: Animation done
-    timeouts.push(setTimeout(() => setDone(true), 5000))
-
     return () => timeouts.forEach(clearTimeout)
   }, [runKey])
 
-  const replay = useCallback(() => setRunKey((k) => k + 1), [])
+  // Rewinding belongs to the click, not to the effect.
+  const replay = useCallback(() => {
+    setLeftPhase("idle")
+    setRightPhase("idle")
+    setRunKey((k) => k + 1)
+  }, [])
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
         <MutationPanel label="Without cachedMutation()" phase={leftPhase} accent={false} />
         <MutationPanel label="With cachedMutation()" phase={rightPhase} accent />
       </div>
-      {done && <ReplayButton onClick={replay} />}
+      <ReplayButton onClick={replay} played={runKey > 0} />
     </>
   )
 }
@@ -319,7 +320,7 @@ function MutationPanel({
               <div className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
                 <p className="text-[10px] font-medium text-muted-foreground">Role</p>
                 <div className="mt-0.5 flex items-center gap-2 text-xs">
-                  <span className="text-foreground/40 line-through">Editor</span>
+                  <span className="text-muted-foreground line-through">Editor</span>
                   <span className="text-muted-foreground">&rarr;</span>
                   <span className="font-semibold text-foreground">{NEW_ROLE}</span>
                 </div>
@@ -341,8 +342,8 @@ function MutationPanel({
                 {phase === "done" && (
                   <span className={`rounded-md px-3 py-1 text-[11px] font-medium ${
                     accent
-                      ? "bg-accent/10 text-accent"
-                      : "bg-emerald-500/10 text-emerald-600"
+                      ? "bg-accent/10 text-accent-strong"
+                      : "bg-ok/10 text-ok-strong"
                   }`}>
                     {accent ? "✓ Instant" : "✓ Saved"}
                   </span>
@@ -362,11 +363,17 @@ export function NavigationDemo() {
   const [mode, setMode] = useState<"nav" | "mutation">("nav")
 
   return (
-    <div className="mt-10" aria-hidden="true">
+    <div
+      data-md-visual
+      role="group"
+      aria-label="Animated comparison of the same app with and without ziflux"
+      className="mt-10"
+    >
       <div className="mb-4 flex gap-1">
         <button
           onClick={() => setMode("nav")}
-          className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+          aria-pressed={mode === "nav"}
+          className={`relative cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-[''] ${
             mode === "nav"
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:text-foreground"
@@ -376,7 +383,8 @@ export function NavigationDemo() {
         </button>
         <button
           onClick={() => setMode("mutation")}
-          className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+          aria-pressed={mode === "mutation"}
+          className={`relative cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-[''] ${
             mode === "mutation"
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:text-foreground"

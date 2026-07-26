@@ -39,15 +39,12 @@
      strokes, focus rings. */
   --border-strong: oklch(0.635 0 0);
 
-  /* Brand and status hues live at two lightnesses. The vivid value is a *fill*
-     and is identical in both themes. Its -strong twin is the same hue darkened
-     so it clears 4.5:1 as *text* on a near-white page; a vivid fill never can. */
-  --accent: oklch(0.69 0.22 38);
-  --accent-strong: oklch(0.54 0.18 38);
-  /* Display-only: large text clears AA at 3:1, not 4.5:1, so it can stay far
-     closer to the brand orange. 3.39:1 — valid ONLY at >=24px, or >=18.66px
-     bold. Anything smaller must use --accent-strong. */
-  --accent-display: oklch(0.65 0.21 38);
+  /* Electric vermilion: deep enough for white CTA text, vivid enough to avoid
+     the brown cast of the previous safety orange. */
+  --accent: oklch(0.57 0.2 29);
+  --accent-strong: oklch(0.52 0.19 29);
+  /* Display-only accent. 3.70:1 on the page, valid for the large hero type. */
+  --accent-display: oklch(0.63 0.21 29);
   --ok: oklch(0.6959 0.1491 162.48);
   --ok-strong: oklch(0.515 0.113 162.48);
   --caution: oklch(0.7686 0.1647 70.08);
@@ -57,10 +54,8 @@
   --info: oklch(0.6231 0.188 259.81);
   --info-strong: oklch(0.53 0.188 259.81);
 
-  /* Text sitting on a vivid fill. Those fills are light in both themes, so this
-     stays near-black in both — it is not a theme flip, and .dark must not
-     override it. White here measures 2.80:1 and is what broke the CTA. */
-  --accent-foreground: oklch(0.145 0 0);
+  /* White on the primary fill measures 4.72:1. */
+  --accent-foreground: oklch(0.985 0 0);
   --status-foreground: oklch(0.145 0 0);
 
   --ring: var(--foreground);
@@ -87,10 +82,10 @@
   --border: oklch(0.269 0 0);
   --border-strong: oklch(0.48 0 0);
 
-  /* On a near-black page the vivid values already clear 4.5:1 as text, so the
-     -strong twins collapse back onto them and dark keeps its current colour. */
-  --accent-strong: var(--accent);
-  --accent-display: var(--accent);
+  /* Brighter coral carries links and display type on the near-black surface.
+     CTA fills stay on --accent so their white label keeps AA contrast. */
+  --accent-strong: oklch(0.74 0.17 29);
+  --accent-display: oklch(0.74 0.17 29);
   --ok-strong: var(--ok);
   --caution-strong: var(--caution);
   --danger-strong: var(--danger);

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { CodeBlock } from "@/components/shared/code-block"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const INVALIDATE_EMPTY_WRONG = `// This does nothing: an empty prefix matches no key
 cache.invalidate([])`
@@ -32,6 +33,7 @@ const entry = cache.get<Order[]>(['user', '1'])    // reads as Order[]
 
 interface Gotcha {
   title: ReactNode
+  label: string
   key: string
   description: string
   wrong?: string
@@ -44,6 +46,7 @@ interface Gotcha {
 const GOTCHAS: Gotcha[] = [
   {
     key: "invalidate-empty",
+    label: "invalidate([]) is a no-op",
     title: <><code>invalidate([])</code> is a no-op</>,
     description: "An empty prefix matches nothing. Use cache.clear() to wipe everything.",
     wrong: INVALIDATE_EMPTY_WRONG,
@@ -53,18 +56,21 @@ const GOTCHAS: Gotcha[] = [
   },
   {
     key: "invalidate-prefix",
+    label: "invalidate() is prefix-based, not exact-match",
     title: <><code>invalidate()</code> is prefix-based, not exact-match</>,
     description: "A prefix matches all keys that start with it, including nested sub-keys.",
     code: INVALIDATE_PREFIX_CODE,
   },
   {
     key: "set-update-cache",
+    label: "ref.set() / ref.update() write to the cache",
     title: <><code>ref.set()</code> / <code>ref.update()</code> write to the cache</>,
     description: "They update both the Angular resource and the DataCache. Optimistic values survive version bumps from unrelated invalidations. Call invalidate() to trigger a fresh server fetch.",
     code: SET_UPDATE_CODE,
   },
   {
     key: "untyped-keys",
+    label: "Cache keys are untyped at the boundary",
     title: "Cache keys are untyped at the boundary",
     description: "DataCache stores unknown internally. Type correctness depends on consistent key→type pairings in your code.",
     code: UNTYPED_KEYS_CODE,
@@ -73,10 +79,10 @@ const GOTCHAS: Gotcha[] = [
 
 export function Gotchas() {
   return (
-    <section id="gotchas" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#gotchas" className="hover:no-underline">Gotchas <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 sm:py-12">
+      <SectionHeading level={2} id="gotchas" label="Gotchas">
+        Gotchas
+      </SectionHeading>
       <p className="mt-2 text-muted-foreground">
         Common pitfalls and how to avoid them.
       </p>
@@ -87,7 +93,9 @@ export function Gotchas() {
             <div className="flex items-start gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-caution/10 text-xs font-bold text-caution-strong">!</span>
               <div>
-                <h3 className="text-sm font-semibold">{gotcha.title}</h3>
+                <SectionHeading level={3} id={gotcha.key} label={gotcha.label}>
+                  {gotcha.title}
+                </SectionHeading>
                 <p className="mt-1 text-sm text-muted-foreground">{gotcha.description}</p>
               </div>
             </div>

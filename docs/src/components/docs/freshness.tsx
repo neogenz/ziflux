@@ -1,13 +1,14 @@
 import { CodeBlock } from "@/components/shared/code-block"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const CACHE_KEYS_CODE = `cache.invalidate(['order'])   // ← one call, everything refreshes`
 
 export function Freshness() {
   return (
-    <section id="freshness" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#freshness" className="hover:no-underline">How caching works <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 sm:py-12">
+      <SectionHeading level={2} id="freshness" label="How caching works">
+        How caching works
+      </SectionHeading>
       <p className="mt-2 text-muted-foreground">
         Every cached entry goes through three phases. <code>invalidate()</code> marks entries stale &mdash; it never deletes them.
       </p>
@@ -54,7 +55,9 @@ export function Freshness() {
 
       {/* Loading states table */}
       <div className="mt-10">
-        <h3 className="mb-4 text-lg font-semibold">What the user sees</h3>
+        <SectionHeading level={3} id="loading-states" label="What the user sees" className="mb-4">
+          What the user sees
+        </SectionHeading>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -99,7 +102,9 @@ export function Freshness() {
 
       {/* Cache keys */}
       <div className="mt-10">
-        <h3 className="mb-2 text-lg font-semibold">Cache keys</h3>
+        <SectionHeading level={3} id="cache-keys" label="Cache keys" className="mb-2">
+          Cache keys
+        </SectionHeading>
         <p className="mb-4 text-sm text-muted-foreground">
           You delete an order. The list, the detail page and every filtered view all need to refresh.
           Cache keys make this one line:
@@ -139,7 +144,9 @@ export function Freshness() {
 
       {/* When to cache */}
       <div className="mt-10">
-        <h3 className="mb-4 text-lg font-semibold">When to cache</h3>
+        <SectionHeading level={3} id="when-to-cache" label="When to cache" className="mb-4">
+          When to cache
+        </SectionHeading>
         <div className="grid text-sm sm:grid-cols-2">
           <div className="pb-6 sm:pb-0 sm:pr-8">
             <p className="mb-2 font-semibold">Cache</p>

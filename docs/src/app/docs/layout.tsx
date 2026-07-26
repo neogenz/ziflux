@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import { Navbar } from "@/components/shared/navbar"
 import { Footer } from "@/components/shared/footer"
 import { CopyPageDropdown } from "@/components/shared/copy-page-dropdown"
+import { Sidebar } from "@/components/docs/sidebar"
+import { TableOfContents } from "@/components/docs/toc"
 
 export const metadata: Metadata = {
   title: "Documentation",
@@ -16,11 +18,6 @@ export const metadata: Metadata = {
   },
 }
 
-/**
- * The reference route. Phase 3 turns this into the three-column shell with a
- * sticky sidebar and a table of contents; today it is the shared chrome plus
- * the content column, so nothing empty ships in the meantime.
- */
 export default function DocsLayout({
   children,
 }: Readonly<{
@@ -29,13 +26,21 @@ export default function DocsLayout({
   return (
     <>
       <Navbar />
-      {/* The landing carries this control in its hero; the reference route is
-          where copying the page for an LLM actually pays off. */}
-      <div className="mx-auto flex max-w-4xl justify-end px-6 pt-8">
-        <CopyPageDropdown />
-      </div>
-      <main id="main" className="relative">
-        {children}
+      <main id="main" className="docs-register relative">
+        <div className="mx-auto grid max-w-[90rem] grid-cols-1 gap-x-8 px-6 lg:grid-cols-[13rem_minmax(0,56rem)] xl:grid-cols-[13rem_minmax(0,56rem)_13rem] xl:gap-x-10">
+          <div className="flex justify-end py-6 lg:col-start-2">
+            <CopyPageDropdown />
+          </div>
+          <div className="lg:col-start-1 lg:row-start-2">
+            <Sidebar />
+          </div>
+          <div className="min-w-0 lg:col-start-2 lg:row-start-2">
+            {children}
+          </div>
+          <div className="hidden xl:col-start-3 xl:row-start-2 xl:block">
+            <TableOfContents />
+          </div>
+        </div>
       </main>
       <Footer />
     </>

@@ -71,7 +71,7 @@ export function Navbar() {
             href="https://www.npmjs.com/package/ngx-ziflux"
             target="_blank"
             rel="noopener noreferrer"
-            className="relative hidden items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-[''] hover:text-foreground min-[360px]:inline-flex"
+            className="relative hidden items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground transition-colors before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2 before:content-[''] hover:text-foreground min-[400px]:inline-flex"
           >
             npm
             <ExternalLink size={10} />

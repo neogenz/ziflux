@@ -1,4 +1,5 @@
 import { CodeBlock } from "@/components/shared/code-block"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const INSTALL_CODE = `npm install ngx-ziflux`
 
@@ -59,13 +60,15 @@ export class OrderListComponent {
 
 export function QuickStart() {
   return (
-    <section id="quickstart" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#quickstart" className="hover:no-underline">Quick start <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 first:pt-4 sm:py-12">
+      <SectionHeading level={2} id="quickstart" label="Quick start">
+        Quick start
+      </SectionHeading>
 
       {/* Step 1 */}
-      <h3 className="mt-8 text-sm font-semibold tracking-wide text-muted-foreground">1 · Install & configure</h3>
+      <SectionHeading level={3} id="quickstart-install" label="Install & configure" className="mt-8 text-muted-foreground">
+        1 · Install & configure
+      </SectionHeading>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">One provider, two durations.</p>
       <div className="space-y-4">
         <CodeBlock code={INSTALL_CODE} language="bash" />
@@ -73,17 +76,23 @@ export function QuickStart() {
       </div>
 
       {/* Step 2 */}
-      <h3 className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">2 · Add a cache to your API service</h3>
+      <SectionHeading level={3} id="quickstart-cache" label="Add a cache to your API service" className="mt-10 text-muted-foreground">
+        2 · Add a cache to your API service
+      </SectionHeading>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">Add a DataCache instance to your existing API service. One line.</p>
       <CodeBlock code={API_CODE} filename="order.api.ts" />
 
       {/* Step 3 */}
-      <h3 className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">3 · Use cachedResource()</h3>
+      <SectionHeading level={3} id="quickstart-resource" label="Use cachedResource()" className="mt-10 text-muted-foreground">
+        3 · Use cachedResource()
+      </SectionHeading>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">Same shape as resource(), plus cache and cacheKey. Returns stale data instantly, re-fetches in background.</p>
       <CodeBlock code={STORE_CODE} filename="order-list.store.ts" />
 
       {/* Step 4 */}
-      <h3 className="mt-10 text-sm font-semibold tracking-wide text-muted-foreground">4 · Template</h3>
+      <SectionHeading level={3} id="quickstart-template" label="Template" className="mt-10 text-muted-foreground">
+        4 · Template
+      </SectionHeading>
       <p className="mt-2 mb-4 text-sm text-muted-foreground">isInitialLoading() is true only when there&apos;s no cached data, so a return visit skips the spinner as long as the entry has not passed expireTime.</p>
       <CodeBlock code={COMPONENT_CODE} filename="order-list.component.ts" />
 

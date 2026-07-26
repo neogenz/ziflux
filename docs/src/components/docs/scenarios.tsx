@@ -1,5 +1,6 @@
 import { withInlineCode } from "@/components/shared/inline-code"
 import { CodeBlock } from "@/components/shared/code-block"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const ADMIN_TABS_CODE = `// Each tab is a route. Each route's store reads from a shared cache.
 @Injectable() export class OrdersStore {
@@ -72,10 +73,10 @@ const SCENARIOS: Scenario[] = [
 
 export function Scenarios() {
   return (
-    <section id="scenarios" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#scenarios" className="hover:no-underline">When ziflux pays off <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 sm:py-12">
+      <SectionHeading level={2} id="scenarios" label="When ziflux pays off">
+        When ziflux pays off
+      </SectionHeading>
       <p className="mt-2 text-muted-foreground">
         Three patterns where SWR caching on <code>resource()</code> earns its keep.
       </p>
@@ -90,8 +91,10 @@ export function Scenarios() {
             >
               {String(i + 1).padStart(2, "0")}
             </span>
-            <div>
-              <h3 className="text-base font-semibold">{scenario.title}</h3>
+            <div className="min-w-0">
+              <SectionHeading level={3} id={scenario.key} label={scenario.title}>
+                {scenario.title}
+              </SectionHeading>
               <p className="mt-3 text-sm">
                 <span className="mr-2 inline-block rounded-md bg-danger/10 px-2 py-0.5 font-mono text-[11px] text-danger-strong">Pain</span>
                 <span className="text-muted-foreground">{withInlineCode(scenario.pain)}</span>

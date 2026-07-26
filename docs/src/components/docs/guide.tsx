@@ -1,5 +1,6 @@
 import { CodeBlock } from "@/components/shared/code-block"
 import { Callout } from "@/components/shared/callout"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const DETAIL_STORE_CODE = `@Injectable()
 export class OrderDetailStore {
@@ -167,10 +168,10 @@ function DomainStep({ step, file, role, scope }: { step: number; file: string; r
 
 export function Guide() {
   return (
-    <section id="guide" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#guide" className="hover:no-underline">Guide <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 sm:py-12">
+      <SectionHeading level={2} id="guide" label="Guide">
+        Guide
+      </SectionHeading>
       <p className="mt-2 text-muted-foreground">
         Quick Start gave you the basics. Now: detail views, error handling, mutations, and optimistic updates.
       </p>
@@ -262,7 +263,9 @@ export function Guide() {
 
       {/* Domain pattern */}
       <div className="mt-14">
-        <h3 className="mb-3 text-lg font-semibold">Domain pattern</h3>
+        <SectionHeading level={3} id="domain-pattern" label="Domain pattern" className="mb-3">
+          Domain pattern
+        </SectionHeading>
         <p className="mb-4 text-sm text-muted-foreground">
           A recommended structure for most features:
         </p>
@@ -346,8 +349,10 @@ export function Guide() {
       </details>
 
       {/* Usage walkthrough */}
-      <div id="usage" className="mt-10">
-        <h3 className="mb-2 text-lg font-semibold">Recipes</h3>
+      <div className="mt-10">
+        <SectionHeading level={3} id="usage" label="Recipes" className="mb-2">
+          Recipes
+        </SectionHeading>
         <p className="mt-2 mb-4 text-sm text-muted-foreground">
           Picks up where Quick Start left off, using the same API service and list store from there.
         </p>

@@ -1,4 +1,5 @@
 import { CodeBlock } from "@/components/shared/code-block"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const FACTORY_SERVICE_CODE = `@Injectable({ providedIn: 'root' })
 export class OrderApiCached {
@@ -30,17 +31,19 @@ readonly orders = this.#api.getAll(() => this.filters())`
 
 export function AdvancedUsage() {
   return (
-    <section id="advanced-usage" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#advanced-usage" className="hover:no-underline">Alternative patterns <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 sm:py-12">
+      <SectionHeading level={2} id="advanced-usage" label="Alternative patterns">
+        Alternative patterns
+      </SectionHeading>
       <p className="mt-2 text-muted-foreground">
         The Guide shows the recommended 3-file pattern. Here&apos;s a leaner alternative for simpler use cases.
       </p>
 
       {/* Factory Pattern */}
       <div className="mt-10">
-        <h3 className="mb-2 text-lg font-semibold">Factory pattern</h3>
+        <SectionHeading level={3} id="factory-pattern" label="Factory pattern" className="mb-2">
+          Factory pattern
+        </SectionHeading>
         <p className="mb-4 text-sm text-muted-foreground">
           A singleton service that owns HTTP + cache + factory methods, returning <code>CachedResourceRef</code> directly. The consumer provides reactive params, Angular manages lifecycle. No separate Store needed.
         </p>
@@ -62,7 +65,9 @@ export function AdvancedUsage() {
 
       {/* When to Use Which */}
       <div className="mt-10">
-        <h3 className="mb-4 text-lg font-semibold">When to use which</h3>
+        <SectionHeading level={3} id="when-to-use-which" label="When to use which" className="mb-4">
+          When to use which
+        </SectionHeading>
         <div className="grid text-sm sm:grid-cols-2">
           <div className="pb-6 sm:pb-0 sm:pr-8">
             <p className="mb-2 font-semibold">3-file pattern (API + Store + Component)</p>

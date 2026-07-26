@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { CodeBlock } from "@/components/shared/code-block"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const tabs = [
   {
@@ -222,10 +223,10 @@ export function ApiReference() {
   const active = tabs.find((t) => t.id === activeTab)!
 
   return (
-    <section id="api" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#api" className="hover:no-underline">API reference <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 sm:py-12">
+      <SectionHeading level={2} id="api" label="API reference">
+        API reference
+      </SectionHeading>
       <p className="mt-2 text-muted-foreground">All runtime exports, with signatures and usage examples.</p>
 
       {/* Tabs */}

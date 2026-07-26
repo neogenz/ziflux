@@ -1,4 +1,5 @@
 import { CodeBlock } from "@/components/shared/code-block"
+import { SectionHeading } from "@/components/docs/section-heading"
 
 const STORE_TEST_CODE = `describe('OrderListStore', () => {
   let store: OrderListStore
@@ -41,23 +42,27 @@ it('stores and retrieves data', () => {
 
 export function Testing() {
   return (
-    <section id="testing" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
-        <a href="#testing" className="hover:no-underline">Testing <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
-      </h2>
+    <section className="py-10 sm:py-12">
+      <SectionHeading level={2} id="testing" label="Testing">
+        Testing
+      </SectionHeading>
       <p className="mt-2 text-muted-foreground">
         <code>DataCache</code> and <code>cachedResource</code> require an Angular injection context. Use <code>TestBed</code>.
       </p>
 
       {/* Testing a store */}
       <div className="mt-8">
-        <h3 className="mb-2 text-lg font-semibold">Testing a store</h3>
+        <SectionHeading level={3} id="testing-store" label="Testing a store" className="mb-2">
+          Testing a store
+        </SectionHeading>
         <CodeBlock code={STORE_TEST_CODE} filename="order-list.store.spec.ts" />
       </div>
 
       {/* Testing with standalone DataCache */}
       <div className="mt-8">
-        <h3 className="mb-2 text-lg font-semibold">Testing a standalone DataCache</h3>
+        <SectionHeading level={3} id="testing-data-cache" label="Testing a standalone DataCache" className="mb-2">
+          Testing a standalone DataCache
+        </SectionHeading>
         <p className="mb-3 text-sm text-muted-foreground">
           Use <code>runInInjectionContext</code> when you need a bare cache without the full store setup.
         </p>

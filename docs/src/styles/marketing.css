@@ -25,6 +25,8 @@
 }
 
 :root {
+  --font-archivo: "Archivo Variable";
+  --font-sometype-mono: "Sometype Mono Variable";
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);
   --muted: oklch(0.97 0 0);
@@ -76,7 +78,8 @@
   --code-number: oklch(0.8237 0.1015 52.63);
 }
 
-.dark {
+.dark,
+:root[data-theme="dark"] {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --muted: oklch(0.205 0 0);

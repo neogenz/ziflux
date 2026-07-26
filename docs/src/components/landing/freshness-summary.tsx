@@ -1,5 +1,3 @@
-import Link from "next/link"
-
 export function FreshnessSummary() {
   return (
     <section id="freshness-summary" className="mx-auto max-w-3xl px-6 pt-10 pb-24 sm:pt-12 sm:pb-36">
@@ -52,9 +50,9 @@ export function FreshnessSummary() {
 
       <p className="mt-10 max-w-[68ch] text-sm text-muted-foreground">
         The{" "}
-        <Link href="/docs#freshness" className="underline underline-offset-4 hover:text-foreground transition-colors">
+        <a href="/docs#freshness" className="underline underline-offset-4 hover:text-foreground transition-colors">
           docs
-        </Link>
+        </a>
         {" "}add the loading-state table, cache keys and when to cache.
       </p>
     </section>

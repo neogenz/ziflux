@@ -1,0 +1,68 @@
+---
+import "@fontsource-variable/archivo/wdth.css"
+import "@fontsource-variable/sometype-mono"
+import Analytics from "@vercel/analytics/astro"
+import "../styles/marketing.css"
+
+interface Props {
+  title?: string
+  description?: string
+}
+
+const {
+  title = "ziflux: SWR caching for Angular resource()",
+  description = "Zero-dependency, signal-native stale-while-revalidate caching for Angular resource().",
+} = Astro.props
+const canonical = new URL(Astro.url.pathname, Astro.site)
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <meta
+      name="keywords"
+      content="angular, cache, swr, stale-while-revalidate, resource, signals, angular 22, data cache, ziflux"
+    />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL("/og.png", Astro.site)} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL("/og.png", Astro.site)} />
+    <title>{title}</title>
+    <script is:inline>
+      (() => {
+        const stored = localStorage.getItem("starlight-theme")
+        const mode = stored === "light" || stored === "dark" ? stored : "auto"
+        const theme =
+          mode === "auto"
+            ? matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark"
+            : mode
+        document.documentElement.dataset.theme = theme
+        document.documentElement.dataset.themeMode = mode
+      })()
+    </script>
+  </head>
+  <body>
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-background focus:p-4 focus:text-foreground"
+    >
+      Skip to content
+    </a>
+    <slot />
+    <Analytics />
+  </body>
+</html>

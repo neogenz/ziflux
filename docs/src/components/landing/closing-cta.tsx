@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { CodeBlock } from "@/components/shared/code-block"
 
 const INSTALL_CODE = `npm install ngx-ziflux`
@@ -21,13 +20,13 @@ export function ClosingCta() {
           {/* --ring defaults to --foreground, which is near-white in dark mode.
               --accent-foreground is near-black in both themes, so the ring holds
               6.28:1 on this orange either way. */}
-          <Link
+          <a
             href="/docs"
             className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-md bg-background px-4 py-2 text-sm font-medium text-foreground transition-[opacity,scale] duration-150 hover:opacity-90 active:scale-[0.96] sm:self-auto [--ring:var(--accent-foreground)]"
           >
             Read the docs
             <span aria-hidden="true">→</span>
-          </Link>
+          </a>
         </div>
       </div>
     </section>

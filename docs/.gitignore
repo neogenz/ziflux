@@ -13,12 +13,10 @@
 # testing
 /coverage
 
-# next.js
-/.next/
+# generated
+/.astro/
+/dist/
 /out/
-
-# production
-/build
 
 # misc
 .DS_Store
@@ -36,6 +34,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# typescript
+# legacy TypeScript artifacts
 *.tsbuildinfo
 next-env.d.ts

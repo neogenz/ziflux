@@ -1,3 +1,4 @@
+import { withInlineCode } from "@/components/shared/inline-code"
 interface Limit {
   key: string
   title: string
@@ -46,29 +47,41 @@ const LIMITS: Limit[] = [
 
 export function NotAFit() {
   return (
-    <section id="not-a-fit" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
+    <section id="not-a-fit" className="mx-auto max-w-6xl px-6 pt-16 pb-16 sm:pt-20 sm:pb-20">
       <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
         <a href="#not-a-fit" className="hover:no-underline">When ziflux is the wrong tool <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
-      <p className="mt-2 text-muted-foreground">
+      <p className="mt-2 max-w-[68ch] text-muted-foreground">
         SWR caching is narrow on purpose. If your problem looks like one of these, reach for something else.
       </p>
 
-      <div className="mt-8 grid gap-x-10 gap-y-7 sm:grid-cols-2">
-        {LIMITS.map((limit) => (
-          <div key={limit.key} className="border-t border-border pt-4">
-            <h3 className="text-sm font-semibold">{limit.title}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              <span className="text-foreground/80">Why not: </span>
-              {limit.reason}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              <span className="text-foreground/80">Use instead: </span>
-              {limit.alternative}
-            </p>
-          </div>
-        ))}
-      </div>
+      <table role="table" className="mt-8 w-full border-b border-border text-sm max-sm:block sm:table-fixed">
+        <caption className="sr-only">Cases where ziflux is the wrong tool, and what to use instead.</caption>
+        <thead role="rowgroup" className="max-sm:sr-only">
+          <tr role="row">
+            <th role="columnheader" scope="col" className="w-[22%] pb-3 pr-6 text-left align-bottom text-xs font-semibold text-muted-foreground">Limit</th>
+            <th role="columnheader" scope="col" className="w-[41%] pb-3 pr-6 text-left align-bottom text-xs font-semibold text-muted-foreground">Why not</th>
+            <th role="columnheader" scope="col" className="w-[37%] pb-3 text-left align-bottom text-xs font-semibold text-muted-foreground">Use instead</th>
+          </tr>
+        </thead>
+        <tbody role="rowgroup" className="max-sm:block">
+          {LIMITS.map((limit) => (
+            <tr role="row" key={limit.key} className="border-t border-border max-sm:block max-sm:py-5">
+              <th role="rowheader" scope="row" className="text-left align-top font-semibold max-sm:block sm:py-4 sm:pr-6">
+                {limit.title}
+              </th>
+              <td role="cell" className="align-top text-muted-foreground max-sm:mt-3 max-sm:block sm:py-4 sm:pr-6">
+                <span aria-hidden="true" className="mb-1 block text-xs font-medium text-foreground sm:hidden">Why not</span>
+                {withInlineCode(limit.reason)}
+              </td>
+              <td role="cell" className="align-top text-muted-foreground max-sm:mt-3 max-sm:block sm:py-4">
+                <span aria-hidden="true" className="mb-1 block text-xs font-medium text-foreground sm:hidden">Use instead</span>
+                {withInlineCode(limit.alternative)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   )
 }

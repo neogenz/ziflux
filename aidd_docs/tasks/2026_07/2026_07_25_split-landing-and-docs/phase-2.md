@@ -1,5 +1,5 @@
 ---
-status: pending
+status: done
 ---
 
 # Instruction: Landing recomposition
@@ -95,12 +95,13 @@ flowchart TD
 2. Leave the table, key tree and "when to cache" in the docs version.
 3. Carry `data-md-visual` onto whichever wrapper now holds each visual.
 
-### `3)` Condense scenarios
+### `3)` Condense scenarios — DROPPED 2026-07-26
 
-> Three named situations persuade; three code blocks teach.
-
-1. `scenarios-summary.tsx` keeps the titles and the pain line, drops the code.
-2. Each entry links to its full form under `/docs#scenarios`.
+> This projection predates the confirmed design brief, whose wireframe runs
+> hero → demo → freshness → not-a-fit → compare → closing CTA, with no scenarios
+> section on the landing. Adding one back would restate what the demo already
+> shows, on a page whose whole point is arriving at a decision faster.
+> `scenarios.tsx` keeps its full form under `/docs`. No file is created.
 
 ### `4)` Add the closing CTA
 
@@ -127,10 +128,16 @@ flowchart TD
 
 | Task | Acceptance criteria                                                                                         |
 | ---- | ------------------------------------------------------------------------------------------------------------ |
-| 1    | `/` carries only the six confirmed sections; the quickstart walkthrough appears solely under `/docs`.        |
+| 1    | `/` carries hero, freshness summary, not-a-fit, compare, ai-skills and the closing CTA, and nothing else; the quickstart walkthrough appears solely under `/docs`. |
 | 2    | `/` shows the three-phase diagram; the scenario table and key tree appear only under `/docs`.                 |
-| 3    | Each landing scenario entry links to its full version, and the link resolves.                                |
+| 3    | Dropped, see task 3. No landing scenarios section ships.                                                     |
 | 4    | The last section before the footer offers both the install command and a working `/docs` link.               |
 | 5    | No two adjacent sections share the same content width; not-a-fit renders as a table, not as a card grid.     |
 | all  | `/` is at most 6 viewport heights at 1280×820 and reaches the compare block within 4.                        |
 | all  | Every contrast pair still passes AA in both themes, measured in the browser, not asserted.                   |
+
+> Criterion 1 said "only the six confirmed sections" while this file's own
+> projection listed `ai-skills.tsx` as "condensed to one line + install". The
+> projection is the more specific statement and ai-skills is a real adoption
+> path, so it ships condensed and the count is seven, not six. Recorded rather
+> than silently reconciled.

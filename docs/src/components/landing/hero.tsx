@@ -14,11 +14,11 @@ const USAGE_CODE = `const todos = cachedResource({
 
 export function Hero() {
   return (
-    <section className="relative mx-auto max-w-4xl px-6 pt-20 pb-10 sm:pt-28 sm:pb-14">
-      {/* Ambient glow */}
+    <section className="relative px-6 pt-20 pb-8 sm:pt-28 sm:pb-12">
+      {/* Ambient glow, viewport-wide now that the section no longer clips it */}
       <div className="pointer-events-none absolute inset-x-0 -top-20 h-[500px] bg-[radial-gradient(ellipse_at_50%_0%,color-mix(in_oklab,var(--accent)_8%,transparent)_0%,transparent_60%)]" />
 
-      <div className="relative">
+      <div className="relative mx-auto max-w-2xl">
         {/* flex-col-reverse keeps the badge first in DOM order for the Markdown
             scrape while putting the control on top on phones. */}
         <div className="mb-6 flex flex-col-reverse items-start gap-3 sm:flex-row sm:justify-between">
@@ -35,17 +35,17 @@ export function Hero() {
         </h1>
 
         {/* One-liner subtitle */}
-        <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+        <p className="mt-4 text-lg text-muted-foreground">
           Stale-while-revalidate for <code className="rounded bg-muted px-1.5 py-0.5 text-base">resource()</code>. Instant navigations, silent background refreshes.
         </p>
 
         {/* Value proposition */}
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-4 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
           Go back to a page you already visited and you get the spinner again. ziflux paints the
           cached value immediately and refreshes behind it, for as long as the entry is within{" "}
           <code>expireTime</code>.
         </p>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
           If you know <code>resource()</code> and signals, most of this is already familiar. Three
           APIs, no runtime dependencies, 6.2 kB brotli enforced in CI.
         </p>
@@ -80,10 +80,14 @@ export function Hero() {
           <CodeBlock code={USAGE_CODE} filename="order-list.store.ts" />
         </div>
 
-        {/* Animated comparison */}
+        {/* The label stays on the prose axis; only the demo below breaks out, so
+            the heading does not float 176px left of the thing it names. */}
         <h2 className="mt-10 text-lg font-semibold">What it feels like</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Same app, same actions. One caches.</p>
+      </div>
 
-        <p className="mt-1 text-sm text-muted-foreground">Same app, same actions. One caches.</p>
+      {/* Animated comparison, wider than the prose column: it is the argument, not an illustration */}
+      <div className="relative mx-auto mt-6 max-w-5xl">
         <NavigationDemo />
       </div>
     </section>

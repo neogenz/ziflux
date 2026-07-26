@@ -87,7 +87,7 @@ function DataRow({
       } ${pending ? "opacity-40" : ""}`}
     >
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-foreground/80">{name}</p>
+        <p className="text-xs font-medium text-foreground">{name}</p>
         {pending && (
           <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
         )}

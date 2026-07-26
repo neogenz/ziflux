@@ -1,12 +1,10 @@
-import { CodeBlock } from "@/components/shared/code-block"
-
 export function PriorArt() {
   return (
-    <section id="prior-art" className="mx-auto max-w-4xl px-6 py-12 sm:py-16">
-      <h2 className="group text-center text-2xl font-bold tracking-tight sm:text-3xl">
+    <section id="prior-art" className="mx-auto max-w-4xl px-6 pt-12 pb-20 sm:pt-16 sm:pb-28">
+      <h2 className="group text-2xl font-bold tracking-tight sm:text-3xl">
         <a href="#prior-art" className="hover:no-underline">How ziflux compares <span className="text-muted-foreground/0 transition-colors group-hover:text-muted-foreground">#</span></a>
       </h2>
-      <p className="mt-2 text-center text-muted-foreground">
+      <p className="mt-2 max-w-[68ch] text-muted-foreground">
         You&apos;ll compare anyway, so here is the honest positioning.
       </p>
 
@@ -31,22 +29,18 @@ export function PriorArt() {
         </div>
       </div>
 
-      <p className="mt-6 text-center text-xs text-muted-foreground">
+      <p className="mt-10 max-w-[68ch] text-xs text-muted-foreground">
         Mutation lifecycle (<code>onMutate → mutationFn → onSuccess → invalidateKeys</code>) is modeled on React Query: a proven shape with signal-native execution.
       </p>
-
-      <div className="mt-10">
-        <CodeBlock code="npm install ngx-ziflux" language="bash" />
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          <a
-            href="https://github.com/neogenz/ziflux"
-            className="underline underline-offset-4 hover:text-foreground transition-colors"
-          >
-            GitHub
-          </a>
-          {" "}&middot;{" "}MIT License{" "}&middot;{" "}Zero dependencies
-        </p>
-      </div>
+      <p className="mt-4 max-w-[68ch] text-sm text-muted-foreground">
+        <a
+          href="https://github.com/neogenz/ziflux"
+          className="underline underline-offset-4 hover:text-foreground transition-colors"
+        >
+          GitHub
+        </a>
+        {" "}&middot;{" "}MIT License{" "}&middot;{" "}Zero dependencies
+      </p>
     </section>
   )
 }

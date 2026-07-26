@@ -1,3 +1,4 @@
+import { withInlineCode } from "@/components/shared/inline-code"
 import { CodeBlock } from "@/components/shared/code-block"
 
 const ADMIN_TABS_CODE = `// Each tab is a route. Each route's store reads from a shared cache.
@@ -93,11 +94,11 @@ export function Scenarios() {
               <h3 className="text-base font-semibold">{scenario.title}</h3>
               <p className="mt-3 text-sm">
                 <span className="mr-2 inline-block rounded-md bg-danger/10 px-2 py-0.5 font-mono text-[11px] text-danger-strong">Pain</span>
-                <span className="text-muted-foreground">{scenario.pain}</span>
+                <span className="text-muted-foreground">{withInlineCode(scenario.pain)}</span>
               </p>
               <p className="mt-2 text-sm">
                 <span className="mr-2 inline-block rounded-md bg-ok/10 px-2 py-0.5 font-mono text-[11px] text-ok-strong">Fix</span>
-                <span className="text-muted-foreground">{scenario.fix}</span>
+                <span className="text-muted-foreground">{withInlineCode(scenario.fix)}</span>
               </p>
               <div className="mt-4">
                 <CodeBlock code={scenario.code} />

@@ -12,9 +12,10 @@
   --sl-color-gray-6: oklch(0.205 0 0);
   --sl-color-black: oklch(0.145 0 0);
 
-  --sl-color-accent-high: oklch(0.74 0.17 29);
-  --sl-color-accent: oklch(0.57 0.2 29);
-  --sl-color-accent-low: oklch(0.25 0.06 29);
+  --sl-color-accent-high: oklch(0.74 0.16 50);
+  --sl-color-accent: oklch(0.58 0.15 50);
+  --sl-color-accent-low: oklch(0.25 0.05 50);
+  --ziflux-orange-display: oklch(0.74 0.16 50);
   --sl-color-text: var(--sl-color-gray-2);
   --sl-color-text-accent: var(--sl-color-accent-high);
   --sl-color-text-invert: oklch(0.985 0 0);
@@ -47,9 +48,10 @@
   --sl-color-gray-7: oklch(0.97 0 0);
   --sl-color-black: oklch(0.985 0 0);
 
-  --sl-color-accent-high: oklch(0.52 0.19 29);
-  --sl-color-accent: oklch(0.57 0.2 29);
-  --sl-color-accent-low: oklch(0.95 0.035 29);
+  --sl-color-accent-high: oklch(0.52 0.13 50);
+  --sl-color-accent: oklch(0.58 0.15 50);
+  --sl-color-accent-low: oklch(0.95 0.035 50);
+  --ziflux-orange-display: oklch(0.68 0.17 50);
   --sl-color-text: var(--sl-color-gray-2);
   --sl-color-text-accent: var(--sl-color-accent-high);
   --sl-color-text-invert: oklch(0.985 0 0);
@@ -73,10 +75,15 @@
   outline-offset: 2px;
 }
 
-/* Starlight otherwise reuses the bright link color as the active-page fill. */
-a[aria-current="page"] {
-  background-color: var(--sl-color-accent);
-  color: var(--sl-color-text-invert);
+nav[aria-label="Main"] a[aria-current="page"] {
+  background: transparent;
+  color: var(--ziflux-orange-display);
+  font-weight: 700;
+}
+
+/* These links are large enough for the brighter 3:1 display orange. */
+.sl-markdown-content h2 > a {
+  color: var(--ziflux-orange-display);
 }
 
 html {

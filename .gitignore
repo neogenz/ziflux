@@ -52,3 +52,6 @@ Thumbs.db
 # authors' skills under this repo's skills/ listing.
 skills/angular-developer
 skills/impeccable
+
+# Depot CI migration output (generated proposal, not the live workflows)
+.depot/

@@ -27,12 +27,14 @@ it never deletes them.
 You delete an order. The list, the detail page, and every filtered view all need
 to refresh. Hierarchical cache keys make this one call:
 
-```text
-['order']                              ← invalidate here
-└── ['order', 'list']                  all orders page
-    └── ['order', 'list', 'pending']   filtered view
-└── ['order', 'details', '42']         detail page
-```
+<div class="zx-diagram zx-tree">
+  <p class="zx-tree__root">`['order']` <span class="zx-tree__note">← invalidate here, everything below becomes stale</span></p>
+  <ul>
+    <li>`['order', 'list']` <span class="zx-tree__note">all orders page</span></li>
+    <li>`['order', 'list', 'pending']` <span class="zx-tree__note">filtered view</span></li>
+    <li>`['order', 'details', '42']` <span class="zx-tree__note">detail page</span></li>
+  </ul>
+</div>
 
 ```ts
 cache.invalidate(['order'])   // ← one call, everything refreshes

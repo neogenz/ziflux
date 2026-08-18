@@ -19,7 +19,7 @@ Every API decision is filtered through one question: *"Would an Angular develope
 ## Tech Stack
 - Angular 22+ library (ng-packagr, Vitest)
 - pnpm, Lefthook
-- `docs/` — Landing/docs site: Next.js 16, React 19, Tailwind 4, shadcn/ui
+- `docs/` — Landing (Astro) + docs (Starlight): Astro 7, React 19, Tailwind 4
 
 ## Commands
 - `pnpm build` — Build library via ng-packagr

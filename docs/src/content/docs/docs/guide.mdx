@@ -10,11 +10,35 @@ mutations, and optimistic updates.
 
 ## Architecture
 
-```text
-Component → route-scoped Store → root API service + DataCache → server
-    ↑              │                    │
-    └──────── signals ─────── cachedResource() / cachedMutation()
-```
+<div class="zx-diagram">
+  <div class="zx-flow">
+    <div class="zx-flow__node">
+      <p class="zx-flow__title">Component</p>
+      <p class="zx-flow__meta">view scope</p>
+    </div>
+    <span class="zx-flow__arrow" aria-hidden="true">→</span>
+    <div class="zx-flow__node zx-flow__node--owned">
+      <p class="zx-flow__title">Store</p>
+      <p class="zx-flow__meta">route scope</p>
+      <p class="zx-flow__meta">`cachedResource()` `cachedMutation()`</p>
+    </div>
+    <span class="zx-flow__arrow" aria-hidden="true">→</span>
+    <div class="zx-flow__node">
+      <p class="zx-flow__title">API service</p>
+      <p class="zx-flow__meta">root scope</p>
+      <div class="zx-flow__inner">
+        <p class="zx-flow__title">DataCache</p>
+        <p class="zx-flow__meta">SWR · dedup · invalidation</p>
+      </div>
+    </div>
+    <span class="zx-flow__arrow" aria-hidden="true">→</span>
+    <div class="zx-flow__node">
+      <p class="zx-flow__title">Server</p>
+      <p class="zx-flow__meta">via loader</p>
+    </div>
+  </div>
+  <p class="zx-flow__return">← Signals flow back to the component.</p>
+</div>
 
 The component reads signals from a route-scoped Store. The Store composes
 `cachedResource()` and `cachedMutation()`. A root-scoped API service owns the

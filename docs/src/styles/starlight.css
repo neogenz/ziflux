@@ -95,3 +95,97 @@ html {
     scroll-behavior: auto;
   }
 }
+
+/* --- Diagrams ---
+   Starlight adds a 1rem top margin between markdown siblings; the :where()
+   reset neutralizes it inside a diagram without out-specifying the rules below. */
+.zx-diagram :where(div, p, ul, li, span, code) {
+  margin-top: 0;
+}
+
+.zx-diagram {
+  margin-top: 1.5rem;
+}
+
+/* Left-to-right data flow: Component → Store → API service → server. */
+.zx-flow {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.zx-flow__node {
+  flex: 1 1 0;
+  min-width: 6.5rem;
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: 0.75rem;
+  padding: 0.875rem 0.75rem;
+  text-align: center;
+}
+
+.zx-flow__node--owned {
+  /* Wider than its siblings so the API names inside never wrap mid-word. */
+  flex-grow: 1.7;
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent-low);
+}
+
+.zx-flow__title {
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+
+.zx-flow__meta {
+  margin-top: 0.25rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+.zx-flow__inner {
+  margin-top: 0.625rem;
+  border: 1px solid var(--sl-color-accent);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.zx-flow__arrow {
+  align-self: center;
+  flex: 0 0 auto;
+  color: var(--sl-color-gray-4);
+  font-size: var(--sl-text-sm);
+}
+
+.zx-flow__return {
+  margin-top: 0.75rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+/* Hierarchical cache keys: the root invalidates everything nested under it. */
+.zx-tree__root code,
+.zx-tree li code {
+  font-size: var(--sl-text-sm);
+}
+
+.zx-tree__root code {
+  color: var(--sl-color-text-accent);
+  font-weight: 700;
+}
+
+.zx-tree ul {
+  list-style: none;
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--sl-color-hairline-light);
+}
+
+.zx-tree li + li {
+  margin-top: 0.375rem;
+}
+
+.zx-tree__note {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
